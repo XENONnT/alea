@@ -1,5 +1,6 @@
 import inspect
 from inference_interface import toydata_from_file, toydata_to_file
+from typing import Tuple
 
 class StatisticalModel:
     """
@@ -64,7 +65,6 @@ class StatisticalModel:
         self._config = config
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind
-        self._fit_guess = fit_guess
         self._fixed_parameters = fixed_parameters
 
         self._parameter_list = set(inspect.signature(self.ll))
@@ -106,7 +106,9 @@ class StatisticalModel:
 
 
     def fit(self, ):
-    def get_confidence_interval(self) -> float, float:
+        return NotImplementedError("todo")
+    def get_confidence_interval(self) -> Tuple[float, float]:
+        return NotImplementedError("todo")
     def get_expectations(self):
         return NotImplementedError("get_expectation is optional to implement")
 
@@ -127,8 +129,8 @@ class StatisticalModel:
             else:
                 likelihood_names = self.get_likelihood_term_names()
             return {n:i for i,n in enumerate(likelihood_names)}[likelihood_name]
-        except e:
-            print e
+        except Exception as e:
+            print(e)
             return None
 
 

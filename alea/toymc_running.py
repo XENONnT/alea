@@ -18,7 +18,7 @@ import h5py
 from pydoc import locate  # to lookup inferenceObject class
 import os
 from inference_interface import numpy_to_toyfile
-import binference
+import alea
 import copy
 import mergedeep
 import logging
@@ -41,7 +41,7 @@ def sbatch_template(queue, logfile, execution_time, ram_roof,
 # this bash-script receives the same inputs as the run_toymc.py script
 
 
-toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("binference","/scripts/run_toymc.py"))')
+toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("alea","/scripts/run_toymc.py"))')
 execution_cmd="python $toymc_script $@"
 echo $execution_cmd
 echo "-------------------"
@@ -110,7 +110,7 @@ def run_toymcs(
     refit_if_first_not_best=False,
     propagate_guess=True,
     return_expectations=False,
-    inference_class_name="binference.likelihoods.ll_nt.InferenceObject",
+    inference_class_name="alea.likelihoods.ll_nt.InferenceObject",
     toydata_file=None,
     toydata_mode="none",
 ):
@@ -155,7 +155,7 @@ def run_toymcs(
         return_expectations: if True, tuple of results and expectation vlues
             are returned, defaults to False
         inference_class_name: name of inference class, string
-            defaults to "binference.likelihoods.ll_nt.InferenceObject"
+            defaults to "alea.likelihoods.ll_nt.InferenceObject"
         toydata_file: path to file containing toydata,
             defaults to None
         toydata_mode: "none", "write" or "read".
@@ -289,7 +289,7 @@ def run_toymcs(
             result_array[i] = fit_result_array
     if toydata_mode == "write":
         statistical_model.write_toydata()
-        if inference_class_name == "binference.likelihoods.ll_GOF.InferenceObject":
+        if inference_class_name == "alea.likelihoods.ll_GOF.InferenceObject":
             statistical_model.write_reference()
 
     if return_expectations:
@@ -325,7 +325,7 @@ def toymc_to_sbatch_call(
     inference_object_args={},
     refit_if_first_not_best=False,
     metadata={"version": "0.0"},
-    inference_class_name="binference.likelihoods.ll_nt.InferenceObject",
+    inference_class_name="alea.likelihoods.ll_nt.InferenceObject",
     toydata_file="none",
     toydata_mode="none",
     **kwargs,
@@ -364,7 +364,7 @@ def toymc_to_sbatch_call(
             Defaults to False.
         metadata (dict, optional): TODO. Defaults to {"version":"0.0"}.
         inference_class_name (str, optional): name of inference class.
-            Defaults to "binference.likelihoods.ll_nt.InferenceObject".
+            Defaults to "alea.likelihoods.ll_nt.InferenceObject".
         toydata_file (str, optional): Path to file containing toydata.
             Defaults to "none".
         toydata_mode: "none", "write" or "read".
@@ -389,7 +389,7 @@ def toymc_to_sbatch_call(
     # this script we will write from the template-function sbatch_template()
 
     sbatch_name_and_path = pkg_resources.resource_filename(
-        "binference", "/sbatch_submission/{filename}".format(
+        "alea", "/sbatch_submission/{filename}".format(
             filename=log_name.replace(".log", ".sbatch")))
 
     if not os.path.exists(os.path.dirname(sbatch_name_and_path)):
@@ -477,7 +477,7 @@ def toymc_to_sbatch_call_array_update(
     file_name_pattern_threshold = get_filename_pattern_threshold(
         output_filename=output_filename, wildcards_for_threshold=wildcards_for_threshold)
 
-    merged_combinations = binference.utils.compute_variations(
+    merged_combinations = alea.utils.compute_variations(
         parameters_in_common=parameters_in_common,
         parameters_to_vary=parameters_to_vary,
         parameters_to_zip=parameters_to_zip)
@@ -496,7 +496,7 @@ def toymc_to_sbatch_call_array_update(
     for combination in tqdm(merged_combinations):
         function_args = deepcopy(default_args)
         mergedeep.merge(function_args, combination)  # update defaults with combination
-        function_args = binference.utils.flatten_function_args(combination=combination, function_args=function_args)
+        function_args = alea.utils.flatten_function_args(combination=combination, function_args=function_args)
 
         function_args["n_mc"] = int(function_args["n_mc"] /
                                     function_args["n_batch"])
@@ -594,7 +594,7 @@ def toymc_to_sbatch_call_array(parameters_to_vary={},
         if isinstance(parameters_to_vary[k], dict):
             # allows variations inside of dicts
             parameters_to_vary[k] = [
-                item for item in binference.utils.dict_product(
+                item for item in alea.utils.dict_product(
                     parameters_to_vary[k])
             ]
         else:
@@ -945,7 +945,7 @@ def compute_neyman_thresholds(
         if isinstance(parameters_to_vary[k], dict):
             # allows variations inside of dicts
             parameters_to_vary[k] = [
-                item for item in binference.utils.dict_product(
+                item for item in alea.utils.dict_product(
                     parameters_to_vary[k])
             ]
         else:
@@ -1141,7 +1141,7 @@ def compute_neyman_thresholds_update(
     for sk in parameters_as_wildcards:
         file_name_pattern = re.sub("\{" + sk + ".*?\}", "*", file_name_pattern)
 
-    merged_combinations = binference.utils.compute_variations(
+    merged_combinations = alea.utils.compute_variations(
         parameters_in_common=parameters_in_common,
         parameters_to_vary=parameters_to_vary,
         parameters_to_zip=parameters_to_zip,
@@ -1158,7 +1158,7 @@ def compute_neyman_thresholds_update(
 
         function_args = copy.deepcopy(default_args)
         mergedeep.merge(function_args, combination)
-        function_args = binference.utils.flatten_function_args(combination, function_args)
+        function_args = alea.utils.flatten_function_args(combination, function_args)
 
         threshold_key, threshold_key_pattern, threshold_key_names = generate_threshold_key(
             file_name_pattern=file_name_pattern, function_args=function_args)

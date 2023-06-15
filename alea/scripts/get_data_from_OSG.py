@@ -105,7 +105,7 @@ def main(args):
     else:
         # unpack tarballs remotely
         unpacking_script = pkg_resources.resource_filename(
-            "binference", "scripts/unpack_data.sh")
+            "alea", "scripts/unpack_data.sh")
         print(unpacking_script)
         cmd = "scp {unpacking_script} {user}@{remote_machine}:~/".format(
             unpacking_script=unpacking_script,

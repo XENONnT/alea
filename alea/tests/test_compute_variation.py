@@ -1,7 +1,7 @@
 import unittest
-from binference.utils import compute_variations, compute_parameters_to_vary, compute_parameters_to_zip, read_config
-from binference.toymc_running import toymc_to_sbatch_call_array_update
-from binference.toymc_running import toymc_to_sbatch_call_array, compute_neyman_thresholds_update
+from alea.utils import compute_variations, compute_parameters_to_vary, compute_parameters_to_zip, read_config
+from alea.toymc_running import toymc_to_sbatch_call_array_update
+from alea.toymc_running import toymc_to_sbatch_call_array, compute_neyman_thresholds_update
 import os
 import pkg_resources
 
@@ -143,7 +143,7 @@ class TestComputeVariation(unittest.TestCase):
             "var3": [1]
         }
         config_file = pkg_resources.resource_filename(
-            "binference",
+            "alea",
             "tests/test_configs/ll_nt_lowfield_v7_combination_test.yaml")
         config_data = read_config(config_file)
 
@@ -158,7 +158,7 @@ class TestComputeVariation(unittest.TestCase):
 
     def test_toymc_to_sbatch_call_array_update(self):
         config_file = pkg_resources.resource_filename(
-            "binference",
+            "alea",
             "tests/test_configs/ll_nt_lowfield_v7_combination_test.yaml")
         config_data = read_config(config_file)
 
@@ -188,7 +188,7 @@ class TestComputeVariation(unittest.TestCase):
 
     def test_compute_neyman(self):
         config_file = pkg_resources.resource_filename(
-            "binference",
+            "alea",
             "tests/test_configs/ll_nt_lowfield_v7_combination_test.yaml")
         config_data = read_config(config_file)
         parameters_in_common = config_data['computation']["threshold"][

@@ -2,9 +2,9 @@ import unittest
 import inspect
 import itertools
 import yaml
-from binference.utils import VariationConvenience
+from alea.utils import VariationConvenience
 
-from binference.likelihoods import ll_nt_from_config
+from alea.likelihoods import ll_nt_from_config
 
 
 class TestVariationConvenience(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestVariationConvenience(unittest.TestCase):
                                           signature=signature
                                           )
 
-        #  product = varcon.genereate_binference_input()
+        #  product = varcon.genereate_alea_input()
         #  for item in product:
         #      print(item)
 

@@ -4,12 +4,12 @@ import os
 from copy import deepcopy
 from pydoc import locate  # to lookup inferenceObject class
 
-import binference.utils as utils
+import alea.utils as utils
 import h5py
 import numpy as np
 import scipy.stats as sps
-from binference.plotting import pdf_plotter
-from binference.simulators import simulate_interpolated
+from alea.plotting import pdf_plotter
+from alea.simulators import simulate_interpolated
 from blueice.inference import bestfit_scipy, one_parameter_interval
 from blueice.likelihood import LogLikelihoodSum
 from inference_interface import (dict_to_structured_array,

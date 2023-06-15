@@ -2,8 +2,8 @@ import logging
 logging.basicConfig(level=logging.INFO, force=True)
 import subprocess
 import time
-from binference.toymc_running import toymc_to_sbatch_call_array, compute_neyman_thresholds, toymc_to_sbatch_call_array_update, compute_neyman_thresholds_update
-from binference import toymc_running
+from alea.toymc_running import toymc_to_sbatch_call_array, compute_neyman_thresholds, toymc_to_sbatch_call_array_update, compute_neyman_thresholds_update
+from alea import toymc_running
 import argparse
 import os
 import sys
@@ -16,21 +16,21 @@ from tqdm import tqdm
 import json
 import itertools
 import inspect
-from binference.utils import read_config
-import binference
+from alea.utils import read_config
+import alea
 
-def create_binference_tarball(targetname, targetpath):
-    binference_data_path = pkg_resources.resource_filename(
-        "binference", "data")
-    binference_root_path = os.path.join(binference_data_path, "../..")
+def create_alea_tarball(targetname, targetpath):
+    alea_data_path = pkg_resources.resource_filename(
+        "alea", "data")
+    alea_root_path = os.path.join(alea_data_path, "../..")
 
     if os.path.exists(targetname):
         os.remove(targetname)
 
     #  cmd = "tar cvfz {target} {input} --exclude=*.tar.gz --exclude=*/.git/* --exclude=*/sbatch_submission/*".format(
-        #  target=targetname, input=binference_root_path)
+        #  target=targetname, input=alea_root_path)
     cmd = "tar cvfz {target} {input} --exclude=*.tar.gz --exclude=*.sbatch".format(
-        target=targetname, input=binference_root_path)
+        target=targetname, input=alea_root_path)
     os.system(cmd)
 
     #  full_targetpath = os.path.join(targetpath, targetname)
@@ -89,14 +89,14 @@ def write_OSG_job(jobname, arguments, output_filename, toydata_file, inputfiles,
     jobname_with_out_dir = os.path.basename(jobname)
     merged_args = "'" + "' '".join(arguments) + "'"
 
-    copy_template = "cp {inputfile} binference/data/{target_path}\n"
+    copy_template = "cp {inputfile} alea/data/{target_path}\n"
     # path_from_template refers to to a prepending path in the source of config
     # e.g. ER/template_XENONnT_ER_field_20.h5 --> the ER is not matched correctly
     # without this
 
     copy_input_files_to_where_they_belong = ""
     for inputfile, target_path in zip(inputfiles, targetfiles):
-        if inputfile == "binference.tar.gz":
+        if inputfile == "alea.tar.gz":
             continue
         #  elif inputfile == os.path.basename(config_path):
         #      #  mkdirs = "mkdir -p {config_dir}\n".format(config_dir=os.path.dirname(config_path))
@@ -108,11 +108,11 @@ def write_OSG_job(jobname, arguments, output_filename, toydata_file, inputfiles,
             copy_input_files_to_where_they_belong += copy_template.format(
                 inputfile=inputfile, target_path=target_path)
 
-    create_paths_in_binference = ""
+    create_paths_in_alea = ""
     for target_path in targetfiles:
         dirname = os.path.dirname(target_path)
         if dirname != "":
-            create_paths_in_binference += "mkdir -p binference/data/{dirname}\n".format(
+            create_paths_in_alea += "mkdir -p alea/data/{dirname}\n".format(
                 dirname=dirname)
 
     osg_job = """#!/bin/bash
@@ -128,15 +128,15 @@ hostname
 echo "GLIDEIN_Site = $GLIDEIN_Site"
 echo "GLIDEIN_ResourceName = $GLIDEIN_ResourceName"
 
-tar xvfz binference.tar.gz
+tar xvfz alea.tar.gz
 
-# inside the OSG job the input files need to be copied into binference
-{create_paths_in_binference}
+# inside the OSG job the input files need to be copied into alea
+{create_paths_in_alea}
 {copy_input_files_to_where_they_belong}
 pip install -r requirements.txt --user
 pip install -e . --user
 
-toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("binference","/scripts/run_toymc.py"))')
+toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("alea","/scripts/run_toymc.py"))')
 python $toymc_script {arguments}
 
 ls -ltrha
@@ -172,13 +172,13 @@ ls -ltrha jobs/
            jobname=jobname_with_out_dir,
            copy_input_files_to_where_they_belong=
            copy_input_files_to_where_they_belong,
-           create_paths_in_binference=create_paths_in_binference)
+           create_paths_in_alea=create_paths_in_alea)
     with open(jobname, "w") as f:
         f.write(osg_job)
 
 
 def parse_args(args):
-    parser = argparse.ArgumentParser("Submission script for toyMCs in binference")
+    parser = argparse.ArgumentParser("Submission script for toyMCs in alea")
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('--local',
                        action='store_true',
@@ -201,7 +201,7 @@ def parse_args(args):
     parser.add_argument("--config",
                         type=str,
                         required=True,
-                        help="YAML config file specifying binference details")
+                        help="YAML config file specifying alea details")
     parser.add_argument("--outputfolder_overwrite",
                         type=str,
                         required=False,
@@ -249,7 +249,7 @@ def submit_jobs(argv):
             generate_args_parameter = computation.get("generate_args_parameter")
             InferenceObjectClass = locate(parameters_in_common.get("inference_class_name"))
             signature = inspect.signature(InferenceObjectClass)
-            varcon = binference.utils.VariationConvenience(parameters_to_vary=parameters_to_vary,
+            varcon = alea.utils.VariationConvenience(parameters_to_vary=parameters_to_vary,
                                         parameters_to_zip=parameters_to_zip,
                                         parameters_as_wildcards=parameters_as_wildcards,
                                         parameters_in_common=parameters_in_common,
@@ -285,11 +285,11 @@ def submit_jobs(argv):
 
         joblist = []
         first = True
-        inputfiles, targetfiles = ["binference.tar.gz"], ["binference.tar.gz"]
+        inputfiles, targetfiles = ["alea.tar.gz"], ["alea.tar.gz"]
         for number, c in enumerate(tqdm(calls)):
             if parsed_args.local:
                 local_path = pkg_resources.resource_filename(
-                    "binference", "/scripts/run_toymc.py")
+                    "alea", "/scripts/run_toymc.py")
                 local_call = ["python", local_path]
                 local_call += c[2:]
                 print(local_call)
@@ -450,9 +450,9 @@ def submit_jobs(argv):
 
         if parsed_args.submit:
             if parsed_args.OSG:
-                print("CREATNG binference-tarball")
+                print("CREATNG alea-tarball")
                 # The tar ball will exclude all *.tar.gz files
-                create_binference_tarball(targetname=inputfiles[0],
+                create_alea_tarball(targetname=inputfiles[0],
                                           targetpath=os.getcwd())
                 cmd = "condor_submit submit.sub"
                 os.system(cmd)
@@ -472,7 +472,7 @@ def submit_jobs(argv):
         if parsed_args.unpack:
             filelist = glob.glob("*.tar.gz")
             for file in filelist:
-                if "binference.tar.gz" in file:
+                if "alea.tar.gz" in file:
                     continue
                 cmd = "tar xvfz {file}".format(file=file)
                 os.system(cmd)
@@ -496,7 +496,7 @@ def submit_jobs(argv):
         )
         filelist = glob.glob("*.tar.gz")
         for file in filelist:
-            if "binference.tar.gz" in file:
+            if "alea.tar.gz" in file:
                 continue
             cmd = "tar xvfz {file}".format(file=file)
             os.system(cmd)
@@ -506,7 +506,7 @@ def submit_jobs(argv):
         )
         filelist = glob.glob("*sensi*.tar.gz")
         for file in filelist:
-            if "binference.tar.gz" in file:
+            if "alea.tar.gz" in file:
                 continue
             cmd = "tar xvfz {file}".format(file=file)
             os.system(cmd)

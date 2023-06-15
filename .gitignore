@@ -1,6 +1,6 @@
-binference.egg-info/
-binference/__pycache__/
-binference/likelihoods/__pycache__/
+alea.egg-info/
+alea/__pycache__/
+alea/likelihoods/__pycache__/
 build/
 dist/
 src/

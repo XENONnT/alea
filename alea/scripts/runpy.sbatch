@@ -6,7 +6,7 @@
 #SBATCH --qos=xenon1t
 
 
-toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("binference","/scripts/run_toymc.py"))')
+toymc_script=$(python -c 'import pkg_resources; print(pkg_resources.resource_filename("alea","/scripts/run_toymc.py"))')
 execution_cmd="python $toymc_script $@"
 echo $execution_cmd
 echo "-------------------"

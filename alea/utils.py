@@ -208,7 +208,7 @@ def detect_path(config_data):
         path = config_data["midway_path"]
         on_remote = True
     else:
-        path = "binference/data"
+        path = "alea/data"
         on_remote = False
     return path, on_remote
 
@@ -265,7 +265,7 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
 
 class VariationConvenience(object):
     """This class serves as a convenience wrapper to carry out cartesian products.
-    The same functionality can be achieved with plain binference but this might
+    The same functionality can be achieved with plain alea but this might
     come at the cost of complicated cartesian products written into 'parameters_to_zip'"""
     def __init__(self, parameters_to_vary: dict, parameters_to_zip: dict,
                  parameters_in_common: dict, parameters_as_wildcards: list,
@@ -298,7 +298,7 @@ class VariationConvenience(object):
             else:
                 self.parameters_to_vary_in_likelihood.update({key: value})
 
-    def genereate_binference_input(self):
+    def genereate_alea_input(self):
         return itertools.product(*self.parameters_to_vary.values())
 
     def _create_zip_input(self):

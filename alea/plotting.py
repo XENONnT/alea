@@ -24,7 +24,7 @@ class pdf_plotter():
         """Generate histograms for all sources
 
         Args:
-            ll (ll object): binference ll object
+            ll (ll object): alea ll object
             analysis_space_plot (list of tuples, optional): if not None
                 this replaces the bin edges defined in the ll config file
                 for plotting / defining the histogras.

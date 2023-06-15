@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 setup(
-    name="binference",
+    name="alea",
     version="0.2",
-    packages=['binference',"binference.likelihoods"],
-    package_dir={'binference': 'binference'},
-    package_data={'binference': ['runpy.sbatch', 'data/*.hdf','scripts/*',"data/tutorial_cache/*"]},
+    packages=['alea',"alea.likelihoods"],
+    package_dir={'alea': 'alea'},
+    package_data={'alea': ['runpy.sbatch', 'data/*.hdf','scripts/*',"data/tutorial_cache/*"]},
     include_package_data=True,
     author='XENON collaboration',
     author_email="knut.dundas.mora@columbia.edu",

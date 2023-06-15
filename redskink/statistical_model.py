@@ -98,9 +98,9 @@ class StatisticalModel:
             try:
                 data_name_list = self.get_likelihood_term_names()
             except NotImplementedError:
-                data_name_list = ["{:d}" for range(len(data_list[0]))]
+                data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
-        kw = dict(metadata = metadata) if metadata is not None
+        kw = dict(metadata = metadata) if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
 

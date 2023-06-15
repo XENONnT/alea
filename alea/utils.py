@@ -489,7 +489,7 @@ def flatten_function_args(combination, function_args):
                 raise Exception(
                     "You are overwriting function_args without knowing what is going on!"
                 )
-            elif key == "signal_rate_multiplier" and combination["signal_expectation"] is not None:
+            elif key == "signal_rate_multiplier" and combination.get("signal_expectation", None) is not None:
                 continue
             else:
                 function_args[key] = value

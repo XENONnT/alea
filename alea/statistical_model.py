@@ -46,11 +46,9 @@ class StatisticalModel:
     """
     def ll(self, **kwargs) -> float:
         return NotImplementedError("You must write a likelihood function for your statistical model or use a subclass where it is written for you")
-        mua = self._data[0]["mua"]
+
     def generate_data(self, **kwargs):
         return NotImplementedError("You must write a data-generation method for your statistical model or use a subclass where it is written for you")
-        ret = np.array(,dtype=("n",int),("b_meas",int))
-        data_shape = []
 
     def __init__(self,
                  data = None,
@@ -67,8 +65,8 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self._fixed_parameters = fixed_parameters
 
-        self._parameter_list = set(inspect.signature(self.ll))
-        if self._parameter_list != set(inspect.signature(self.generate_data())):
+        self._parameter_list = set(inspect.signature(self.ll).parameters)
+        if self._parameter_list != set(inspect.signature(self.generate_data).parameters):
             raise AssertionError("ll and generate_data must have the same signature (parameters)")
 
     def set_data(self, data):

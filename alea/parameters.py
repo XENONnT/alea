@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np  # noqa: F401
 import scipy.stats as stats  # noqa: F401
 
@@ -70,10 +71,7 @@ class Parameters:
     def names(self):
         return list(self.parameters.keys())
 
-    # def fittable_names(self):
-    #     return [name for name, param in self.parameters.items() if param.fittable]
-
-    def get_values(self, **kwargs):
+    def __call__(self, **kwargs: Any) -> dict:
         values = {}
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)

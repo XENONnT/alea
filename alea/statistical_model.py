@@ -1,6 +1,9 @@
 import inspect
 from inference_interface import toydata_from_file, toydata_to_file
 from typing import Tuple
+import numpy as np
+from iminuit import Minuit
+from iminuit.util import make_func_code
 
 class StatisticalModel:
     """
@@ -45,12 +48,10 @@ class StatisticalModel:
         _fixed_parameters = []
     """
     def ll(self, **kwargs) -> float:
-        return NotImplementedError("You must write a likelihood function for your statistical model or use a subclass where it is written for you")
-        mua = self._data[0]["mua"]
+        raise NotImplementedError("You must write a likelihood function for your statistical model or use a subclass where it is written for you")
+
     def generate_data(self, **kwargs):
-        return NotImplementedError("You must write a data-generation method for your statistical model or use a subclass where it is written for you")
-        ret = np.array(,dtype=("n",int),("b_meas",int))
-        data_shape = []
+        raise NotImplementedError("You must write a data-generation method for your statistical model or use a subclass where it is written for you")
 
     def __init__(self,
                  data = None,
@@ -67,8 +68,8 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self._fixed_parameters = fixed_parameters
 
-        self._parameter_list = set(inspect.signature(self.ll))
-        if self._parameter_list != set(inspect.signature(self.generate_data())):
+        self._parameter_list = set(inspect.signature(self.ll).parameters)
+        if self._parameter_list != set(inspect.signature(self.generate_data).parameters):
             raise AssertionError("ll and generate_data must have the same signature (parameters)")
 
     def set_data(self, data):
@@ -83,6 +84,8 @@ class StatisticalModel:
         Simple getter for a data-set-- mainly here so it can be over-ridden for special needs.
         Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
         """
+        if self._data is None:
+            raise Exception("data has not been assigned this statistical model!")
         return self._data
 
     def store_data(self, file_name, data_list, data_name_list=None, metadata = None):
@@ -97,7 +100,7 @@ class StatisticalModel:
         if data_name_list is None:
             try:
                 data_name_list = self.get_likelihood_term_names()
-            except NotImplementedError:
+            except NotImplementedError as e:
                 data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
         kw = dict(metadata = metadata) if metadata is not None else dict()
@@ -105,8 +108,6 @@ class StatisticalModel:
 
 
 
-    def fit(self, ):
-        return NotImplementedError("todo")
     def get_confidence_interval(self) -> Tuple[float, float]:
         return NotImplementedError("todo")
     def get_expectations(self):
@@ -117,7 +118,7 @@ class StatisticalModel:
         It may be convenient to partition the likelihood in several terms,
         you can implement this function to give them names (list of strings)
         """
-        return NotImplementedError("get_likelihood_term_names is optional to implement")
+        raise NotImplementedError("get_likelihood_term_names is optional to implement")
 
     def get_likelihood_term_from_name(self, likelihood_name):
         """
@@ -142,4 +143,71 @@ class StatisticalModel:
     def print_config(self):
         for k,i in self.config:
             print(k,i)
+    def make_objective(self, guess=None, bound=None, minus=True, **kwargs):
+        if guess is None:
+            guess = {}
+        if bound is None:
+            bound = {}
+        names = []
+        bounds = []
+        guesses = []
+
+        for p in self._parameter_list:
+            if p not in kwargs:
+                g = guess.get(p, 1)
+                b = bound.get(p, None)
+                names.append(p)
+                guesses.append(g)
+                bounds.append(b)
+
+        sign = -1 if minus else 1
+
+        def cost(args):
+            # Get the arguments from args, then fill in the ones already fixed in outer kwargs
+            call_kwargs = {}
+            for i, k in enumerate(names):
+                call_kwargs[k] = args[i]
+            call_kwargs.update(kwargs)
+            return self.ll(**call_kwargs) * sign
+
+        return cost, names, np.array(guesses), bounds
+
+    def fit(self, guess=None, bound=None, verbose=False, **kwargs):
+        cost, names, guess, bounds = self.make_objective(minus=True, guess=guess,
+                                                         bound=bound, **kwargs)
+        minuit_dict = {}
+        for i, name in enumerate(names):
+            minuit_dict[name] = guess[i]
+
+        class MinuitWrap:
+            """Wrapper for functions to be called by Minuit
+
+            s_args must be a list of argument names of function f
+            the names in this list must be the same as the keys of
+            the dictionary passed to the Minuit call."""
+
+            def __init__(self, f, s_args):
+                self.func = f
+                self.s_args = s_args
+                self.func_code = make_func_code(s_args)
+
+            def __call__(self, *args):
+                return self.func(args)
+
+        # Make the Minuit object
+        cost.errordef = Minuit.LIKELIHOOD
+        m = Minuit(MinuitWrap(cost, names),
+                   **minuit_dict)
+        for k in self._fixed_parameters:
+            m.fixed[k] = True
+        for n, b in zip(names, bounds):
+            if b is not None:
+                print(n, b)
+                m.limits[n] = b
+
+        # Call migrad to do the actual minimization
+        m.migrad()
+        if verbose:
+            print(m)
+        return m.values.to_dict(), -1 * m.fval
 

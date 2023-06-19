@@ -22,4 +22,5 @@ development_scripts/*hdf
 *.session.vim*
 *.env*
 __pycache__/
-test.ipynb
+*ipynb
+!examples/*.ipynb

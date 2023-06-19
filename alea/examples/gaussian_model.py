@@ -1,8 +1,6 @@
 from alea.statistical_model import StatisticalModel
 import scipy.stats as stats
 import numpy as np
-from iminuit import Minuit
-from iminuit.util import make_func_code
 
 
 class GaussianModel(StatisticalModel):

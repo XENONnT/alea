@@ -1,6 +1,9 @@
 import inspect
 from inference_interface import toydata_from_file, toydata_to_file
 from typing import Tuple
+import numpy as np
+from iminuit import Minuit
+from iminuit.util import make_func_code
 
 class StatisticalModel:
     """

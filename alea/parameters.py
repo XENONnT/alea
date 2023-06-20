@@ -211,6 +211,13 @@ class Parameters:
         """
         return [name for name, param in self.parameters.items() if not param.fittable]
 
+    @property
+    def nominal_values(self) ->dict:
+        """
+        return a dict of name:nominal value for all applicable parameters
+        """
+        return {k:i.nominal_value for k,i in self.parameters.items() if i.nominal_value is not None}
+
     def __call__(self, return_fittable: bool = False,
                  **kwargs: Any) -> Dict[str, float]:
         """
@@ -280,3 +287,18 @@ class Parameters:
             return all(getattr(self, n) == getattr(other, n) for n in names)
         else:
             return False
+
+    def get_parameters_to_call(self, error_if_unknown_parameter=True, **kwargs) -> dict:
+        """
+        Method to create a full dict of parameters, with values taken from kwargs if possible,
+        and otherwise from the nominal value of each parameter
+        if warn_if_unknown_parameter, this function will print a warning if you call
+        it with a parameter not in the list.
+        """
+        if error_if_unknown_parameter and len(set(kwargs.keys()) - set(self.names)):
+            raise KeyError("Key(s) {:s} not in parameter list".format(str(set(kwargs.keys()) - set(self.names))))
+
+        ret = self.nominal_values
+        ret.update(kwargs)
+        return ret
+

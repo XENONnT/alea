@@ -38,6 +38,13 @@ class Parameter:
     def uncertainty(self, value):
         self._uncertainty = value
 
+    def __eq__(self, other):
+        """Returns True if all attributes are equal"""
+        if isinstance(other, Parameter):
+            return all(getattr(self, k) == getattr(other, k) for k in self.__dict__)
+        else:
+            return False
+
 
 class Parameters:
     def __init__(self):
@@ -71,11 +78,16 @@ class Parameters:
     def names(self):
         return list(self.parameters.keys())
 
-    def __call__(self, **kwargs: Any) -> dict:
+    def __call__(self, return_fittable=False, **kwargs: Any) -> dict:
         values = {}
+        # check that all kwargs are valid parameter names
+        for name in kwargs:
+            if name not in self.parameters:
+                raise ValueError(f"Parameter '{name}' not found.")
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
-            values[name] = new_val if new_val is not None else param.nominal_value
+            if (return_fittable and param.fittable) or not return_fittable:
+                values[name] = new_val if new_val is not None else param.nominal_value
         return values
 
     def __getattr__(self, name):

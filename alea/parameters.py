@@ -292,8 +292,8 @@ class Parameters:
         method returns false if one or more parameters is outside its range
         """
         limits = self.fit_limits
-        dls = [k:limits.get(k,(None,None))[0] for k in kwargs.keys()]
-        uls = [k:limits.get(k,(None,None))[1] for k in kwargs.keys()]
+        dls = {k:limits.get(k,(None,None))[0] for k in kwargs.keys()}
+        uls = {k:limits.get(k,(None,None))[1] for k in kwargs.keys()}
         ret  = [(dls[k] is None) or (dls[k] < p) for k,p in kwargs.items()]
         ret += [(uls[k] is None) or (p < uls[k]) for k,p in kwargs.items()]
         return all(ret)

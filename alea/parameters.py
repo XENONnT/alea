@@ -17,6 +17,7 @@ class Parameter:
         relative_uncertainty (bool, optional): Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional): Anchors for blueice template morphing.
         fit_limits (tuple, optional): The limits for fitting the parameter.
+        fit_guess (float, optional): The initial guess for fitting the parameter.
         description (str, optional): A description of the parameter.
     """
 
@@ -30,6 +31,7 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
+        fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
         self.name = name
@@ -40,6 +42,7 @@ class Parameter:
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
+        self.fit_guess = fit_guess
         self.description = description
 
     def __repr__(self) -> str:
@@ -109,18 +112,38 @@ class Parameters:
                 "relative_uncertainty", None)
             blueice_anchors = param_config.get("blueice_anchors", None)
             fit_limits = param_config.get("fit_limits", None)
+            fit_guess = param_config.get("fit_guess", None)
             description = param_config.get("description", None)
             parameter = Parameter(
-                name,
-                nominal_value,
-                fittable,
-                ptype,
-                uncertainty,
-                relative_uncertainty,
-                blueice_anchors,
-                fit_limits,
-                description
+                name=name,
+                nominal_value=nominal_value,
+                fittable=fittable,
+                ptype=ptype,
+                uncertainty=uncertainty,
+                relative_uncertainty=relative_uncertainty,
+                blueice_anchors=blueice_anchors,
+                fit_limits=fit_limits,
+                fit_guess=fit_guess,
+                description=description
             )
+            parameters.add_parameter(parameter)
+        return parameters
+
+    @classmethod
+    def from_list(cls, names: List[str]):
+        """
+        Creates a Parameters object from a list of parameter names.
+        Everything else is set to default values.
+
+        Args:
+            names (list): List of parameter names.
+
+        Returns:
+            Parameters: The created Parameters object.
+        """
+        parameters = cls()
+        for name in names:
+            parameter = Parameter(name)
             parameters.add_parameter(parameter)
         return parameters
 
@@ -139,6 +162,27 @@ class Parameters:
         Returns a list of parameter names.
         """
         return list(self.parameters.keys())
+
+    @property
+    def fit_guesses(self) -> Dict[str, float]:
+        """
+        Returns a dictionary of fit guesses.
+        """
+        return {name: param.fit_guess for name, param in self.parameters.items() if param.fit_guess is not None}
+
+    @property
+    def fit_limits(self) -> Dict[str, float]:
+        """
+        Returns a dictionary of fit limits.
+        """
+        return {name: param.fit_limits for name, param in self.parameters.items() if param.fit_limits is not None}
+
+    @property
+    def fittable(self) -> List[str]:
+        """
+        Returns a list of parameter names which are fittable.
+        """
+        return [name for name, param in self.parameters.items() if param.fittable]
 
     def __call__(self, return_fittable: bool = False,
                  **kwargs: Any) -> Dict[str, float]:

@@ -42,7 +42,7 @@ class Parameter:
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
-        self.fit_guess = fit_guess
+        self._fit_guess = fit_guess
         self.description = description
 
     def __repr__(self) -> str:
@@ -71,6 +71,19 @@ class Parameter:
     @uncertainty.setter
     def uncertainty(self, value: float or str) -> None:
         self._uncertainty = value
+
+    @property
+    def fit_guess(self) -> float:
+        # make sure to only return fit_guess if fittable
+        if self._fit_guess is not None and not self.fittable:
+            raise ValueError(
+                f"Parameter {self.name} is not fittable, but has a fit_guess.")
+        else:
+            return self._fit_guess
+
+    @fit_guess.setter
+    def fit_guess(self, value: float) -> None:
+        self._fit_guess = value
 
     def __eq__(self, other: object) -> bool:
         """Returns True if all attributes are equal"""
@@ -147,6 +160,11 @@ class Parameters:
             parameters.add_parameter(parameter)
         return parameters
 
+    def __repr__(self) -> str:
+        parameter_str = ", ".join(self.names)
+        return f'{self.__class__.__module__}.{self.__class__.__qualname__}'\
+            f'({parameter_str})'
+
     def add_parameter(self, parameter: Parameter) -> None:
         """
         Adds a Parameter object to the Parameters collection.
@@ -154,6 +172,8 @@ class Parameters:
         Args:
             parameter (Parameter): The Parameter object to add.
         """
+        if parameter.name in self.names:
+            raise ValueError(f"Parameter {parameter.name} already exists.")
         self.parameters[parameter.name] = parameter
 
     @property
@@ -183,6 +203,13 @@ class Parameters:
         Returns a list of parameter names which are fittable.
         """
         return [name for name, param in self.parameters.items() if param.fittable]
+
+    @property
+    def not_fittable(self) -> List[str]:
+        """
+        Returns a list of parameter names which are not fittable.
+        """
+        return [name for name, param in self.parameters.items() if not param.fittable]
 
     def __call__(self, return_fittable: bool = False,
                  **kwargs: Any) -> Dict[str, float]:
@@ -227,6 +254,24 @@ class Parameters:
             return self.parameters[name]
         else:
             raise AttributeError(f"Attribute '{name}' not found.")
+
+    def __getitem__(self, name: str) -> Parameter:
+        """
+        Retrieves a Parameter object by dictionary access.
+
+        Args:
+            name (str): The name of the parameter.
+
+        Returns:
+            Parameter: The retrieved Parameter object.
+
+        Raises:
+            KeyError: If the key is not found.
+        """
+        if name in self.parameters:
+            return self.parameters[name]
+        else:
+            raise KeyError(f"Key '{name}' not found.")
 
     def __eq__(self, other: object) -> bool:
         """Returns True if all parameters are equal"""

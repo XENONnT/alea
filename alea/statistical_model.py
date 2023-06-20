@@ -30,8 +30,6 @@ class StatisticalModel:
          get_likelihood_term_names
 
          Implemented here:
-         set_data
-         get_data
          store_data
          fit
          get_confidence_interval
@@ -67,14 +65,8 @@ class StatisticalModel:
 
         self._check_ll_and_generate_data_signature()
 
-    def set_data(self, data):
-        """
-        Simple setter for a data-set-- mainly here so it can be over-ridden for special needs.
-        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
-        """
-        self._data = data
-
-    def get_data(self):
+    @property
+    def data(self):
         """
         Simple getter for a data-set-- mainly here so it can be over-ridden for special needs.
         Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
@@ -82,6 +74,14 @@ class StatisticalModel:
         if self._data is None:
             raise Exception("data has not been assigned this statistical model!")
         return self._data
+
+    @data.setter
+    def data(self, data):
+        """
+        Simple setter for a data-set-- mainly here so it can be over-ridden for special needs.
+        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
+        """
+        self._data = data
 
     def store_data(self, file_name, data_list, data_name_list=None, metadata = None):
         """
@@ -144,18 +144,21 @@ class StatisticalModel:
 
         def cost(args):
             # Get the arguments from args, then fill in the ones already fixed in outer kwargs
-            call_kwargs = self.parameters(**kwargs)
+            call_kwargs = {}
+            for i, k in enumerate(self.parameters.names):
+                call_kwargs[k] = args[i]
+            # call_kwargs.update(kwargs)
             return self.ll(**call_kwargs) * sign
 
         return cost
 
-    def fit(self, guess=None, fixed_parameters: Optional[list] = None, verbose=False, **kwargs):
-        if guess is None:
-            guess = self.parameters.fit_guesses
-        else:
-            guess = guess.update(self.parameters.fit_guesses)
+    def fit(self, verbose=False, **kwargs):
+        fixed_parameters = list(kwargs.keys())
+        guesses = self.parameters.fit_guesses
+        guesses.update(kwargs)
+        defaults = self.parameters(**guesses)
+
         cost = self.make_objective(minus=True, **kwargs)
-        minuit_dict = guess
 
         class MinuitWrap:
             """Wrapper for functions to be called by Minuit
@@ -174,11 +177,10 @@ class StatisticalModel:
 
         # Make the Minuit object
         cost.errordef = Minuit.LIKELIHOOD
-        m = Minuit(MinuitWrap(cost, names),
-                   **minuit_dict)
-        if fixed_parameters is None:
-            fixed_params = []
-        fixed_params = not self.parameters.fittable + fixed_parameters
+        m = Minuit(MinuitWrap(cost, s_args=self.parameters.names),
+                   **defaults)
+        fixed_params = [] if fixed_parameters is None else fixed_parameters
+        fixed_params += self.parameters.not_fittable
         for par in fixed_params:
             m.fixed[par] = True
         for n, l in self.parameters.fit_limits.items():

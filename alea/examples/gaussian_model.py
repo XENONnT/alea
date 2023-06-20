@@ -22,7 +22,7 @@ class GaussianModel(StatisticalModel):
         if sigma is None:
             sigma = self.parameters.sigma.nominal_value
 
-        hat_mu = self.get_data()[0]['hat_mu'][0]
+        hat_mu = self.data[0]['hat_mu'][0]
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
 
     def generate_data(self, mu=None, sigma=None):

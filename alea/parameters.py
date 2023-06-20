@@ -294,9 +294,14 @@ class Parameters:
         and otherwise from the nominal value of each parameter
         if warn_if_unknown_parameter, this function will print a warning if you call
         it with a parameter not in the list.
+        parameters set to None will be removed from the call
         """
         if error_if_unknown_parameter and len(set(kwargs.keys()) - set(self.names)):
             raise KeyError("Key(s) {:s} not in parameter list".format(str(set(kwargs.keys()) - set(self.names))))
+
+        dummy_args = [k for k,i in kwargs.items() if i is None]
+        for k in dummy_args:
+            kwargs.pop(k,None)
 
         ret = self.nominal_values
         ret.update(kwargs)

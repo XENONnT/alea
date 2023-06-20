@@ -17,19 +17,17 @@ class GaussianModel(StatisticalModel):
         super().__init__(parameter_definition=parameter_definition)
 
     def ll(self, mu=None, sigma=None):
-        if mu is None:
-            mu = self.parameters.mu.nominal_value
-        if sigma is None:
-            sigma = self.parameters.sigma.nominal_value
+        parameters = self.parameters.get_parameters_to_call(mu=mu, sigma=sigma)
+        mu = parameters["mu"]
+        sigma = parameters["sigma"]
 
         hat_mu = self.data[0]['hat_mu'][0]
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
 
     def generate_data(self, mu=None, sigma=None):
-        if mu is None:
-            mu = self.parameters.mu.nominal_value
-        if sigma is None:
-            sigma = self.parameters.sigma.nominal_value
+        parameters = self.parameters.get_parameters_to_call(mu=mu, sigma=sigma)
+        mu = parameters["mu"]
+        sigma = parameters["sigma"]
 
         hat_mu = stats.norm(loc=mu, scale=sigma).rvs()
         data = [np.array([(hat_mu,)], dtype=[('hat_mu', float)])]

@@ -92,6 +92,17 @@ class Parameter:
         else:
             return False
 
+    def value_in_fit_limits(self, value: float) -> bool:
+        """Returns True if value is within fit_limits"""
+        if self.fit_limits is None:
+            return True
+        elif self.fit_limits[0] is None:
+            return value <= self.fit_limits[1]
+        elif self.fit_limits[1] is None:
+            return value >= self.fit_limits[0]
+        else:
+            return self.fit_limits[0] <= value <= self.fit_limits[1]
+
 
 class Parameters:
     """
@@ -212,11 +223,11 @@ class Parameters:
         return [name for name, param in self.parameters.items() if not param.fittable]
 
     @property
-    def nominal_values(self) ->dict:
+    def nominal_values(self) -> dict:
         """
         return a dict of name:nominal value for all applicable parameters
         """
-        return {k:i.nominal_value for k,i in self.parameters.items() if i.nominal_value is not None}
+        return {k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None}
 
     def __call__(self, return_fittable: bool = False,
                  **kwargs: Any) -> Dict[str, float]:
@@ -287,33 +298,10 @@ class Parameters:
             return all(getattr(self, n) == getattr(other, n) for n in names)
         else:
             return False
-    def parameters_in_limits(self, **kwargs):
-        """
-        method returns false if one or more parameters is outside its range
-        """
-        limits = self.fit_limits
-        dls = {k:limits.get(k,(None,None))[0] for k in kwargs.keys()}
-        uls = {k:limits.get(k,(None,None))[1] for k in kwargs.keys()}
-        ret  = [(dls[k] is None) or (dls[k] < p) for k,p in kwargs.items()]
-        ret += [(uls[k] is None) or (p < uls[k]) for k,p in kwargs.items()]
-        return all(ret)
 
-    def get_parameters_to_call(self, error_if_unknown_parameter=True, **kwargs) -> dict:
+    def values_in_fit_limits(self, **kwargs: Any) -> bool:
         """
-        Method to create a full dict of parameters, with values taken from kwargs if possible,
-        and otherwise from the nominal value of each parameter
-        if warn_if_unknown_parameter, this function will print a warning if you call
-        it with a parameter not in the list.
-        parameters set to None will be removed from the call
+        Returns True if all values are within the fit limits.
         """
-        if error_if_unknown_parameter and len(set(kwargs.keys()) - set(self.names)):
-            raise KeyError("Key(s) {:s} not in parameter list".format(str(set(kwargs.keys()) - set(self.names))))
-
-        dummy_args = [k for k,i in kwargs.items() if i is None]
-        for k in dummy_args:
-            kwargs.pop(k,None)
-
-        ret = self.nominal_values
-        ret.update(kwargs)
-        return ret
-
+        return all(self.parameters[name].value_in_fit_limits(value)
+                   for name, value in kwargs.items())

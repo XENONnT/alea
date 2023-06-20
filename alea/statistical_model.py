@@ -156,6 +156,8 @@ class StatisticalModel:
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
         guesses.update(kwargs)
+        if not self.parameters.values_in_fit_limits(**guesses):
+            raise Exception("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
         cost = self.make_objective(minus=True, **kwargs)

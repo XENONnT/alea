@@ -17,7 +17,7 @@ class GaussianModel(StatisticalModel):
         super().__init__(parameter_definition=parameter_definition)
 
     def ll(self, mu=None, sigma=None):
-        parameters = self.parameters.get_parameters_to_call(mu=mu, sigma=sigma)
+        parameters = self.parameters(mu=mu, sigma=sigma)
         mu = parameters["mu"]
         sigma = parameters["sigma"]
 
@@ -25,7 +25,7 @@ class GaussianModel(StatisticalModel):
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
 
     def generate_data(self, mu=None, sigma=None):
-        parameters = self.parameters.get_parameters_to_call(mu=mu, sigma=sigma)
+        parameters = self.parameters(mu=mu, sigma=sigma)
         mu = parameters["mu"]
         sigma = parameters["sigma"]
 

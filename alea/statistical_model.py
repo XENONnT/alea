@@ -22,8 +22,8 @@ class StatisticalModel:
          __init__
          required to implement:
 
-         ll
-         generate_data
+         _ll
+         _generate_data
 
          optional to implement:
          get_mus
@@ -47,10 +47,22 @@ class StatisticalModel:
         _fixed_parameters = []
     """
     def ll(self, **kwargs) -> float:
-        raise NotImplementedError("You must write a likelihood function for your statistical model or use a subclass where it is written for you")
+        # CAUTION: This implementation won't allow you to call the likelihood by positional arguments.
+        parameters = self.parameters(**kwargs)
+        return self._ll(**parameters)
+
+    def _ll(self, **kwargs) -> float:
+        raise NotImplementedError("You must write a likelihood function (_ll) for your statistical model or use a subclass where it is written for you")
 
     def generate_data(self, **kwargs):
-        raise NotImplementedError("You must write a data-generation method for your statistical model or use a subclass where it is written for you")
+        # CAUTION: This implementation won't allow you to call generate_data by positional arguments.
+        if not self.parameters.values_in_fit_limits(**kwargs):
+            raise ValueError("Values are not within fit limits")
+        parameters = self.parameters(**kwargs)
+        return self._generate_data(**parameters)
+
+    def _generate_data(self, **kwargs):
+        raise NotImplementedError("You must write a data-generation method (_generate_data) for your statistical model or use a subclass where it is written for you")
 
     def __init__(self,
                  data = None,
@@ -157,7 +169,7 @@ class StatisticalModel:
         guesses = self.parameters.fit_guesses
         guesses.update(kwargs)
         if not self.parameters.values_in_fit_limits(**guesses):
-            raise Exception("Initial guesses are not within fit limits")
+            raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
         cost = self.make_objective(minus=True, **kwargs)
@@ -195,8 +207,8 @@ class StatisticalModel:
         return m.values.to_dict(), -1 * m.fval
 
     def _check_ll_and_generate_data_signature(self):
-        ll_params = set(inspect.signature(self.ll).parameters)
-        generate_data_params = set(inspect.signature(self.generate_data).parameters)
+        ll_params = set(inspect.signature(self._ll).parameters)
+        generate_data_params = set(inspect.signature(self._generate_data).parameters)
         if ll_params != generate_data_params:
             raise AssertionError("ll and generate_data must have the same signature (parameters)")
 

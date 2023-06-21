@@ -1,9 +1,10 @@
 import inspect
 from inference_interface import toydata_from_file, toydata_to_file
-from typing import Tuple
+from typing import Tuple, Optional
 import numpy as np
 from iminuit import Minuit
 from iminuit.util import make_func_code
+from alea.parameters import Parameters
 
 class StatisticalModel:
     """
@@ -21,16 +22,14 @@ class StatisticalModel:
          __init__
          required to implement:
 
-         ll
-         generate_data
+         _ll
+         _generate_data
 
          optional to implement:
          get_mus
          get_likelihood_term_names
 
          Implemented here:
-         set_data
-         get_data
          store_data
          fit
          get_confidence_interval
@@ -48,38 +47,38 @@ class StatisticalModel:
         _fixed_parameters = []
     """
     def ll(self, **kwargs) -> float:
-        raise NotImplementedError("You must write a likelihood function for your statistical model or use a subclass where it is written for you")
+        # CAUTION: This implementation won't allow you to call the likelihood by positional arguments.
+        parameters = self.parameters(**kwargs)
+        return self._ll(**parameters)
+
+    def _ll(self, **kwargs) -> float:
+        raise NotImplementedError("You must write a likelihood function (_ll) for your statistical model or use a subclass where it is written for you")
 
     def generate_data(self, **kwargs):
-        raise NotImplementedError("You must write a data-generation method for your statistical model or use a subclass where it is written for you")
+        # CAUTION: This implementation won't allow you to call generate_data by positional arguments.
+        if not self.parameters.values_in_fit_limits(**kwargs):
+            raise ValueError("Values are not within fit limits")
+        parameters = self.parameters(**kwargs)
+        return self._generate_data(**parameters)
+
+    def _generate_data(self, **kwargs):
+        raise NotImplementedError("You must write a data-generation method (_generate_data) for your statistical model or use a subclass where it is written for you")
 
     def __init__(self,
                  data = None,
-                 config: dict = dict(),
+                 parameter_definition: dict or list = None,
                  confidence_level: float = 0.9,
                  confidence_interval_kind:str = "unified",
-                 fit_guess:dict = dict(),
-                 fixed_parameters:dict = dict(),
-                 default_values = dict(),
                  **kwargs):
         self._data = data
-        self._config = config
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind
-        self._fixed_parameters = fixed_parameters
+        self._define_parameters(parameter_definition)
 
-        self._parameter_list = set(inspect.signature(self.ll).parameters)
-        if self._parameter_list != set(inspect.signature(self.generate_data).parameters):
-            raise AssertionError("ll and generate_data must have the same signature (parameters)")
+        self._check_ll_and_generate_data_signature()
 
-    def set_data(self, data):
-        """
-        Simple setter for a data-set-- mainly here so it can be over-ridden for special needs.
-        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
-        """
-        self._data = data
-
-    def get_data(self):
+    @property
+    def data(self):
         """
         Simple getter for a data-set-- mainly here so it can be over-ridden for special needs.
         Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
@@ -87,6 +86,14 @@ class StatisticalModel:
         if self._data is None:
             raise Exception("data has not been assigned this statistical model!")
         return self._data
+
+    @data.setter
+    def data(self, data):
+        """
+        Simple setter for a data-set-- mainly here so it can be over-ridden for special needs.
+        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
+        """
+        self._data = data
 
     def store_data(self, file_name, data_list, data_name_list=None, metadata = None):
         """
@@ -143,41 +150,29 @@ class StatisticalModel:
     def print_config(self):
         for k,i in self.config:
             print(k,i)
-    def make_objective(self, guess=None, bound=None, minus=True, **kwargs):
-        if guess is None:
-            guess = {}
-        if bound is None:
-            bound = {}
-        names = []
-        bounds = []
-        guesses = []
 
-        for p in self._parameter_list:
-            if p not in kwargs:
-                g = guess.get(p, 1)
-                b = bound.get(p, None)
-                names.append(p)
-                guesses.append(g)
-                bounds.append(b)
-
+    def make_objective(self, minus=True, **kwargs):
         sign = -1 if minus else 1
 
         def cost(args):
             # Get the arguments from args, then fill in the ones already fixed in outer kwargs
             call_kwargs = {}
-            for i, k in enumerate(names):
+            for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
-            call_kwargs.update(kwargs)
+            # call_kwargs.update(kwargs)
             return self.ll(**call_kwargs) * sign
 
-        return cost, names, np.array(guesses), bounds
+        return cost
 
-    def fit(self, guess=None, bound=None, verbose=False, **kwargs):
-        cost, names, guess, bounds = self.make_objective(minus=True, guess=guess,
-                                                         bound=bound, **kwargs)
-        minuit_dict = {}
-        for i, name in enumerate(names):
-            minuit_dict[name] = guess[i]
+    def fit(self, verbose=False, **kwargs):
+        fixed_parameters = list(kwargs.keys())
+        guesses = self.parameters.fit_guesses
+        guesses.update(kwargs)
+        if not self.parameters.values_in_fit_limits(**guesses):
+            raise ValueError("Initial guesses are not within fit limits")
+        defaults = self.parameters(**guesses)
+
+        cost = self.make_objective(minus=True, **kwargs)
 
         class MinuitWrap:
             """Wrapper for functions to be called by Minuit
@@ -196,14 +191,14 @@ class StatisticalModel:
 
         # Make the Minuit object
         cost.errordef = Minuit.LIKELIHOOD
-        m = Minuit(MinuitWrap(cost, names),
-                   **minuit_dict)
-        for k in self._fixed_parameters:
-            m.fixed[k] = True
-        for n, b in zip(names, bounds):
-            if b is not None:
-                print(n, b)
-                m.limits[n] = b
+        m = Minuit(MinuitWrap(cost, s_args=self.parameters.names),
+                   **defaults)
+        fixed_params = [] if fixed_parameters is None else fixed_parameters
+        fixed_params += self.parameters.not_fittable
+        for par in fixed_params:
+            m.fixed[par] = True
+        for n, l in self.parameters.fit_limits.items():
+            m.limits[n] = l
 
         # Call migrad to do the actual minimization
         m.migrad()
@@ -211,3 +206,18 @@ class StatisticalModel:
             print(m)
         return m.values.to_dict(), -1 * m.fval
 
+    def _check_ll_and_generate_data_signature(self):
+        ll_params = set(inspect.signature(self._ll).parameters)
+        generate_data_params = set(inspect.signature(self._generate_data).parameters)
+        if ll_params != generate_data_params:
+            raise AssertionError("ll and generate_data must have the same signature (parameters)")
+
+    def _define_parameters(self, parameter_definition):
+        if parameter_definition is None:
+            self.parameters = Parameters()
+        elif isinstance(parameter_definition, dict):
+            self.parameters = Parameters.from_config(parameter_definition)
+        elif isinstance(parameter_definition, list):
+            self.parameters = Parameters.from_list(parameter_definition)
+        else:
+            raise Exception("parameter_definition must be dict or list")

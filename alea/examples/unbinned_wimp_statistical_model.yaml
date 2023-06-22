@@ -1,0 +1,103 @@
+parameter_definition:
+  wimp_mass:
+    nominal_value: 50
+    fittable: false
+
+  livetime_0:
+    nominal_value: 0.2
+    fittable: false
+    description: Livetime of SR0 in years
+
+  livetime_1:
+    nominal_value: 1.0
+    fittable: false
+    description: Livetime of SR1 in years
+
+  wimp_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+
+  er_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    uncertainty: 0.2
+    relative_uncertainty: true
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    fit_guess: 1.0
+
+  er_band_shift:
+    nominal_value: 0
+    ptype: shape
+    uncertainty: scipy.stats.uniform(loc=-1, scale=2)
+    relative_uncertainty: false
+    fittable: true
+    blueice_anchors:
+      - -1
+      - 0
+      - 1
+    fit_limits:
+      - -1
+      - 1
+    description: ER band shape parameter (shifts the ER band up and down)
+
+ll_config:
+  default_source_class: alea.template_source.TemplateSource
+  likelihoods:
+  # SR0
+    - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": "np.arange(0, 102, 2)"
+        - "log10cs2": "np.arange(2.1, 4.12, 0.02)"
+      in_events_per_bin: true
+      binned: false
+      parameters:
+        - livetime_0
+      slice_args: {}
+      sources:
+      - histname: cs1-log10_cs2-r  # TODO change histname
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        templatepath: null # used to be called templatename
+        histogram_multiplier: 300  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
+
+      - histname: cs1-log10_cs2-r
+        parameters:
+          - wimp_rate_multiplier
+        templatepath: null # used to be called templatename
+        histogram_multiplier: 10  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
+        apply_efficiency: False
+        efficiency_name: 'signal_eff'  # TODO: Check
+  
+  # SR1
+    - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": "np.arange(0, 102, 2)"
+        - "log10cs2": "np.arange(2.1, 4.12, 0.02)"
+      in_events_per_bin: true
+      binned: false
+      parameters:
+        - livetime_1
+      slice_args: {}
+      sources:
+      - histname: cs1-log10_cs2-r  # TODO change histname
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        templatepath: null # used to be called templatename
+        histogram_multiplier: 200  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
+
+      - histname: cs1-log10_cs2-r
+        parameters:
+          - wimp_rate_multiplier
+        templatepath: null # used to be called templatename
+        histogram_multiplier: 10  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
+        apply_efficiency: False
+        efficiency_name: 'signal_eff'  # TODO: Check

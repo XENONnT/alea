@@ -5,7 +5,8 @@ import numpy as np
 
 
 class GaussianModel(StatisticalModel):
-    def __init__(self, parameter_definition: Optional[dict or list] = None):
+    def __init__(self, parameter_definition: Optional[dict or list] = None,
+                 **kwargs):
         """
         Initialise a model of a gaussian measurement (hatmu),
         where the model has parameters mu and sigma
@@ -14,7 +15,7 @@ class GaussianModel(StatisticalModel):
         """
         if parameter_definition is None:
             parameter_definition = ["mu", "sigma"]
-        super().__init__(parameter_definition=parameter_definition)
+        super().__init__(parameter_definition=parameter_definition, **kwargs)
 
     def _ll(self, mu=None, sigma=None):
         hat_mu = self.data[0]['hat_mu'][0]

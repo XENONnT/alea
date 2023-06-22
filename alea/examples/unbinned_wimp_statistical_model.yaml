@@ -50,9 +50,9 @@ parameter_definition:
 
 ll_config:
   default_source_class: alea.template_source.TemplateSource
-  likelihoods:
+  likelihood_terms:
   # SR0
-    - likelihood_term_name: sr10
+    - name: sr10
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       in_events_per_bin: true
       parameters:
@@ -75,7 +75,7 @@ ll_config:
         efficiency_name: 'signal_eff'  # TODO: Check
   
   # SR1
-    - likelihood_term_name: sr1
+    - name: sr1
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       in_events_per_bin: true
       parameters:

@@ -11,8 +11,9 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO write docstring
         """
         super().__init__(parameter_definition=parameter_definition)
+        self.parameters_of_ll_terms = self._get_parameters_of_ll_terms(ll_config)
         self._ll = self._build_ll_from_config(ll_config)
-        self.likelihood_names = [c["likelihood_term_name"] for c in ll_config]
+        self.likelihood_names = [c["name"] for c in ll_config["likelihood_terms"]]
         self.data_generators = self._build_data_generators()
 
         # TODO analysis_space should be inferred from the data (assert that all sources have the same analysis space)
@@ -80,6 +81,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO: Set ancillary measurements for rate parameters
         # TODO: Make sure to only set each parameter once (maybe like constraint_already_set)
         # TODO: Set ancillary measurements for shape parameters
+        # TODO: Define both here and in the ll that the constraint is put only in the first term that contains the parameter
+        # TODO: use .in_likelihood_term() method for parameters?
 
         self._data = data
 
@@ -95,6 +98,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _build_ll_from_config(self, ll_config):
         # TODO iterate through ll_config and build blueice ll
+        # IDEA maybe add a dict with the ll names as keys and the corresponding blueice ll terms as values?
         # IDEA Maybe simply return ll in the end and spare the def of _ll?
         # IDEA Or better define a _ll_blueice and call this in _ll to make it more readable?
         ll = None
@@ -112,3 +116,28 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _build_data_generators(self):
         return [BlueiceDataGenerator(ll_term) for ll_term in self.ll.likelihood_list]
+
+    @staticmethod
+    def get_parameters_of_ll_terms(ll_config: dict) -> dict:
+        """
+        Extracts the parameters for each likelihood term from the
+        ll_config dictionary.
+
+        Args:
+            ll_config (dict): A dictionary containing the configuration
+            for the likelihood terms.
+
+        Returns:
+            dict: A dictionary where the keys are the names of the
+            likelihood terms and the values are lists of the parameters
+            for each term.
+        """
+        parameters_of_ll_terms = {
+            term["name"]: term["parameters"] + [source["parameters"] for source in term["sources"]]
+            for term in ll_config["likelihood_terms"]
+        }
+        return parameters_of_ll_terms
+
+    def parameter_in_likelihood_term(self, parameter: str):
+        # return keys for which parameter is in the value list of ll_terms_parameters
+        return [key for key, value in self.parameters_of_ll_terms.items() if parameter in value]

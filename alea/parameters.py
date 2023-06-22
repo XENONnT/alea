@@ -17,6 +17,7 @@ class Parameter:
         relative_uncertainty (bool, optional): Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional): Anchors for blueice template morphing.
         fit_limits (tuple, optional): The limits for fitting the parameter.
+        parameter_interval_bounds (tupe, optional): limits for computing confidence intervals
         fit_guess (float, optional): The initial guess for fitting the parameter.
         description (str, optional): A description of the parameter.
     """
@@ -31,6 +32,7 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
+        parameter_interval_bounds: Optional[Tuple] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
@@ -42,6 +44,7 @@ class Parameter:
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
+        self.parameter_interval_bounds = parameter_interval_bounds
         self._fit_guess = fit_guess
         self.description = description
 

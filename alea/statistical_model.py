@@ -1,7 +1,9 @@
 import inspect
 from inference_interface import toydata_from_file, toydata_to_file
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable
 import numpy as np
+from scipy.stats import chi2
+from scipy.optimize import brentq
 from iminuit import Minuit
 from iminuit.util import make_func_code
 from alea.parameters import Parameters
@@ -42,7 +44,8 @@ class StatisticalModel:
         _data = None
         _config = {}
         _confidence_level = 0.9
-        _confidence_interval_kind = "upper,lower,unified"
+        _confidence_interval_kind = "upper,lower,central" (if your threshold is the FC threshold, "central" gives you the unified interval)
+        _confidence_interval_threshold: function that defines the Neyman threshold for limit calculations
         _fit_guess = {}
         _fixed_parameters = []
     """
@@ -68,11 +71,13 @@ class StatisticalModel:
                  data = None,
                  parameter_definition: dict or list = None,
                  confidence_level: float = 0.9,
-                 confidence_interval_kind:str = "unified",
+                 confidence_interval_kind:str = "central", #one of central, upper, lower
+                 confidence_interval_threshold: Callable[[float], float] = None,
                  **kwargs):
         self._data = data
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind
+        self.confidence_interval_threshold = confidence_interval_threshold
         self._define_parameters(parameter_definition)
 
         self._check_ll_and_generate_data_signature()
@@ -115,8 +120,96 @@ class StatisticalModel:
 
 
 
-    def get_confidence_interval(self) -> Tuple[float, float]:
-        return NotImplementedError("todo")
+    def confidence_interval(self, parameter: str,
+                            parameter_interval_bounds: Tuple[float,float] = None,
+                            confidence_level: float=None,
+                            confidence_interval_kind:str = None,
+                            **kwargs) -> Tuple[float, float]:
+        """
+        Uses self.fit to compute confidence intervals for a certain named parameter
+
+        parameter: string, name of fittable parameter of the model
+        fit_bounds: range in which to search for the confidence interval edges. May be specified as:
+            - setting the property "parameter_interval_bounds" for the parameter
+            - passing a list here
+        If the parameter is a rate parameter, and the model has expectation values implemented,
+        the bounds will be interpreted as bounds on the expectation value (so that the range in the fit is parameter_interval_bounds/mus)
+        otherwise the bound is taken as-is.
+
+
+        """
+        if confidence_level is None:
+            confidence_level = self._confidence_level
+        if confidence_interval_kind is None:
+            confidence_interval_kind = self._confidence_interval_kind
+
+        assert (0<confidence_level) & (confidence_level<1), "the confidence level must lie between 0 and 1"
+        parameter_of_interest = self.parameters[parameter]
+        assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
+        if parameter_interval_bounds is None:
+            parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
+            if parameter_interval_bounds is None:
+                raise ValueError("You must set parameter_interval_bounds in the parameter config or when calling confidence_interval")
+
+        if parameter_of_interest.type == "rate":
+            try:
+                mu_parameter = self.get_expectations()[parameter_of_interest.name]
+                parameter_interval_bounds = (parameter_interval_bounds[0]/mu_parameter, parameter_interval_bounds[1]/mu_parameter)
+            except:
+                pass #no problem, continuing with bounds as set
+
+        #find best-fit:
+        best_result, best_ll = self.fit(**kwargs)
+        best_parameter = best_result[parameter_of_interest.name]
+        assert (parameter_interval_bounds[0] < best_parameter) & (best_parameter<parameter_interval_bounds[1]), "the best-fit is outside your confidence interval search limits in parameter_interval_bounds"
+        #log-likelihood - critical value:
+
+        #define threshold if none is defined:
+        if self.confidence_interval_threshold is not None:
+            confidence_interval_threshold = self.confidence_interval_threshold
+        else:
+            #use asymptotic thresholds assuming the test statistic is Chi2 distributed
+            if confidence_interval_kind in ["lower","upper"]:
+                critical_value = chi2(1).isf(2*(1. - confidence_level))
+            elif confidence_interval_kind == "central":
+                critical_value = chi2(1).isf(1. - confidence_level)
+
+            confidence_interval_threshold = lambda x: critical_value
+
+        #define intersection between likelihood ratio curve and the critical curve:
+        call_args = kwargs
+        def t(hypothesis):
+            call_args[parameter_of_interest.name] = hypothesis
+            _, ll = self.fit( **call_args) # ll is - log-likelihood here
+            ret = 2. * (best_ll - ll) #likelihood curve "right way up" (smiling)
+            return ret - confidence_interval_threshold(hypothesis) #if positive, hypothesis is excluded
+
+        print("at best fit, t is ",best_parameter, t(best_parameter))
+        print("at limits, t is ", t(parameter_interval_bounds[0]), t(parameter_interval_bounds[1]))
+
+        if confidence_interval_kind in ["upper","central"]:
+            if 0<t(parameter_interval_bounds[1]):
+                ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+            else:
+                ul = np.inf
+        else:
+            ul = np.nan
+
+        if confidence_interval_kind in ["lower","central"]:
+            if 0<t(parameter_interval_bounds[0]):
+                dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+            else:
+                dl = -1*np.inf
+        else:
+            dl = np.nan
+
+        return dl, ul
+
+
+
+
+
+
     def get_expectations(self):
         return NotImplementedError("get_expectation is optional to implement")
 
@@ -204,7 +297,7 @@ class StatisticalModel:
         m.migrad()
         if verbose:
             print(m)
-        return m.values.to_dict(), -1 * m.fval
+        return m.values.to_dict(), -1 * m.fval #alert! This gives the _maximum_ likelihood
 
     def _check_ll_and_generate_data_signature(self):
         ll_params = set(inspect.signature(self._ll).parameters)

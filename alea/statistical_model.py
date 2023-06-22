@@ -33,7 +33,7 @@ class StatisticalModel:
          store_data
          fit
          get_confidence_interval
-         get_expectations
+         get_expectation_values
          get_parameter_list
          print_config
 
@@ -58,8 +58,8 @@ class StatisticalModel:
         # CAUTION: This implementation won't allow you to call generate_data by positional arguments.
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
-        parameters = self.parameters(**kwargs)
-        return self._generate_data(**parameters)
+        generate_values = self.parameters(**kwargs)
+        return self._generate_data(**generate_values)
 
     def _generate_data(self, **kwargs):
         raise NotImplementedError("You must write a data-generation method (_generate_data) for your statistical model or use a subclass where it is written for you")
@@ -107,7 +107,7 @@ class StatisticalModel:
         if data_name_list is None:
             try:
                 data_name_list = self.get_likelihood_term_names()
-            except NotImplementedError as e:
+            except NotImplementedError:
                 data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
         kw = dict(metadata = metadata) if metadata is not None else dict()
@@ -117,30 +117,18 @@ class StatisticalModel:
 
     def get_confidence_interval(self) -> Tuple[float, float]:
         return NotImplementedError("todo")
-    def get_expectations(self):
-        return NotImplementedError("get_expectation is optional to implement")
-
-    def get_likelihood_term_names(self):
-        """
-        It may be convenient to partition the likelihood in several terms,
-        you can implement this function to give them names (list of strings)
-        """
-        raise NotImplementedError("get_likelihood_term_names is optional to implement")
+    def get_expectation_values(self):
+        return NotImplementedError("get_expectation_values is optional to implement")
 
     def get_likelihood_term_from_name(self, likelihood_name):
         """
         returns the index of a likelihood term if the likelihood has several names
         """
-        try:
-            if hasattr(self, likelihood_names):
-                likelihood_names = self.likelihood_names
-            else:
-                likelihood_names = self.get_likelihood_term_names()
+        if hasattr(self, "likelihood_names"):
+            likelihood_names = self.likelihood_names
             return {n:i for i,n in enumerate(likelihood_names)}[likelihood_name]
-        except Exception as e:
-            print(e)
-            return None
-
+        else:
+            raise NotImplementedError("The attribute likelihood_names is not defined.")
 
 
     def get_parameter_list(self):

@@ -52,9 +52,9 @@ ll_config:
   default_source_class: alea.template_source.TemplateSource
   likelihoods:
   # SR0
-    - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    - likelihood_term_name: sr10
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       in_events_per_bin: true
-      binned: false
       parameters:
         - livetime_0
       slice_args: {}
@@ -75,9 +75,9 @@ ll_config:
         efficiency_name: 'signal_eff'  # TODO: Check
   
   # SR1
-    - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    - likelihood_term_name: sr1
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       in_events_per_bin: true
-      binned: false
       parameters:
         - livetime_1
       slice_args: {}

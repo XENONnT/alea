@@ -223,6 +223,13 @@ class Parameters:
         return [name for name, param in self.parameters.items() if not param.fittable]
 
     @property
+    def uncertainties(self) -> dict:
+        """
+        return a dict of name:uncertainty for all parameters with a not-NaN uncertainty.
+        """
+        return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
+
+    @property
     def nominal_values(self) -> dict:
         """
         return a dict of name:nominal value for all applicable parameters

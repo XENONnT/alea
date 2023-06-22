@@ -2,6 +2,7 @@ parameter_definition:
   wimp_mass:
     nominal_value: 50
     fittable: false
+    description: WIMP mass in GeV/c^2
 
   livetime_0:
     nominal_value: 0.2
@@ -52,52 +53,45 @@ ll_config:
   likelihoods:
   # SR0
     - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-      analysis_space:
-        - "cs1": "np.arange(0, 102, 2)"
-        - "log10cs2": "np.arange(2.1, 4.12, 0.02)"
       in_events_per_bin: true
       binned: false
       parameters:
         - livetime_0
       slice_args: {}
       sources:
-      - histname: cs1-log10_cs2-r  # TODO change histname
+      - histname: cs1-log10_cs2
         parameters:
           - er_rate_multiplier
           - er_band_shift
         templatepath: null # used to be called templatename
-        histogram_multiplier: 300  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
+        histogram_scale_factor: 1  # TODO: remove from config and only have it as a backup solution in the code for convenience
 
-      - histname: cs1-log10_cs2-r
+      - histname: cs1-log10_cs2
         parameters:
           - wimp_rate_multiplier
+          - wimp_mass
         templatepath: null # used to be called templatename
-        histogram_multiplier: 10  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
         apply_efficiency: False
         efficiency_name: 'signal_eff'  # TODO: Check
   
   # SR1
     - likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-      analysis_space:
-        - "cs1": "np.arange(0, 102, 2)"
-        - "log10cs2": "np.arange(2.1, 4.12, 0.02)"
       in_events_per_bin: true
       binned: false
       parameters:
         - livetime_1
       slice_args: {}
       sources:
-      - histname: cs1-log10_cs2-r  # TODO change histname
+      - histname: cs1-log10_cs2
         parameters:
           - er_rate_multiplier
           - er_band_shift
         templatepath: null # used to be called templatename
-        histogram_multiplier: 200  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
 
-      - histname: cs1-log10_cs2-r
+      - histname: cs1-log10_cs2
         parameters:
           - wimp_rate_multiplier
+          - wimp_mass
         templatepath: null # used to be called templatename
-        histogram_multiplier: 10  # maybe rename this to "scale" or "scale_factor"? Or even make it a parameter?
-        apply_efficiency: False
+        apply_efficiency: False  # TODO this should probably also in the parameter_definition (how exactly is it different from an uncertainty?)
         efficiency_name: 'signal_eff'  # TODO: Check

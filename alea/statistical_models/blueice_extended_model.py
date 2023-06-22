@@ -1,5 +1,5 @@
-from alea.statistical_model import StatisticalModel
-from alea.simulators import simulate_interpolated
+from alea.statistical_model import StatisticalModel, data
+# from alea.simulators import simulate_interpolated
 import yaml
 
 
@@ -13,6 +13,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO instead of sefineing self.lls use self._ll.likelihood_list (blueice method)
         # TODO find better name for rgs
         # self.rgs = [simulate_interpolated(ll, binned=b) for ll, b in zip(self.lls, self.binned)]
+        # TODO analysis_space should be inferred from the data (assert that all sources have the same analysis space)
 
     @classmethod
     def from_yaml(cls, yaml_file):
@@ -39,9 +40,19 @@ class BlueiceExtendedModel(StatisticalModel):
     def _generate_ancillary_measurements(self, **kwargs):
         pass
 
+    @data.setter
+    def data(self, data):
+        """
+        Overrides default setter. Will also set the data of the blueice ll.
+        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
+        """
+        # TODO set blueice ll data
+        self._data = data
+
     @property
     def nominal_mus(self):
         # TODO
+        # IDEA also enable a setter that changes the rate parameters?
         pass
 
     def get_mus(self, **kwargs):
@@ -54,3 +65,13 @@ class BlueiceExtendedModel(StatisticalModel):
         # IDEA Or better define a _ll_blueice and call this in _ll to make it more readable?
         ll = None
         return ll
+
+    def _add_rate_parameters(self):
+        # TODO
+        # TODO: Check if already set
+        pass
+
+    def _add_shape_parameters(self):
+        # TODO
+        # TODO: Check if already set
+        pass

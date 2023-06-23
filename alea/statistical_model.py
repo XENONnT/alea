@@ -7,6 +7,7 @@ from scipy.optimize import brentq
 from iminuit import Minuit
 from iminuit.util import make_func_code
 from alea.parameters import Parameters
+import warnings
 
 class StatisticalModel:
     """
@@ -118,25 +119,13 @@ class StatisticalModel:
         kw = dict(metadata = metadata) if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-
-
-    def confidence_interval(self, parameter: str,
-                            parameter_interval_bounds: Tuple[float,float] = None,
-                            confidence_level: float=None,
-                            confidence_interval_kind:str = None,
-                            **kwargs) -> Tuple[float, float]:
+    def _confidence_interval_checks(self, parameter: str,
+                            parameter_interval_bounds: Tuple[float,float],
+                            confidence_level: float,
+                            confidence_interval_kind:str,
+                            **kwargs):
         """
-        Uses self.fit to compute confidence intervals for a certain named parameter
-
-        parameter: string, name of fittable parameter of the model
-        fit_bounds: range in which to search for the confidence interval edges. May be specified as:
-            - setting the property "parameter_interval_bounds" for the parameter
-            - passing a list here
-        If the parameter is a rate parameter, and the model has expectation values implemented,
-        the bounds will be interpreted as bounds on the expectation value (so that the range in the fit is parameter_interval_bounds/mus)
-        otherwise the bound is taken as-is.
-
-
+        helper function for confidence_interval that does the input checks and returns bounds +
         """
         if confidence_level is None:
             confidence_level = self._confidence_level
@@ -146,6 +135,8 @@ class StatisticalModel:
         assert (0<confidence_level) & (confidence_level<1), "the confidence level must lie between 0 and 1"
         parameter_of_interest = self.parameters[parameter]
         assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
+        assert parameter not in kwargs, "you cannot set the parameter you're constraining"
+
         if parameter_interval_bounds is None:
             parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
             if parameter_interval_bounds is None:
@@ -153,16 +144,12 @@ class StatisticalModel:
 
         if parameter_of_interest.type == "rate":
             try:
-                mu_parameter = self.get_expectations()[parameter_of_interest.name]
+                mu_parameter = self.get_expectations(**kwargs)[parameter_of_interest.name]
                 parameter_interval_bounds = (parameter_interval_bounds[0]/mu_parameter, parameter_interval_bounds[1]/mu_parameter)
-            except:
+            except NotImplementedError:
+                warnings.warn("The statistical model does not have a get_expectations model implemented, \
+                               confidence interval bounds will be set directly.")
                 pass #no problem, continuing with bounds as set
-
-        #find best-fit:
-        best_result, best_ll = self.fit(**kwargs)
-        best_parameter = best_result[parameter_of_interest.name]
-        assert (parameter_interval_bounds[0] < best_parameter) & (best_parameter<parameter_interval_bounds[1]), "the best-fit is outside your confidence interval search limits in parameter_interval_bounds"
-        #log-likelihood - critical value:
 
         #define threshold if none is defined:
         if self.confidence_interval_threshold is not None:
@@ -176,16 +163,48 @@ class StatisticalModel:
 
             confidence_interval_threshold = lambda x: critical_value
 
+        return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
+
+
+    def confidence_interval(self, parameter: str,
+                            parameter_interval_bounds: Tuple[float,float] = None,
+                            confidence_level: float=None,
+                            confidence_interval_kind:str = None,
+                            **kwargs) -> Tuple[float, float]:
+        """
+        Uses self.fit to compute confidence intervals for a certain named parameter
+
+        parameter: string, name of fittable parameter of the model
+        parameter_interval_bounds: range in which to search for the confidence interval edges. May be specified as:
+            - setting the property "parameter_interval_bounds" for the parameter
+            - passing a list here
+        If the parameter is a rate parameter, and the model has expectation values implemented,
+        the bounds will be interpreted as bounds on the expectation value (so that the range in the fit is parameter_interval_bounds/mus)
+        otherwise the bound is taken as-is.
+
+
+        """
+
+        ci_objects = self._confidence_interval_checks(parameter,
+                                                      parameter_interval_bounds,
+                                                      confidence_level,
+                                                      confidence_interval_kind,
+                                                      **kwargs)
+        confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds = ci_objects
+
+
+        #find best-fit:
+        best_result, best_ll = self.fit(**kwargs)
+        best_parameter = best_result[parameter_of_interest.name]
+        assert (parameter_interval_bounds[0] < best_parameter) & (best_parameter<parameter_interval_bounds[1]), "the best-fit is outside your confidence interval search limits in parameter_interval_bounds"
+        #log-likelihood - critical value:
+
         #define intersection between likelihood ratio curve and the critical curve:
-        call_args = kwargs
-        def t(hypothesis):
-            call_args[parameter_of_interest.name] = hypothesis
-            _, ll = self.fit( **call_args) # ll is - log-likelihood here
+        def t(hypothesis): #define the intersection between the profile-log-likelihood curve and the rejection threshold
+            kwargs[parameter_of_interest.name] = hypothesis
+            _, ll = self.fit( **kwargs) # ll is + log-likelihood here
             ret = 2. * (best_ll - ll) #likelihood curve "right way up" (smiling)
             return ret - confidence_interval_threshold(hypothesis) #if positive, hypothesis is excluded
-
-        print("at best fit, t is ",best_parameter, t(best_parameter))
-        print("at limits, t is ", t(parameter_interval_bounds[0]), t(parameter_interval_bounds[1]))
 
         if confidence_interval_kind in ["upper","central"]:
             if 0<t(parameter_interval_bounds[1]):
@@ -257,7 +276,12 @@ class StatisticalModel:
 
         return cost
 
-    def fit(self, verbose=False, **kwargs):
+    def fit(self, verbose=False, **kwargs)-> Tuple[dict,float]:
+        """
+        Fit the model to the data by maximizing the likelihood
+        returns a dict containing best-fit values of each parameter, and the value of the likelihood evaluated there.
+        While the optimization is a minimization, the likelihood returned is the _maximum_ of the likelihood.
+        """
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
         guesses.update(kwargs)
@@ -297,7 +321,7 @@ class StatisticalModel:
         m.migrad()
         if verbose:
             print(m)
-        return m.values.to_dict(), -1 * m.fval #alert! This gives the _maximum_ likelihood
+        return m.values.to_dict(), -1 * m.fval # alert! This gives the _maximum_ likelihood
 
     def _check_ll_and_generate_data_signature(self):
         ll_params = set(inspect.signature(self._ll).parameters)

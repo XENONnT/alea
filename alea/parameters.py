@@ -131,28 +131,7 @@ class Parameters:
         """
         parameters = cls()
         for name, param_config in config.items():
-            nominal_value = param_config.get("nominal_value", None)
-            fittable = param_config.get("fittable", True)
-            ptype = param_config.get("ptype", None)
-            uncertainty = param_config.get("uncertainty", None)
-            relative_uncertainty = param_config.get(
-                "relative_uncertainty", None)
-            blueice_anchors = param_config.get("blueice_anchors", None)
-            fit_limits = param_config.get("fit_limits", None)
-            fit_guess = param_config.get("fit_guess", None)
-            description = param_config.get("description", None)
-            parameter = Parameter(
-                name=name,
-                nominal_value=nominal_value,
-                fittable=fittable,
-                ptype=ptype,
-                uncertainty=uncertainty,
-                relative_uncertainty=relative_uncertainty,
-                blueice_anchors=blueice_anchors,
-                fit_limits=fit_limits,
-                fit_guess=fit_guess,
-                description=description
-            )
+            parameter = Parameter(name=name, **param_config)
             parameters.add_parameter(parameter)
         return parameters
 

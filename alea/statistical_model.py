@@ -195,13 +195,13 @@ class StatisticalModel:
 
         #find best-fit:
         best_result, best_ll = self.fit(**kwargs)
-        best_parameter = best_result[parameter_of_interest.name]
+        best_parameter = best_result[parameter]
         assert (parameter_interval_bounds[0] < best_parameter) & (best_parameter<parameter_interval_bounds[1]), "the best-fit is outside your confidence interval search limits in parameter_interval_bounds"
         #log-likelihood - critical value:
 
         #define intersection between likelihood ratio curve and the critical curve:
         def t(hypothesis): #define the intersection between the profile-log-likelihood curve and the rejection threshold
-            kwargs[parameter_of_interest.name] = hypothesis
+            kwargs[parameter] = hypothesis
             _, ll = self.fit( **kwargs) # ll is + log-likelihood here
             ret = 2. * (best_ll - ll) #likelihood curve "right way up" (smiling)
             return ret - confidence_interval_threshold(hypothesis) #if positive, hypothesis is excluded

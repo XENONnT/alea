@@ -3,6 +3,7 @@ from alea.simulators import BlueiceDataGenerator
 import yaml
 import numpy as np
 import scipy.stats as stats
+from blueice import LogAncillaryLikelihood
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -11,9 +12,11 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO write docstring
         """
         super().__init__(parameter_definition=parameter_definition)
-        self.parameters_of_ll_terms = self._get_parameters_of_ll_terms(ll_config)
+        self.parameters_of_ll_terms = self._get_parameters_of_ll_terms(
+            ll_config)
         self._ll = self._build_ll_from_config(ll_config)
-        self.likelihood_names = [c["name"] for c in ll_config["likelihood_terms"]]
+        self.likelihood_names = [c["name"]
+                                 for c in ll_config["likelihood_terms"]]
         self.data_generators = self._build_data_generators()
 
         # TODO analysis_space should be inferred from the data (assert that all sources have the same analysis space)
@@ -34,13 +37,15 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _generate_data(self, **generate_values):
         science_data = self._generate_science_data(**generate_values)
-        ancillary_measurements = self._generate_ancillary_measurements(**generate_values)
+        ancillary_measurements = self._generate_ancillary_measurements(
+            **generate_values)
         data = np.array([(science_data, ancillary_measurements, generate_values)],
                         dtype=[('science_data', 'ancillary_measurements', 'generate_values')])
         return data
 
     def _generate_science_data(self, **generate_values):
-        science_data = [gen.simulate(**generate_values) for gen in self.data_generators]
+        science_data = [gen.simulate(**generate_values)
+                        for gen in self.data_generators]
         return science_data
 
     def _generate_ancillary_measurements(self, **generate_values):
@@ -48,13 +53,15 @@ class BlueiceExtendedModel(StatisticalModel):
         for name, uncertainty in self.parameters.uncertainties.items():
             param = self.parameters[name]
             if param.relative_uncertainty:
-                uncertainty *= param.nominal_value  # QUESTION: Maybe rather generate_values[name]?
+                # QUESTION: Maybe rather generate_values[name]?
+                uncertainty *= param.nominal_value
             if isinstance(uncertainty, float):
                 parameter_meas = stats.norm(generate_values[name],
                                             uncertainty).rvs()
             else:
                 # TODO: Implement str-type uncertainties
-                NotImplementedError("Only float uncertainties are supported at the moment.")
+                NotImplementedError(
+                    "Only float uncertainties are supported at the moment.")
 
             # correct parameter_meas if out of bounds
             if not param.value_in_fit_limits(parameter_meas):
@@ -76,7 +83,7 @@ class BlueiceExtendedModel(StatisticalModel):
         for d, ll_term in zip(data["science_data"], self.ll.likelihood_list):
             ll_term.set_data(d)
         # TODO: implemment the set_data also for the ancillary measurement likelihood term
-        #TODO Frankenstein our own Likelihood term (wrapper class over blueice)
+        # TODO Frankenstein our own Likelihood term (wrapper class over blueice)
 
         generate_values = data["generate_values"]
         anc_meas = data["ancillary_measurements"]
@@ -119,27 +126,33 @@ class BlueiceExtendedModel(StatisticalModel):
     def _build_data_generators(self):
         return [BlueiceDataGenerator(ll_term) for ll_term in self.ll.likelihood_list]
 
-    @staticmethod
-    def get_parameters_of_ll_terms(ll_config: dict) -> dict:
-        """
-        Extracts the parameters for each likelihood term from the
-        ll_config dictionary.
+# Build wrapper to conveniently define a constraint likelihood term
 
-        Args:
-            ll_config (dict): A dictionary containing the configuration
-            for the likelihood terms.
 
-        Returns:
-            dict: A dictionary where the keys are the names of the
-            likelihood terms and the values are lists of the parameters
-            for each term.
-        """
-        parameters_of_ll_terms = {
-            term["name"]: term["parameters"] + [source["parameters"] for source in term["sources"]]
-            for term in ll_config["likelihood_terms"]
-        }
-        return parameters_of_ll_terms
+def multivariate_normal_constraint(x, **args):
+    parameter_list = args.get("parameter_list", ['x'])
+    covm = args.get("covm", np.identity(len(parameter_list)))
+    # assert isinstance(x, OrderedDict)   # Else .values() is messed up
+    x = [x[par] for par in parameter_list]
 
-    def parameter_in_likelihood_term(self, parameter: str):
-        # return keys for which parameter is in the value list of ll_terms_parameters
-        return [key for key, value in self.parameters_of_ll_terms.items() if parameter in value]
+    # Apparently livetime_days ends up in x; something is weird upstream. Anyway...
+    return stats.multivariate_normal([0] * len(x), covm).logpdf(x)
+
+
+class MultivariateNormalConstraint(LogAncillaryLikelihood):
+
+    def __init__(self, nominal_values, covm):
+
+        # Normalize the covariance matrix
+        sigmas = np.sqrt(np.diag(covm))
+        covm /= np.outer(sigmas, sigmas)
+
+        super().__init__(func=multivariate_normal_constraint,
+                         parameter_list=nominal_values.keys().tolist(),
+                         config=nominal_values,
+                         func_kwargs=dict(covm=covm,
+                                          parameter_list=parameter_list))
+
+    def set_data(self, data):
+        # TODO: Implement
+        pass

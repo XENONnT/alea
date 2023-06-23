@@ -75,6 +75,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # iterate through all likelihood terms and set the science data in the blueice ll
         for d, ll_term in zip(data["science_data"], self.ll.likelihood_list):
             ll_term.set_data(d)
+        # TODO: implemment the set_data also for the ancillary measurement likelihood term
+        #TODO Frankenstein our own Likelihood term (wrapper class over blueice)
 
         generate_values = data["generate_values"]
         anc_meas = data["ancillary_measurements"]

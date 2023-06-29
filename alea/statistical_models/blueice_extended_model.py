@@ -73,6 +73,8 @@ class BlueiceExtendedModel(StatisticalModel):
 
         return ancillary_measurements
 
+    # TODO: Override uncertainty setter to also set the uncertainty of the ancillary ll term (func_args). Or for now override the uncertainty setter to not work and raise a warning.
+
     @data.setter
     def data(self, data):
         """
@@ -129,29 +131,29 @@ class BlueiceExtendedModel(StatisticalModel):
 # Build wrapper to conveniently define a constraint likelihood term
 
 
-def multivariate_normal_constraint(x, **args):
-    parameter_list = args.get("parameter_list", ['x'])
-    covm = args.get("covm", np.identity(len(parameter_list)))
-    # assert isinstance(x, OrderedDict)   # Else .values() is messed up
-    x = [x[par] for par in parameter_list]
+def ancillary_likelihood_sum(data, uncertainties: dict):
+    constraint_terms = []
+    assert data.keys() == uncertainties.keys()
+    for data_name, uncertainty in uncertainties.items():
+        constraint = _get_constraint(data[data_name], uncertainty)
+        constraint_terms.append(constraint)
+    
+    return np.sum(constraint_terms)
 
-    # Apparently livetime_days ends up in x; something is weird upstream. Anyway...
-    return stats.multivariate_normal([0] * len(x), covm).logpdf(x)
 
+class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
-class MultivariateNormalConstraint(LogAncillaryLikelihood):
-
-    def __init__(self, nominal_values, covm):
-
+    def __init__(self, parameters):
+        self.parameters = parameters
+        # check that there are no None values in the uncertainties dict
+        assert self.parameters.uncertainties.keys() == self.parameters.names
         # Normalize the covariance matrix
-        sigmas = np.sqrt(np.diag(covm))
-        covm /= np.outer(sigmas, sigmas)
-
-        super().__init__(func=multivariate_normal_constraint,
-                         parameter_list=nominal_values.keys().tolist(),
+        parameter_list = list(nominal_values.keys())
+        self.constraint_temrs = self._get_constraint_terms(nominal_values, uncertainties)
+        super().__init__(func=ancillary_likelihood_sum,
+                         parameter_list=parameter_list,
                          config=nominal_values,
-                         func_kwargs=dict(covm=covm,
-                                          parameter_list=parameter_list))
+                         func_args={"uncertainties": uncertainties})
 
     def set_data(self, data):
         # TODO: Implement

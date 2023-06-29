@@ -49,6 +49,7 @@ class BlueiceExtendedModel(StatisticalModel):
         return science_data
 
     def _generate_ancillary_measurements(self, **generate_values):
+        # TODO: This doesn't work since it should default to the nominal values
         ancillary_measurements = {}
         for name, uncertainty in self.parameters.uncertainties.items():
             param = self.parameters[name]
@@ -132,7 +133,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
 
 def ancillary_likelihood_sum(data, constraint_terms: dict):
-    return np.sum([term for term in constraint_terms.values()])
+    return np.sum([term(data[name]) for name, term in constraint_terms.items()])
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
@@ -153,10 +154,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         # TODO: Implement
         pass
 
-    def _get_constraint_terms(self, generate_values) -> dict:
-        # TODO: Do we need generate_values here?
-        # TODO: Add callable constraint terms
-        
+    def _get_constraint_terms(self, **generate_values) -> dict:
+        central_values = self.parameters(**generate_values)
         constraint_terms = {}
         for name, uncertainty in self.parameters.uncertainties.items():
             param = self.parameters[name]
@@ -164,11 +163,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                 # QUESTION: Maybe rather generate_values[name]?
                 uncertainty *= param.nominal_value
             if isinstance(uncertainty, float):
-                parameter_meas = stats.norm(generate_values[name],
-                                            uncertainty).rvs()
+                term = stats.norm(central_values[name],
+                                  central_values[name] * uncertainty).logpdf
             else:
                 # TODO: Implement str-type uncertainties
                 NotImplementedError(
                     "Only float uncertainties are supported at the moment.")
-
+            constraint_terms[name] = term
         return constraint_terms

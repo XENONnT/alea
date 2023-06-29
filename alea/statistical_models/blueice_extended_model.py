@@ -131,14 +131,8 @@ class BlueiceExtendedModel(StatisticalModel):
 # Build wrapper to conveniently define a constraint likelihood term
 
 
-def ancillary_likelihood_sum(data, uncertainties: dict):
-    constraint_terms = []
-    assert data.keys() == uncertainties.keys()
-    for data_name, uncertainty in uncertainties.items():
-        constraint = _get_constraint(data[data_name], uncertainty)
-        constraint_terms.append(constraint)
-    
-    return np.sum(constraint_terms)
+def ancillary_likelihood_sum(data, constraint_terms: dict):
+    return np.sum([term for term in constraint_terms.values()])
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
@@ -147,14 +141,34 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self.parameters = parameters
         # check that there are no None values in the uncertainties dict
         assert self.parameters.uncertainties.keys() == self.parameters.names
-        # Normalize the covariance matrix
-        parameter_list = list(nominal_values.keys())
-        self.constraint_temrs = self._get_constraint_terms(nominal_values, uncertainties)
+        parameter_list = self.parameters.names
+
+        self.constraint_temrs = self._get_constraint_terms()
         super().__init__(func=ancillary_likelihood_sum,
                          parameter_list=parameter_list,
-                         config=nominal_values,
-                         func_args={"uncertainties": uncertainties})
+                         config=self.parameters.nominal_values,
+                         func_args={"constraint_terms": self.constraint_temrs})
 
     def set_data(self, data):
         # TODO: Implement
         pass
+
+    def _get_constraint_terms(self, generate_values) -> dict:
+        # TODO: Do we need generate_values here?
+        # TODO: Add callable constraint terms
+        
+        constraint_terms = {}
+        for name, uncertainty in self.parameters.uncertainties.items():
+            param = self.parameters[name]
+            if param.relative_uncertainty:
+                # QUESTION: Maybe rather generate_values[name]?
+                uncertainty *= param.nominal_value
+            if isinstance(uncertainty, float):
+                parameter_meas = stats.norm(generate_values[name],
+                                            uncertainty).rvs()
+            else:
+                # TODO: Implement str-type uncertainties
+                NotImplementedError(
+                    "Only float uncertainties are supported at the moment.")
+
+        return constraint_terms

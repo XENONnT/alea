@@ -17,6 +17,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self._ll = self._build_ll_from_config(ll_config)
         self.likelihood_names = [c["name"]
                                  for c in ll_config["likelihood_terms"]]
+        self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
         # TODO analysis_space should be inferred from the data (assert that all sources have the same analysis space)
@@ -36,12 +37,12 @@ class BlueiceExtendedModel(StatisticalModel):
     #     pass
 
     def _generate_data(self, **generate_values):
+        # generate_values are already filtered and filled by the nominal values through the generate_data method in the parent class
         science_data = self._generate_science_data(**generate_values)
         ancillary_measurements = self._generate_ancillary_measurements(
             **generate_values)
-        data = np.array([(science_data, ancillary_measurements, generate_values)],
-                        dtype=[('science_data', 'ancillary_measurements', 'generate_values')])
-        return data
+        # TODO Check dtype of each dataset
+        return science_data + [ancillary_measurements] + [generate_values]
 
     def _generate_science_data(self, **generate_values):
         science_data = [gen.simulate(**generate_values)
@@ -49,22 +50,12 @@ class BlueiceExtendedModel(StatisticalModel):
         return science_data
 
     def _generate_ancillary_measurements(self, **generate_values):
-        # TODO: This doesn't work since it should default to the nominal values
         ancillary_measurements = {}
-        for name, uncertainty in self.parameters.uncertainties.items():
-            param = self.parameters[name]
-            if param.relative_uncertainty:
-                # QUESTION: Maybe rather generate_values[name]?
-                uncertainty *= param.nominal_value
-            if isinstance(uncertainty, float):
-                parameter_meas = stats.norm(generate_values[name],
-                                            uncertainty).rvs()
-            else:
-                # TODO: Implement str-type uncertainties
-                NotImplementedError(
-                    "Only float uncertainties are supported at the moment.")
-
+        ancillary_generators = self._ll[-1]._get_constraint_functions(**generate_values)
+        for name, gen in ancillary_generators.items():
+            parameter_meas = gen.rvs()
             # correct parameter_meas if out of bounds
+            param = self.parameters[name]
             if not param.value_in_fit_limits(parameter_meas):
                 if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:
                     parameter_meas = param.fit_limits[0]
@@ -89,6 +80,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # iterate through all likelihood terms and set the science data in the blueice ll
         for d, ll_term in zip(data["science_data"], self.ll.likelihood_list):
             ll_term.set_data(d)
+            # TODO: Convert to str-arr
         # TODO: implemment the set_data also for the ancillary measurement likelihood term
         # TODO Frankenstein our own Likelihood term (wrapper class over blueice)
 
@@ -131,46 +123,52 @@ class BlueiceExtendedModel(StatisticalModel):
         pass
 
     def _build_data_generators(self):
-        return [BlueiceDataGenerator(ll_term) for ll_term in self.ll.likelihood_list]
+        # last one is AncillaryLikelihood
+        # IDEA: Also implement data generator for ancillary ll term.
+        return [BlueiceDataGenerator(ll_term) for ll_term in self.ll.likelihood_list[:-1]]
 
 # Build wrapper to conveniently define a constraint likelihood term
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
-
+# TODO: Make sure the functions and terms are properly implemented now.
     def __init__(self, parameters):
         self.parameters = parameters
         # check that there are no None values in the uncertainties dict
         assert set(self.parameters.uncertainties.keys()) == set(self.parameters.names)
         parameter_list = self.parameters.names
 
-        self.constraint_terms = self._get_constraint_terms()
+        self.constraint_functions = self._get_constraint_functions()
         super().__init__(func=self.ancillary_likelihood_sum,
                          parameter_list=parameter_list,
                          config=self.parameters.nominal_values)
+
+    @property
+    def constraint_terms(self):
+        return {name: func.logpdf for name, func in self.constraint_functions.items()}
 
     def set_data(self, d: dict):
         # data in this case is a set of ancillary measurements.
         # This results in shifted constraint terms.
         assert set(d.keys()) == set(self.parameters.names)
-        self.constraint_terms = self._get_constraint_terms(**d)
+        self.constraint_functions = self._get_constraint_functions(**d)
 
-    def _get_constraint_terms(self, **generate_values) -> dict:
+    def _get_constraint_functions(self, **generate_values) -> dict:
         central_values = self.parameters(**generate_values)
-        constraint_terms = {}
+        constraint_functions = {}
         for name, uncertainty in self.parameters.uncertainties.items():
             param = self.parameters[name]
             if param.relative_uncertainty:
                 uncertainty *= param.nominal_value
             if isinstance(uncertainty, float):
-                term = stats.norm(central_values[name],
-                                  uncertainty).logpdf
+                func = stats.norm(central_values[name],
+                                  uncertainty)
             else:
                 # TODO: Implement str-type uncertainties
                 NotImplementedError(
                     "Only float uncertainties are supported at the moment.")
-            constraint_terms[name] = term
-        return constraint_terms
+            constraint_functions[name] = func
+        return constraint_functions
 
     def ancillary_likelihood_sum(self, evaluate_at: dict):
         return np.sum([term(evaluate_at[name]) for name, term in self.constraint_terms.items()])

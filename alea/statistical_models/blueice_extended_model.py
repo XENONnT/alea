@@ -1,22 +1,21 @@
+from pydoc import locate  # to lookup likelihood class
 from alea.statistical_model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
 import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood
+from blueice.likelihood import LogLikelihoodSum
 
 
 class BlueiceExtendedModel(StatisticalModel):
-    def __init__(self, parameter_definition: dict, ll_config: dict):
+    def __init__(self, parameter_definition: dict, likelihood_terms: dict):
         """
         # TODO write docstring
         """
         super().__init__(parameter_definition=parameter_definition)
-        self.parameters_of_ll_terms = self._get_parameters_of_ll_terms(
-            ll_config)
-        self._ll = self._build_ll_from_config(ll_config)
-        self.likelihood_names = [c["name"]
-                                 for c in ll_config["likelihood_terms"]]
+        self._ll = self._build_ll_from_config(likelihood_terms)
+        self.likelihood_names = [c["name"] for c in likelihood_terms]
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
@@ -78,19 +77,9 @@ class BlueiceExtendedModel(StatisticalModel):
         Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
-        for d, ll_term in zip(data["science_data"], self.ll.likelihood_list):
+        # last entry in data are the generate_values
+        for d, ll_term in zip(data[:-1], self.ll.likelihood_list):
             ll_term.set_data(d)
-            # TODO: Convert to str-arr
-        # TODO: implemment the set_data also for the ancillary measurement likelihood term
-        # TODO Frankenstein our own Likelihood term (wrapper class over blueice)
-
-        # generate_values = data["generate_values"]
-        # anc_meas = data["ancillary_measurements"]
-        # TODO: Set ancillary measurements for rate parameters
-        # TODO: Make sure to only set each parameter once (maybe like constraint_already_set)
-        # TODO: Set ancillary measurements for shape parameters
-        # TODO: Define both here and in the ll that the constraint is put only in the first term that contains the parameter
-        # TODO: use .in_likelihood_term() method for parameters?
 
         self._data = data
 
@@ -104,13 +93,18 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO
         pass
 
-    def _build_ll_from_config(self, ll_config):
-        # TODO iterate through ll_config and build blueice ll
-        # IDEA maybe add a dict with the ll names as keys and the corresponding blueice ll terms as values?
-        # IDEA Maybe simply return ll in the end and spare the def of _ll?
-        # IDEA Or better define a _ll_blueice and call this in _ll to make it more readable?
-        ll = None
-        return ll
+    def _build_ll_from_config(self, likelihood_terms):
+        # iterate through ll_config and build blueice ll
+        lls = []
+        for config in likelihood_terms:
+            likelihood_object = locate(config["likelihood_type"])
+            ll = likelihood_object(config)
+            ll.prepare()
+            lls.append(ll)
+        # TODO: Add ancillary ll term
+
+        # TODO: Include likelihood_weights
+        return LogLikelihoodSum(self.lls, likelihood_weights=None)
 
     def _add_rate_parameters(self):
         # TODO

@@ -48,50 +48,49 @@ parameter_definition:
       - 1
     description: ER band shape parameter (shifts the ER band up and down)
 
-ll_config:
-  default_source_class: alea.template_source.TemplateSource
-  likelihood_terms:
-  # SR0
-    - name: sr10
-      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-      in_events_per_bin: true
-      parameters:
-        - livetime_0
-      slice_args: {}
-      sources:
-      - histname: cs1-log10_cs2
-        parameters:
-          - er_rate_multiplier
-          - er_band_shift
-        templatepath: null # used to be called templatename
-        histogram_scale_factor: 1  # TODO: remove from config and only have it as a backup solution in the code for convenience
 
-      - histname: cs1-log10_cs2
-        parameters:
-          - wimp_rate_multiplier
-          - wimp_mass
-        templatepath: null # used to be called templatename
-        apply_efficiency: False
-        efficiency_name: 'signal_eff'  # TODO: Check
-  
-  # SR1
-    - name: sr1
-      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-      in_events_per_bin: true
+likelihood_terms:
+# SR0
+  - name: sr10
+    likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    in_events_per_bin: true
+    parameters:
+      - livetime_0
+    slice_args: {}
+    sources:
+    - histname: cs1-log10_cs2
       parameters:
-        - livetime_1
-      slice_args: {}
-      sources:
-      - histname: cs1-log10_cs2
-        parameters:
-          - er_rate_multiplier
-          - er_band_shift
-        templatepath: null # used to be called templatename
+        - er_rate_multiplier
+        - er_band_shift
+      templatepath: null # used to be called templatename
+      histogram_scale_factor: 1  # TODO: remove from config and only have it as a backup solution in the code for convenience
 
-      - histname: cs1-log10_cs2
-        parameters:
-          - wimp_rate_multiplier
-          - wimp_mass
-        templatepath: null # used to be called templatename
-        apply_efficiency: False  # TODO this should probably also in the parameter_definition (how exactly is it different from an uncertainty?)
-        efficiency_name: 'signal_eff'  # TODO: Check
+    - histname: cs1-log10_cs2
+      parameters:
+        - wimp_rate_multiplier
+        - wimp_mass
+      templatepath: null # used to be called templatename
+      apply_efficiency: False
+      efficiency_name: 'signal_eff'  # TODO: Check
+
+# SR1
+  - name: sr1
+    likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    in_events_per_bin: true
+    parameters:
+      - livetime_1
+    slice_args: {}
+    sources:
+    - histname: cs1-log10_cs2
+      parameters:
+        - er_rate_multiplier
+        - er_band_shift
+      templatepath: null # used to be called templatename
+
+    - histname: cs1-log10_cs2
+      parameters:
+        - wimp_rate_multiplier
+        - wimp_mass
+      templatepath: null # used to be called templatename
+      apply_efficiency: False  # TODO this should probably also in the parameter_definition (how exactly is it different from an uncertainty?)
+      efficiency_name: 'signal_eff'  # TODO: Check

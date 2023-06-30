@@ -6,7 +6,6 @@ dist/
 src/
 *.swp
 *sbatch_submission*
-*.hdf5
 *.log
 *pdf_cache*
 *.tar.gz
@@ -15,7 +14,6 @@ development_scripts/*hdf
 */jobs/*
 *png
 *pdf
-*h5
 *submission_*
 *root*
 *.ipynb_checkpoints*

@@ -1,9 +1,9 @@
-from alea.statistical_model import StatisticalModel, data
+from alea.statistical_model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
 import yaml
 import numpy as np
 import scipy.stats as stats
-from blueice import LogAncillaryLikelihood
+from blueice.likelihood import LogAncillaryLikelihood
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -76,6 +76,10 @@ class BlueiceExtendedModel(StatisticalModel):
 
     # TODO: Override uncertainty setter to also set the uncertainty of the ancillary ll term (func_args). Or for now override the uncertainty setter to not work and raise a warning.
 
+    @property
+    def data(self):
+        return super().data
+
     @data.setter
     def data(self, data):
         """
@@ -88,8 +92,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO: implemment the set_data also for the ancillary measurement likelihood term
         # TODO Frankenstein our own Likelihood term (wrapper class over blueice)
 
-        generate_values = data["generate_values"]
-        anc_meas = data["ancillary_measurements"]
+        # generate_values = data["generate_values"]
+        # anc_meas = data["ancillary_measurements"]
         # TODO: Set ancillary measurements for rate parameters
         # TODO: Make sure to only set each parameter once (maybe like constraint_already_set)
         # TODO: Set ancillary measurements for shape parameters
@@ -132,27 +136,24 @@ class BlueiceExtendedModel(StatisticalModel):
 # Build wrapper to conveniently define a constraint likelihood term
 
 
-def ancillary_likelihood_sum(data, constraint_terms: dict):
-    return np.sum([term(data[name]) for name, term in constraint_terms.items()])
-
-
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
     def __init__(self, parameters):
         self.parameters = parameters
         # check that there are no None values in the uncertainties dict
-        assert self.parameters.uncertainties.keys() == self.parameters.names
+        assert set(self.parameters.uncertainties.keys()) == set(self.parameters.names)
         parameter_list = self.parameters.names
 
-        self.constraint_temrs = self._get_constraint_terms()
-        super().__init__(func=ancillary_likelihood_sum,
+        self.constraint_terms = self._get_constraint_terms()
+        super().__init__(func=self.ancillary_likelihood_sum,
                          parameter_list=parameter_list,
-                         config=self.parameters.nominal_values,
-                         func_args={"constraint_terms": self.constraint_temrs})
+                         config=self.parameters.nominal_values)
 
-    def set_data(self, data):
-        # TODO: Implement
-        pass
+    def set_data(self, d: dict):
+        # data in this case is a set of ancillary measurements.
+        # This results in shifted constraint terms.
+        assert set(d.keys()) == set(self.parameters.names)
+        self.constraint_terms = self._get_constraint_terms(**d)
 
     def _get_constraint_terms(self, **generate_values) -> dict:
         central_values = self.parameters(**generate_values)
@@ -160,14 +161,16 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         for name, uncertainty in self.parameters.uncertainties.items():
             param = self.parameters[name]
             if param.relative_uncertainty:
-                # QUESTION: Maybe rather generate_values[name]?
                 uncertainty *= param.nominal_value
             if isinstance(uncertainty, float):
                 term = stats.norm(central_values[name],
-                                  central_values[name] * uncertainty).logpdf
+                                  uncertainty).logpdf
             else:
                 # TODO: Implement str-type uncertainties
                 NotImplementedError(
                     "Only float uncertainties are supported at the moment.")
             constraint_terms[name] = term
         return constraint_terms
+
+    def ancillary_likelihood_sum(self, evaluate_at: dict):
+        return np.sum([term(evaluate_at[name]) for name, term in self.constraint_terms.items()])

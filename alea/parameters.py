@@ -230,6 +230,18 @@ class Parameters:
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
     @property
+    def with_uncertainty(self) -> "Parameters":
+        """
+        Return parameters with a not-NaN uncertainty.
+        The parameters are the same objects as in the original Parameters object, not a copy.
+        """
+        param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
+        params = Parameters()
+        for param in param_dict.values():
+            params.add_parameter(param)
+        return params
+
+    @property
     def nominal_values(self) -> dict:
         """
         return a dict of name:nominal value for all applicable parameters

@@ -52,20 +52,24 @@ parameter_definition:
 likelihood_terms:
 # SR0
   - name: sr0
+    default_source_class: binference.template_source.TemplateSource
     likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    analysis_space:
+      - "cs1": 'np.arange(0, 102, 2)'
+      - "cs2": 'np.geomspace(100, 100000, 51)'
     in_events_per_bin: true
     parameters:
       - livetime_0
     slice_args: {}
     sources:
-    - histname: cs1-log10_cs2
+    - histname: er_template
       parameters:
         - er_rate_multiplier
         - er_band_shift
       templatepath: examples/er_template.h5
-      histogram_scale_factor: 150  # TODO: remove from config and only have it as a backup solution in the code for convenience
+      histogram_scale_factor: 1
 
-    - histname: cs1-log10_cs2
+    - histname: wimp50gev_template
       parameters:
         - wimp_rate_multiplier
         - wimp_mass
@@ -75,20 +79,24 @@ likelihood_terms:
 
 # SR0
   - name: sr1
+    default_source_class: binference.template_source.TemplateSource
     likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+    analysis_space:
+      - "cs1": 'np.arange(0, 102, 2)'
+      - "cs2": 'np.geomspace(100, 100000, 51)'
     in_events_per_bin: true
     parameters:
       - livetime_1
     slice_args: {}
     sources:
-    - histname: cs1-log10_cs2
+    - histname: er_template
       parameters:
         - er_rate_multiplier
         - er_band_shift
       templatepath: examples/er_template.h5
-      histogram_scale_factor: 300  # TODO: remove from config and only have it as a backup solution in the code for convenience
+      histogram_scale_factor: 2
 
-    - histname: cs1-log10_cs2
+    - histname: wimp50gev_template
       parameters:
         - wimp_rate_multiplier
         - wimp_mass

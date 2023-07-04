@@ -1,6 +1,7 @@
 from pydoc import locate  # to lookup likelihood class
 from alea.statistical_model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
+from alea.utils import adapt_likelihood_config_for_blueice
 import yaml
 import numpy as np
 import scipy.stats as stats
@@ -22,18 +23,13 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO analysis_space should be inferred from the data (assert that all sources have the same analysis space)
 
     @classmethod
-    def from_yaml(cls, yaml_file):
-        with open(yaml_file, "r") as f:
+    def from_config(cls, config_file):
+        with open(config_file, "r") as f:
             config = yaml.safe_load(f)
         return cls(**config)
 
-    # def _ll(self, **kwargs):
-    #     # TODO
-    #     # IDEA Set data to blueice ll (or maybe better to set it before explicitly
-    #     # since in the fit this will be called frequently but the data won't change.)
-    #     # IDEA Maybe one could then define self._ll directly in the init instead of _ll_blueice?
-
-    #     pass
+    def _ll(self, **generate_values):
+        return self._ll(**generate_values)
 
     def _generate_data(self, **generate_values):
         # generate_values are already filtered and filled by the nominal values through the generate_data method in the parent class
@@ -98,7 +94,8 @@ class BlueiceExtendedModel(StatisticalModel):
         lls = []
         for config in likelihood_terms:
             likelihood_object = locate(config["likelihood_type"])
-            ll = likelihood_object(config)
+            blueice_config = adapt_likelihood_config_for_blueice(config)
+            ll = likelihood_object(blueice_config)
             ll.prepare()
             lls.append(ll)
         # Ancillary likelihood

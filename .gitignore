@@ -24,3 +24,4 @@ development_scripts/*hdf
 __pycache__/
 *ipynb
 !examples/*.ipynb
+debug.py

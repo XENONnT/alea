@@ -33,25 +33,25 @@ parameter_definition:
       - null
     fit_guess: 1.0
 
-  er_band_shift:
-    nominal_value: 0
-    ptype: shape
-    uncertainty: scipy.stats.uniform(loc=-1, scale=2)
-    relative_uncertainty: false
-    fittable: true
-    blueice_anchors:
-      - -1
-      - 0
-      - 1
-    fit_limits:
-      - -1
-      - 1
-    description: ER band shape parameter (shifts the ER band up and down)
+  # er_band_shift:
+  #   nominal_value: 0
+  #   ptype: shape
+  #   uncertainty: scipy.stats.uniform(loc=-1, scale=2)
+  #   relative_uncertainty: false
+  #   fittable: true
+  #   blueice_anchors:
+  #     - -1
+  #     - 0
+  #     - 1
+  #   fit_limits:
+  #     - -1
+  #     - 1
+  #   description: ER band shape parameter (shifts the ER band up and down)
 
 
 likelihood_terms:
 # SR0
-  - name: sr10
+  - name: sr0
     likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
     in_events_per_bin: true
     parameters:
@@ -62,18 +62,18 @@ likelihood_terms:
       parameters:
         - er_rate_multiplier
         - er_band_shift
-      templatepath: null # used to be called templatename
-      histogram_scale_factor: 1  # TODO: remove from config and only have it as a backup solution in the code for convenience
+      templatepath: examples/er_template.h5
+      histogram_scale_factor: 150  # TODO: remove from config and only have it as a backup solution in the code for convenience
 
     - histname: cs1-log10_cs2
       parameters:
         - wimp_rate_multiplier
         - wimp_mass
-      templatepath: null # used to be called templatename
+      templatepath: examples/wimp50gev_template.h5
       apply_efficiency: False
       efficiency_name: 'signal_eff'  # TODO: Check
 
-# SR1
+# SR0
   - name: sr1
     likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
     in_events_per_bin: true
@@ -85,12 +85,13 @@ likelihood_terms:
       parameters:
         - er_rate_multiplier
         - er_band_shift
-      templatepath: null # used to be called templatename
+      templatepath: examples/er_template.h5
+      histogram_scale_factor: 300  # TODO: remove from config and only have it as a backup solution in the code for convenience
 
     - histname: cs1-log10_cs2
       parameters:
         - wimp_rate_multiplier
         - wimp_mass
-      templatepath: null # used to be called templatename
-      apply_efficiency: False  # TODO this should probably also in the parameter_definition (how exactly is it different from an uncertainty?)
+      templatepath: examples/wimp50gev_template.h5
+      apply_efficiency: False
       efficiency_name: 'signal_eff'  # TODO: Check

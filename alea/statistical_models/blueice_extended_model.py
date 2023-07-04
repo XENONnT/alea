@@ -101,20 +101,12 @@ class BlueiceExtendedModel(StatisticalModel):
             ll = likelihood_object(config)
             ll.prepare()
             lls.append(ll)
-        # TODO: Add ancillary ll term
+        # Ancillary likelihood
+        ll = CustomAncillaryLikelihood(self.parameters.with_uncertainty)
+        lls.append(ll)
 
         # TODO: Include likelihood_weights
         return LogLikelihoodSum(self.lls, likelihood_weights=None)
-
-    def _add_rate_parameters(self):
-        # TODO
-        # TODO: Check if already set
-        pass
-
-    def _add_shape_parameters(self):
-        # TODO
-        # TODO: Check if already set
-        pass
 
     def _build_data_generators(self):
         # last one is AncillaryLikelihood

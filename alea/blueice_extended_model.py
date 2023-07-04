@@ -7,6 +7,7 @@ import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood
 from blueice.likelihood import LogLikelihoodSum
+# from inference_interface import dict_to_structured_array
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -15,7 +16,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # TODO write docstring
         """
         super().__init__(parameter_definition=parameter_definition)
-        self._ll = self._build_ll_from_config(likelihood_terms)
+        self._likelihood = self._build_ll_from_config(likelihood_terms)
         self.likelihood_names = [c["name"] for c in likelihood_terms]
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
@@ -29,14 +30,17 @@ class BlueiceExtendedModel(StatisticalModel):
         return cls(**config)
 
     def _ll(self, **generate_values):
-        return self._ll(**generate_values)
+        # TODO: Does this make sense?
+        return self._likelihood(**generate_values)
 
     def _generate_data(self, **generate_values):
         # generate_values are already filtered and filled by the nominal values through the generate_data method in the parent class
         science_data = self._generate_science_data(**generate_values)
+        ancillary_keys = self.parameters.with_uncertainty.names
+        generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
         ancillary_measurements = self._generate_ancillary_measurements(
-            **generate_values)
-        # TODO Check dtype of each dataset
+            **generate_values_anc)
+        # generate_values = dict_to_structured_array(generate_values)
         return science_data + [ancillary_measurements] + [generate_values]
 
     def _generate_science_data(self, **generate_values):
@@ -46,7 +50,8 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _generate_ancillary_measurements(self, **generate_values):
         ancillary_measurements = {}
-        ancillary_generators = self._ll[-1]._get_constraint_functions(**generate_values)
+        anc_ll = self._likelihood.likelihood_list[-1]
+        ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
             parameter_meas = gen.rvs()
             # correct parameter_meas if out of bounds
@@ -57,6 +62,8 @@ class BlueiceExtendedModel(StatisticalModel):
                 elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
                     parameter_meas = param.fit_limits[1]
             ancillary_measurements[name] = parameter_meas
+        # TODO: Do we need this as a structured array?
+        # ancillary_measurements = dict_to_structured_array(ancillary_measurements)
 
         return ancillary_measurements
 
@@ -74,7 +81,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
-        for d, ll_term in zip(data[:-1], self.ll.likelihood_list):
+        for d, ll_term in zip(data[:-1], self._likelihood.likelihood_list):
             ll_term.set_data(d)
 
         self._data = data
@@ -95,7 +102,18 @@ class BlueiceExtendedModel(StatisticalModel):
         for config in likelihood_terms:
             likelihood_object = locate(config["likelihood_type"])
             blueice_config = adapt_likelihood_config_for_blueice(config)
+            blueice_config["liveteime_days"] = self.parameters[
+                blueice_config["livetime_parameter"]].nominal_value
             ll = likelihood_object(blueice_config)
+            # Set rate parameters
+            for source in config["sources"]:
+                print(source)
+                for param in source["parameters"]:
+                    if self.parameters[param].type == "rate":
+                        # TODO: Check that only one rate per source is set?
+                        ll.add_rate_parameter(param, log_prior=None)
+            # TODO: Set shape parameters
+
             ll.prepare()
             lls.append(ll)
         # Ancillary likelihood
@@ -103,12 +121,12 @@ class BlueiceExtendedModel(StatisticalModel):
         lls.append(ll)
 
         # TODO: Include likelihood_weights
-        return LogLikelihoodSum(self.lls, likelihood_weights=None)
+        return LogLikelihoodSum(lls, likelihood_weights=None)
 
     def _build_data_generators(self):
         # last one is AncillaryLikelihood
         # IDEA: Also implement data generator for ancillary ll term.
-        return [BlueiceDataGenerator(ll_term) for ll_term in self.ll.likelihood_list[:-1]]
+        return [BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
 
 # Build wrapper to conveniently define a constraint likelihood term
 

@@ -263,30 +263,17 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
     return inference_object_config
 
 
-def adapt_likelihood_config_for_blueice(likelihood_config: dict,
-                                        cache_dir=None) -> dict:
+def adapt_likelihood_config_for_blueice(likelihood_config: dict) -> dict:
     likelihood_config["analysis_space"] = get_analysis_space(
         likelihood_config["analysis_space"])
 
     likelihood_config["default_source_class"] = locate(
         likelihood_config["default_source_class"])
 
-    likelihood_config["default_source_class"] = locate(
-        likelihood_config["default_source_class"])
-
-    path, on_remote = detect_path(likelihood_config)
+    path = "alea"
 
     for source in likelihood_config["sources"]:
-        if not on_remote:
-            # now you submitted to the cluster
-            source["templatepath"] = os.path.join(
-                path, os.path.basename(source["templatepath"]))
-        else:
-            # here you are on midway/dali or on OSG for "local" work
-            source["templatepath"] = os.path.join(path,
-                                                  source["templatepath"])
-            if cache_dir is not None:
-                source["cache_dir"] = cache_dir
+        source["templatename"] = os.path.join(path, source["templatepath"])
     return likelihood_config
 
 
@@ -760,10 +747,11 @@ def get_analysis_space(analysis_space: dict) -> list:
     for element in analysis_space:
         for key, value in element.items():
             if value.startswith("np."):
-                eval_element = eval(value)
+                eval_element = (key, eval(value))
             else:
                 eval_element = (key,
                                 np.fromstring(value,
                                               dtype=float,
                                               sep=" "))
             eval_analysis_space.append(eval_element)
+    return eval_analysis_space

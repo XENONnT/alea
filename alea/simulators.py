@@ -9,16 +9,15 @@ logging.basicConfig( level=logging.INFO)
 
 
 class BlueiceDataGenerator:
-    def __init__(self, ll_template):
-        for ll_term in self._ll.likelihood_list:
-            if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
-                binned = True
-            elif isinstance(ll_term, blueice.likelihood.UnbinnedLogLikelihood):
-                binned = False
-            else:
-                raise NotImplementedError
+    def __init__(self, ll_term):
+        if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
+            binned = True
+        elif isinstance(ll_term, blueice.likelihood.UnbinnedLogLikelihood):
+            binned = False
+        else:
+            raise NotImplementedError
 
-        ll = deepcopy(ll_template)
+        ll = deepcopy(ll_term)
         bins = []  # bin edges
         bincs = []  # bin centers of each component
         direction_names = []

@@ -58,14 +58,13 @@ likelihood_terms:
       - "cs1": 'np.arange(0, 102, 2)'
       - "cs2": 'np.geomspace(100, 100000, 51)'
     in_events_per_bin: true
-    parameters:
-      - livetime_0
+    livetime_parameter: livetime_0
     slice_args: {}
     sources:
     - histname: er_template
       parameters:
         - er_rate_multiplier
-        - er_band_shift
+        # - er_band_shift
       templatepath: examples/er_template.h5
       histogram_scale_factor: 1
 
@@ -77,7 +76,7 @@ likelihood_terms:
       apply_efficiency: False
       efficiency_name: 'signal_eff'  # TODO: Check
 
-# SR0
+# SR1
   - name: sr1
     default_source_class: binference.template_source.TemplateSource
     likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
@@ -85,14 +84,13 @@ likelihood_terms:
       - "cs1": 'np.arange(0, 102, 2)'
       - "cs2": 'np.geomspace(100, 100000, 51)'
     in_events_per_bin: true
-    parameters:
-      - livetime_1
+    livetime_parameter: livetime_1
     slice_args: {}
     sources:
     - histname: er_template
       parameters:
         - er_rate_multiplier
-        - er_band_shift
+        # - er_band_shift
       templatepath: examples/er_template.h5
       histogram_scale_factor: 2
 

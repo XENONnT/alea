@@ -1,11 +1,11 @@
 # copied from https://github.com/XENONnT/straxen/blob/master/.github/workflows/pytest.yml
-# Test appletree on each PR.
+# Test alea on each PR.
 # We run three types of tests:
 #  - Pytest -> these are the "normal" tests and should be run for all
 #    python versions
 #  - Coveralls -> this is to see if we are covering all our lines of
 #    code with our tests. The results get uploaded to
-#    coveralls.io/github/XENONnT/appletree
+#    coveralls.io/github/XENONnT/alea
 #  - pytest_no_database -> we want to make sure we can run the tests even
 #    if we don't have access to our database since this will e.g. happen
 #    when someone is pushing a PR from their own fork as we don't
@@ -53,7 +53,7 @@ jobs:
       - name: Test package
         # This is running a normal test
         run: |
-          coverage run --source=appletree -m pytest --durations 0
+          coverage run --source=alea -m pytest --durations 0
           coverage report
 
       - name: Coveralls
@@ -62,7 +62,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls'
         run: |
-          coverage run --source=appletree -m pytest -v
+          coverage run --source=alea -m pytest -v
           coveralls --service=github
 
       - name: goodbye

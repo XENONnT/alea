@@ -264,7 +264,7 @@ class StatisticalModel:
         if confidence_interval_kind is None:
             confidence_interval_kind = self._confidence_interval_kind
 
-        mask = (0 < confidence_level) and (confidence_level < 1)
+        mask = (confidence_level > 0) and (confidence_level < 1)
         assert mask, "the confidence level must lie between 0 and 1"
         parameter_of_interest = self.parameters[parameter]
         assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
@@ -287,7 +287,7 @@ class StatisticalModel:
                 warnings.warn(
                     "The statistical model does not have a get_expectations model implemented,"
                     " confidence interval bounds will be set directly.")
-                pass # no problem, continuing with bounds as set
+                pass  # no problem, continuing with bounds as set
 
         # define threshold if none is defined:
         if self.confidence_interval_threshold is not None:
@@ -299,14 +299,14 @@ class StatisticalModel:
             elif confidence_interval_kind == "central":
                 critical_value = chi2(1).isf(1. - confidence_level)
 
-            confidence_interval_threshold = lambda x: critical_value
+            confidence_interval_threshold = lambda _: critical_value
 
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
     def confidence_interval(
             self, parameter: str,
             parameter_interval_bounds: Tuple[float, float] = None,
-            confidence_level: float=  None,
+            confidence_level: float = None,
             confidence_interval_kind: str = None,
             **kwargs) -> Tuple[float, float]:
         """
@@ -351,7 +351,7 @@ class StatisticalModel:
             return ret - confidence_interval_threshold(hypothesis)
 
         if confidence_interval_kind in {"upper", "central"}:
-            if 0 < t(parameter_interval_bounds[1]):
+            if t(parameter_interval_bounds[1]) > 0:
                 ul = brentq(t, best_parameter, parameter_interval_bounds[1])
             else:
                 ul = np.inf
@@ -359,7 +359,7 @@ class StatisticalModel:
             ul = np.nan
 
         if confidence_interval_kind in {"lower", "central"}:
-            if 0 < t(parameter_interval_bounds[0]):
+            if t(parameter_interval_bounds[0]) > 0:
                 dl = brentq(t, parameter_interval_bounds[0], best_parameter)
             else:
                 dl = -1 * np.inf

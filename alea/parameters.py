@@ -1,6 +1,4 @@
 from typing import Any, Dict, List, Optional, Tuple
-import numpy  # noqa: F401
-import scipy  # noqa: F401
 
 
 class Parameter:
@@ -54,9 +52,9 @@ class Parameter:
         parameter_str = [
             f"{k}={v}" for k, v in self.__dict__.items() if v is not None]
         parameter_str = ", ".join(parameter_str)
-        repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
-        repr += f'({parameter_str})'
-        return repr
+        _repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
+        _repr += f'({parameter_str})'
+        return _repr
 
     @property
     def uncertainty(self) -> float or Any:
@@ -159,9 +157,9 @@ class Parameters:
 
     def __repr__(self) -> str:
         parameter_str = ", ".join(self.names)
-        repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
-        repr += f'({parameter_str})'
-        return repr
+        _repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
+        _repr += f'({parameter_str})'
+        return _repr
 
     def add_parameter(self, parameter: Parameter) -> None:
         """

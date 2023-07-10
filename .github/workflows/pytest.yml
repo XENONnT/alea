@@ -46,7 +46,7 @@ jobs:
           python -m pip install pytest coverage coveralls
           pip install -r requirements.txt
 
-      - name: Install Appletree
+      - name: Install Alea
         run: |
           pip install .
 

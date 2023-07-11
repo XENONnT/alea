@@ -1,7 +1,9 @@
 from typing import Optional
-from alea.statistical_model import StatisticalModel
-import scipy.stats as stats
+
+from scipy import stats
 import numpy as np
+
+from alea.statistical_model import StatisticalModel
 
 
 class GaussianModel(StatisticalModel):
@@ -13,7 +15,7 @@ class GaussianModel(StatisticalModel):
         sigma is fixed in this example.
         """
         if parameter_definition is None:
-            parameter_definition = ["mu", "sigma"]
+            parameter_definition = ['mu', 'sigma']
         super().__init__(parameter_definition=parameter_definition)
 
     def _ll(self, mu=None, sigma=None):

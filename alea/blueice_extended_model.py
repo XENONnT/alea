@@ -102,16 +102,19 @@ class BlueiceExtendedModel(StatisticalModel):
         for config in likelihood_terms:
             likelihood_object = locate(config["likelihood_type"])
             blueice_config = adapt_likelihood_config_for_blueice(config)
-            blueice_config["liveteime_days"] = self.parameters[
+            blueice_config["livetime_days"] = self.parameters[
                 blueice_config["livetime_parameter"]].nominal_value
             ll = likelihood_object(blueice_config)
             # Set rate parameters
             for source in config["sources"]:
-                print(source)
-                for param in source["parameters"]:
-                    if self.parameters[param].type == "rate":
+                for param_name in source["parameters"]:
+                    if self.parameters[param_name].type == "rate":
                         # TODO: Check that only one rate per source is set?
-                        ll.add_rate_parameter(param, log_prior=None)
+                        if param_name.endswith("_rate_multiplier"):
+                            param_name = param_name.replace("_rate_multiplier", "")
+                            ll.add_rate_parameter(param_name, log_prior=None)
+                        else:
+                            NotImplementedError
             # TODO: Set shape parameters
 
             ll.prepare()

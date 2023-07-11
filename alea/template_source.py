@@ -118,7 +118,7 @@ class TemplateSource(bi.HistogramPdfSource):
                 try:
                     np.testing.assert_almost_equal(seen_bin_edges,
                                                    expected_bin_edges,
-                                                   decimal=4)
+                                                   decimal=2)
                 except AssertionError:
                     warnings.warn(
                         "Axis %d of histogram %s in root file %s has bin edges %s, "

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(
     name="alea",
-    version="0.2",
+    version="0.2.0",
     packages=['alea',"alea.likelihoods"],
     package_dir={'alea': 'alea'},
     package_data={'alea': ['runpy.sbatch', 'data/*.hdf','scripts/*',"data/tutorial_cache/*"]},
@@ -9,5 +9,4 @@ setup(
     author='XENON collaboration',
     author_email="knut.dundas.mora@columbia.edu",
     description="blueice-based inference for nT",
-
 )

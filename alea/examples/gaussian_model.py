@@ -1,7 +1,9 @@
 from typing import Optional
-from alea.statistical_model import StatisticalModel
-import scipy.stats as stats
+
+from scipy import stats
 import numpy as np
+
+from alea.statistical_model import StatisticalModel
 
 
 class GaussianModel(StatisticalModel):

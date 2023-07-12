@@ -1,6 +1,4 @@
 from typing import Any, Dict, List, Optional, Tuple
-import numpy  # noqa: F401
-import scipy  # noqa: F401
 
 
 class Parameter:
@@ -12,11 +10,14 @@ class Parameter:
         nominal_value (float, optional): The nominal value of the parameter.
         fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
         ptype (str, optional): The type of the parameter.
-        uncertainty (float or str, optional): The uncertainty of the parameter. If a string,
+        uncertainty (float or str, optional):
+            The uncertainty of the parameter. If a string,
             it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
-        relative_uncertainty (bool, optional): Indicates if the uncertainty is relative to the nominal_value.
+        relative_uncertainty (bool, optional):
+        Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional): Anchors for blueice template morphing.
         fit_limits (tuple, optional): The limits for fitting the parameter.
+        parameter_interval_bounds (tupe, optional): limits for computing confidence intervals
         fit_guess (float, optional): The initial guess for fitting the parameter.
         description (str, optional): A description of the parameter.
     """
@@ -31,6 +32,7 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
+        parameter_interval_bounds: Optional[Tuple] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
@@ -42,15 +44,17 @@ class Parameter:
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
+        self.parameter_interval_bounds = parameter_interval_bounds
         self._fit_guess = fit_guess
         self.description = description
 
     def __repr__(self) -> str:
-        parameter_str = [f"{k}={v}" for k,
-                         v in self.__dict__.items() if v is not None]
+        parameter_str = [
+            f"{k}={v}" for k, v in self.__dict__.items() if v is not None]
         parameter_str = ", ".join(parameter_str)
-        return f'{self.__class__.__module__}.{self.__class__.__qualname__}'\
-            f'({parameter_str})'
+        _repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
+        _repr += f'({parameter_str})'
+        return _repr
 
     @property
     def uncertainty(self) -> float or Any:
@@ -64,7 +68,8 @@ class Parameter:
                 return eval(self._uncertainty)
             else:
                 raise ValueError(
-                    f"Uncertainty string '{self._uncertainty}' must start with 'scipy.' or 'numpy.'")
+                    f"Uncertainty string '{self._uncertainty}'"
+                    " must start with 'scipy.' or 'numpy.'")
         else:
             return self._uncertainty
 
@@ -128,28 +133,7 @@ class Parameters:
         """
         parameters = cls()
         for name, param_config in config.items():
-            nominal_value = param_config.get("nominal_value", None)
-            fittable = param_config.get("fittable", True)
-            ptype = param_config.get("ptype", None)
-            uncertainty = param_config.get("uncertainty", None)
-            relative_uncertainty = param_config.get(
-                "relative_uncertainty", None)
-            blueice_anchors = param_config.get("blueice_anchors", None)
-            fit_limits = param_config.get("fit_limits", None)
-            fit_guess = param_config.get("fit_guess", None)
-            description = param_config.get("description", None)
-            parameter = Parameter(
-                name=name,
-                nominal_value=nominal_value,
-                fittable=fittable,
-                ptype=ptype,
-                uncertainty=uncertainty,
-                relative_uncertainty=relative_uncertainty,
-                blueice_anchors=blueice_anchors,
-                fit_limits=fit_limits,
-                fit_guess=fit_guess,
-                description=description
-            )
+            parameter = Parameter(name=name, **param_config)
             parameters.add_parameter(parameter)
         return parameters
 
@@ -173,8 +157,9 @@ class Parameters:
 
     def __repr__(self) -> str:
         parameter_str = ", ".join(self.names)
-        return f'{self.__class__.__module__}.{self.__class__.__qualname__}'\
-            f'({parameter_str})'
+        _repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
+        _repr += f'({parameter_str})'
+        return _repr
 
     def add_parameter(self, parameter: Parameter) -> None:
         """
@@ -199,14 +184,20 @@ class Parameters:
         """
         Returns a dictionary of fit guesses.
         """
-        return {name: param.fit_guess for name, param in self.parameters.items() if param.fit_guess is not None}
+        return {
+            name: param.fit_guess
+            for name, param in self.parameters.items()
+            if param.fit_guess is not None}
 
     @property
     def fit_limits(self) -> Dict[str, float]:
         """
         Returns a dictionary of fit limits.
         """
-        return {name: param.fit_limits for name, param in self.parameters.items() if param.fit_limits is not None}
+        return {
+            name: param.fit_limits
+            for name, param in self.parameters.items()
+            if param.fit_limits is not None}
 
     @property
     def fittable(self) -> List[str]:
@@ -246,16 +237,21 @@ class Parameters:
         """
         return a dict of name:nominal value for all applicable parameters
         """
-        return {k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None}
+        return {
+            k: i.nominal_value
+            for k, i in self.parameters.items()
+            if i.nominal_value is not None}
 
-    def __call__(self, return_fittable: bool = False,
-                 **kwargs: Any) -> Dict[str, float]:
+    def __call__(
+            self, return_fittable: bool = False,
+            **kwargs: Any) -> Dict[str, float]:
         """
         Returns a dictionary of parameter values, optionally filtered
         to return only fittable parameters.
 
         Args:
-            return_fittable (bool, optional): Indicates if only fittable parameters should be returned.
+            return_fittable (bool, optional):
+                Indicates if only fittable parameters should be returned.
             **kwargs: Additional keyword arguments to override parameter values.
 
         Returns:
@@ -270,7 +266,7 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
-            if (return_fittable and param.fittable) or not return_fittable:
+            if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
         return values
 
@@ -322,5 +318,6 @@ class Parameters:
         """
         Returns True if all values are within the fit limits.
         """
-        return all(self.parameters[name].value_in_fit_limits(value)
-                   for name, value in kwargs.items())
+        return all(
+            self.parameters[name].value_in_fit_limits(value)
+            for name, value in kwargs.items())

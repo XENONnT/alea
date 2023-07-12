@@ -1,10 +1,16 @@
 import inspect
-from inference_interface import toydata_from_file, toydata_to_file
-from typing import Tuple, Optional
+import warnings
+from typing import Tuple, Callable
+
 import numpy as np
+from scipy.stats import chi2
+from scipy.optimize import brentq
 from iminuit import Minuit
 from iminuit.util import make_func_code
+from inference_interface import toydata_to_file
+
 from alea.parameters import Parameters
+
 
 class StatisticalModel:
     """
@@ -19,11 +25,11 @@ class StatisticalModel:
             returns a full data set:
 
     Methods:
-         __init__
-         required to implement:
+        __init__
+        required to implement:
 
-         _ll
-         _generate_data
+        _ll
+        _generate_data
 
          optional to implement:
          get_mus
@@ -32,77 +38,107 @@ class StatisticalModel:
          Implemented here:
          store_data
          fit
-         get_confidence_interval
          get_expectation_values
          get_parameter_list
          print_config
-
 
     Other members:
         _data = None
         _config = {}
         _confidence_level = 0.9
-        _confidence_interval_kind = "upper,lower,unified"
+        _confidence_interval_kind = "upper, lower, central"
+            (if your threshold is the FC threshold, "central" gives you the unified interval)
+        _confidence_interval_threshold: function that defines the Neyman threshold for limit calculations
         _fit_guess = {}
         _fixed_parameters = []
     """
+
+    def __init__(
+            self,
+            data = None,
+            parameter_definition: dict or list = None,
+            confidence_level: float = 0.9,
+            confidence_interval_kind: str = "central",  # one of central, upper, lower
+            confidence_interval_threshold: Callable[[float], float] = None,
+            **kwargs):
+        self._data = data
+        self._confidence_level = confidence_level
+        self._confidence_interval_kind = confidence_interval_kind
+        self.confidence_interval_threshold = confidence_interval_threshold
+        self._define_parameters(parameter_definition)
+
+        self._check_ll_and_generate_data_signature()
+
+    def _define_parameters(self, parameter_definition):
+        if parameter_definition is None:
+            self.parameters = Parameters()
+        elif isinstance(parameter_definition, dict):
+            self.parameters = Parameters.from_config(parameter_definition)
+        elif isinstance(parameter_definition, list):
+            self.parameters = Parameters.from_list(parameter_definition)
+        else:
+            raise RuntimeError("parameter_definition must be dict or list")
+
+    def _check_ll_and_generate_data_signature(self):
+        ll_params = set(inspect.signature(self._ll).parameters)
+        generate_data_params = set(inspect.signature(self._generate_data).parameters)
+        if ll_params != generate_data_params:
+            raise AssertionError(
+                "ll and generate_data must have the same signature (parameters)")
+
+    def _ll(self, **kwargs) -> float:
+        raise NotImplementedError(
+            "You must write a likelihood function (_ll) for your statistical model"
+            " or use a subclass where it is written for you")
+
+    def _generate_data(self, **kwargs):
+        raise NotImplementedError(
+            "You must write a data-generation method (_generate_data) for your statistical model"
+            " or use a subclass where it is written for you")
+
     def ll(self, **kwargs) -> float:
-        # CAUTION: This implementation won't allow you to call the likelihood by positional arguments.
+        # CAUTION:
+        # This implementation won't allow you to call the likelihood by positional arguments.
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
-    def _ll(self, **kwargs) -> float:
-        raise NotImplementedError("You must write a likelihood function (_ll) for your statistical model or use a subclass where it is written for you")
-
     def generate_data(self, **kwargs):
-        # CAUTION: This implementation won't allow you to call generate_data by positional arguments.
+        # CAUTION:
+        # This implementation won't allow you to call generate_data by positional arguments.
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)
         return self._generate_data(**generate_values)
 
-    def _generate_data(self, **kwargs):
-        raise NotImplementedError("You must write a data-generation method (_generate_data) for your statistical model or use a subclass where it is written for you")
-
-    def __init__(self,
-                 data = None,
-                 parameter_definition: dict or list = None,
-                 confidence_level: float = 0.9,
-                 confidence_interval_kind:str = "unified",
-                 **kwargs):
-        self._data = data
-        self._confidence_level = confidence_level
-        self._confidence_interval_kind = confidence_interval_kind
-        self._define_parameters(parameter_definition)
-
-        self._check_ll_and_generate_data_signature()
-
     @property
     def data(self):
         """
         Simple getter for a data-set-- mainly here so it can be over-ridden for special needs.
-        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
+        Data-sets are expected to be in the form of a list of one or more structured arrays,
+        representing the data-sets of one or more likelihood terms.
         """
         if self._data is None:
-            raise Exception("data has not been assigned this statistical model!")
+            raise RuntimeError("data has not been assigned this statistical model!")
         return self._data
 
     @data.setter
     def data(self, data):
         """
         Simple setter for a data-set-- mainly here so it can be over-ridden for special needs.
-        Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
+        Data-sets are expected to be in the form of a list of one or more structured arrays,
+        representing the data-sets of one or more likelihood terms.
         """
         self._data = data
 
-    def store_data(self, file_name, data_list, data_name_list=None, metadata = None):
+    def store_data(
+            self, file_name, data_list, data_name_list=None, metadata = None):
         """
         Store a list of datasets (each on the form of a list of one or more structured arrays)
         Using inference_interface, but included here to allow over-writing.
-        structure would be: [[datasets1],[datasets2]... [datasetsn]]
+        structure would be: [[datasets1], [datasets2], ..., [datasetsn]]
         where each of datasets is a list of structured arrays
         if you specify, it is set, if not it will read from self.get_likelihood_term_names
-        if not defined, it will be ["0","1"..."n-1"]
+        if not defined, it will be ["0", "1", ..., "n-1"]
         """
         if data_name_list is None:
             try:
@@ -110,19 +146,22 @@ class StatisticalModel:
             except NotImplementedError:
                 data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
-        kw = dict(metadata = metadata) if metadata is not None else dict()
+        kw = {'metadata': metadata} if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-
-
-    def get_confidence_interval(self) -> Tuple[float, float]:
-        return NotImplementedError("todo")
     def get_expectation_values(self):
         return NotImplementedError("get_expectation_values is optional to implement")
 
+    def get_likelihood_term_names(self):
+        """
+        It may be convenient to partition the likelihood in several terms,
+        you can implement this function to give them names (list of strings)
+        """
+        raise NotImplementedError("get_likelihood_term_names is optional to implement")
+
     def get_likelihood_term_from_name(self, likelihood_name):
         """
-        returns the index of a likelihood term if the likelihood has several names
+        Returns the index of a likelihood term if the likelihood has several names
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
@@ -130,20 +169,22 @@ class StatisticalModel:
         else:
             raise NotImplementedError("The attribute likelihood_names is not defined.")
 
-
     def get_parameter_list(self):
-        """returns a set of all parameters that the generate_data and likelihood accepts"""
+        """
+        Returns a set of all parameters that the generate_data and likelihood accepts
+        """
         return self._parameter_list
 
     def print_config(self):
-        for k,i in self.config:
-            print(k,i)
+        for k, i in self.config:
+            print(k, i)
 
     def make_objective(self, minus=True, **kwargs):
         sign = -1 if minus else 1
 
         def cost(args):
-            # Get the arguments from args, then fill in the ones already fixed in outer kwargs
+            # Get the arguments from args,
+            # then fill in the ones already fixed in outer kwargs
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
@@ -152,7 +193,14 @@ class StatisticalModel:
 
         return cost
 
-    def fit(self, verbose=False, **kwargs):
+    def fit(self, verbose=False, **kwargs) -> Tuple[dict, float]:
+        """
+        Fit the model to the data by maximizing the likelihood
+        returns a dict containing best-fit values of each parameter,
+        and the value of the likelihood evaluated there.
+        While the optimization is a minimization,
+        the likelihood returned is the _maximum_ of the likelihood.
+        """
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
         guesses.update(kwargs)
@@ -163,11 +211,12 @@ class StatisticalModel:
         cost = self.make_objective(minus=True, **kwargs)
 
         class MinuitWrap:
-            """Wrapper for functions to be called by Minuit
-
+            """
+            Wrapper for functions to be called by Minuit
             s_args must be a list of argument names of function f
             the names in this list must be the same as the keys of
-            the dictionary passed to the Minuit call."""
+            the dictionary passed to the Minuit call.
+            """
 
             def __init__(self, f, s_args):
                 self.func = f
@@ -179,8 +228,9 @@ class StatisticalModel:
 
         # Make the Minuit object
         cost.errordef = Minuit.LIKELIHOOD
-        m = Minuit(MinuitWrap(cost, s_args=self.parameters.names),
-                   **defaults)
+        m = Minuit(
+            MinuitWrap(cost, s_args=self.parameters.names),
+            **defaults)
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:
@@ -192,20 +242,123 @@ class StatisticalModel:
         m.migrad()
         if verbose:
             print(m)
+        # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
 
-    def _check_ll_and_generate_data_signature(self):
-        ll_params = set(inspect.signature(self._ll).parameters)
-        generate_data_params = set(inspect.signature(self._generate_data).parameters)
-        if ll_params != generate_data_params:
-            raise AssertionError("ll and generate_data must have the same signature (parameters)")
+    def _confidence_interval_checks(
+            self, parameter: str,
+            parameter_interval_bounds: Tuple[float, float],
+            confidence_level: float,
+            confidence_interval_kind: str,
+            **kwargs):
+        """
+        helper function for confidence_interval that does the input checks and returns bounds +
+        """
+        if confidence_level is None:
+            confidence_level = self._confidence_level
+        if confidence_interval_kind is None:
+            confidence_interval_kind = self._confidence_interval_kind
 
-    def _define_parameters(self, parameter_definition):
-        if parameter_definition is None:
-            self.parameters = Parameters()
-        elif isinstance(parameter_definition, dict):
-            self.parameters = Parameters.from_config(parameter_definition)
-        elif isinstance(parameter_definition, list):
-            self.parameters = Parameters.from_list(parameter_definition)
+        mask = (confidence_level > 0) and (confidence_level < 1)
+        assert mask, "the confidence level must lie between 0 and 1"
+        parameter_of_interest = self.parameters[parameter]
+        assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
+        assert parameter not in kwargs, "you cannot set the parameter you're constraining"
+
+        if parameter_interval_bounds is None:
+            parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
+            if parameter_interval_bounds is None:
+                raise ValueError(
+                    "You must set parameter_interval_bounds in the parameter config"
+                    " or when calling confidence_interval")
+
+        if parameter_of_interest.type == "rate":
+            try:
+                mu_parameter = self.get_expectations(**kwargs)[parameter_of_interest.name]
+                parameter_interval_bounds = (
+                    parameter_interval_bounds[0] / mu_parameter,
+                    parameter_interval_bounds[1] / mu_parameter)
+            except NotImplementedError:
+                warnings.warn(
+                    "The statistical model does not have a get_expectations model implemented,"
+                    " confidence interval bounds will be set directly.")
+                pass  # no problem, continuing with bounds as set
+
+        # define threshold if none is defined:
+        if self.confidence_interval_threshold is not None:
+            confidence_interval_threshold = self.confidence_interval_threshold
         else:
-            raise Exception("parameter_definition must be dict or list")
+            # use asymptotic thresholds assuming the test statistic is Chi2 distributed
+            if confidence_interval_kind in {"lower", "upper"}:
+                critical_value = chi2(1).isf(2 * (1. - confidence_level))
+            elif confidence_interval_kind == "central":
+                critical_value = chi2(1).isf(1. - confidence_level)
+
+            confidence_interval_threshold = lambda _: critical_value
+
+        return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
+
+    def confidence_interval(
+            self, parameter: str,
+            parameter_interval_bounds: Tuple[float, float] = None,
+            confidence_level: float = None,
+            confidence_interval_kind: str = None,
+            **kwargs) -> Tuple[float, float]:
+        """
+        Uses self.fit to compute confidence intervals for a certain named parameter
+
+        parameter: string, name of fittable parameter of the model
+        parameter_interval_bounds: range in which to search for the confidence interval edges.
+            May be specified as:
+            - setting the property "parameter_interval_bounds" for the parameter
+            - passing a list here
+        If the parameter is a rate parameter, and the model has expectation values implemented,
+        the bounds will be interpreted as bounds on the expectation value
+        (so that the range in the fit is parameter_interval_bounds/mus)
+        otherwise the bound is taken as-is.
+        """
+
+        ci_objects = self._confidence_interval_checks(
+            parameter,
+            parameter_interval_bounds,
+            confidence_level,
+            confidence_interval_kind,
+            **kwargs)
+        confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds = ci_objects
+
+        # find best-fit:
+        best_result, best_ll = self.fit(**kwargs)
+        best_parameter = best_result[parameter]
+        mask = (parameter_interval_bounds[0] < best_parameter)
+        mask &= (best_parameter < parameter_interval_bounds[1])
+        assert mask, ("the best-fit is outside your confidence interval"
+            " search limits in parameter_interval_bounds")
+        # log-likelihood - critical value:
+
+        # define intersection between likelihood ratio curve and the critical curve:
+        def t(hypothesis):
+            # define the intersection
+            # between the profile-log-likelihood curve and the rejection threshold
+            kwargs[parameter] = hypothesis
+            _, ll = self.fit(**kwargs)  # ll is + log-likelihood here
+            ret = 2. * (best_ll - ll)  # likelihood curve "right way up" (smiling)
+            # if positive, hypothesis is excluded
+            return ret - confidence_interval_threshold(hypothesis)
+
+        if confidence_interval_kind in {"upper", "central"}:
+            if t(parameter_interval_bounds[1]) > 0:
+                ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+            else:
+                ul = np.inf
+        else:
+            ul = np.nan
+
+        if confidence_interval_kind in {"lower", "central"}:
+            if t(parameter_interval_bounds[0]) > 0:
+                dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+            else:
+                dl = -1 * np.inf
+        else:
+            dl = np.nan
+
+        return dl, ul

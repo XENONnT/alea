@@ -260,13 +260,13 @@ class StatisticalModel:
 
         if parameter_of_interest.type == "rate":
             try:
-                mu_parameter = self.get_expectations(**kwargs)[parameter_of_interest.name]
+                mu_parameter = self.get_expectation_values(**kwargs)[parameter_of_interest.name]
                 parameter_interval_bounds = (
                     parameter_interval_bounds[0] / mu_parameter,
                     parameter_interval_bounds[1] / mu_parameter)
             except NotImplementedError:
                 warnings.warn(
-                    "The statistical model does not have a get_expectations model implemented,"
+                    "The statistical model does not have a get_expectation_values model implemented,"
                     " confidence interval bounds will be set directly.")
                 pass  # no problem, continuing with bounds as set
 

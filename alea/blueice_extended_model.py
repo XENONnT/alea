@@ -90,11 +90,11 @@ class BlueiceExtendedModel(StatisticalModel):
     def nominal_expectation_values(self):
         # TODO
         # IDEA also enable a setter that changes the rate parameters?
-        pass
+        raise NotImplementedError
 
     def get_expectation_values(self, **kwargs):
         # TODO
-        pass
+        raise NotImplementedError
 
     def _build_ll_from_config(self, likelihood_terms):
         # iterate through ll_config and build blueice ll

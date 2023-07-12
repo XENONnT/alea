@@ -32,15 +32,12 @@ class StatisticalModel:
         _generate_data
 
         optional to implement:
-        get_mus
-        get_likelihood_term_names
+        get_expectation_values
 
         Implemented here:
         store_data
         fit
-        get_expectation_values
         get_parameter_list
-        print_config
 
     Other members:
         _data = None
@@ -152,13 +149,6 @@ class StatisticalModel:
     def get_expectation_values(self):
         return NotImplementedError("get_expectation_values is optional to implement")
 
-    def get_likelihood_term_names(self):
-        """
-        It may be convenient to partition the likelihood in several terms,
-        you can implement this function to give them names (list of strings)
-        """
-        raise NotImplementedError("get_likelihood_term_names is optional to implement")
-
     def get_likelihood_term_from_name(self, likelihood_name):
         """
         Returns the index of a likelihood term if the likelihood has several names
@@ -173,11 +163,7 @@ class StatisticalModel:
         """
         Returns a set of all parameters that the generate_data and likelihood accepts
         """
-        return self._parameter_list
-
-    def print_config(self):
-        for k, i in self.config:
-            print(k, i)
+        return self.parameters.names
 
     def make_objective(self, minus=True, **kwargs):
         sign = -1 if minus else 1

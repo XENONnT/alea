@@ -31,16 +31,16 @@ class StatisticalModel:
         _ll
         _generate_data
 
-         optional to implement:
-         get_mus
-         get_likelihood_term_names
+        optional to implement:
+        get_mus
+        get_likelihood_term_names
 
-         Implemented here:
-         store_data
-         fit
-         get_expectation_values
-         get_parameter_list
-         print_config
+        Implemented here:
+        store_data
+        fit
+        get_expectation_values
+        get_parameter_list
+        print_config
 
     Other members:
         _data = None

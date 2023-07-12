@@ -66,7 +66,7 @@ likelihood_terms:
       parameters:
         - er_rate_multiplier
         # - er_band_shift
-      templatepath: examples/er_template.h5
+      templatepath: examples/templates/wimp_templates/er_template.h5
       histogram_scale_factor: 1
 
     - name: wimp
@@ -74,7 +74,7 @@ likelihood_terms:
       parameters:
         - wimp_rate_multiplier
         - wimp_mass
-      templatepath: examples/wimp50gev_template.h5
+      templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
       apply_efficiency: False
       efficiency_name: 'signal_eff'  # TODO: Check
 
@@ -94,7 +94,7 @@ likelihood_terms:
       parameters:
         - er_rate_multiplier
         # - er_band_shift
-      templatepath: examples/er_template.h5
+      templatepath: examples/templates/wimp_templates/er_template.h5
       histogram_scale_factor: 2
 
     - name: wimp
@@ -102,6 +102,6 @@ likelihood_terms:
       parameters:
         - wimp_rate_multiplier
         - wimp_mass
-      templatepath: examples/wimp50gev_template.h5
+      templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
       apply_efficiency: False
       efficiency_name: 'wimp_eff'  # TODO: Check

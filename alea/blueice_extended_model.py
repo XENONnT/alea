@@ -35,41 +35,6 @@ class BlueiceExtendedModel(StatisticalModel):
             config = yaml.safe_load(f)
         return cls(**config)
 
-    def _ll(self, **generate_values) -> float:
-        return self._likelihood(**generate_values)
-
-    def _generate_data(self, **generate_values):
-        # generate_values are already filtered and filled by the nominal values\
-        # through the generate_data method in the parent class
-        science_data = self._generate_science_data(**generate_values)
-        ancillary_keys = self.parameters.with_uncertainty.names
-        generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        ancillary_measurements = self._generate_ancillary_measurements(
-            **generate_values_anc)
-        return science_data + [ancillary_measurements] + [generate_values]
-
-    def _generate_science_data(self, **generate_values):
-        science_data = [gen.simulate(**generate_values)
-                        for gen in self.data_generators]
-        return science_data
-
-    def _generate_ancillary_measurements(self, **generate_values):
-        ancillary_measurements = {}
-        anc_ll = self._likelihood.likelihood_list[-1]
-        ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
-        for name, gen in ancillary_generators.items():
-            parameter_meas = gen.rvs()
-            # correct parameter_meas if out of bounds
-            param = self.parameters[name]
-            if not param.value_in_fit_limits(parameter_meas):
-                if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:
-                    parameter_meas = param.fit_limits[0]
-                elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
-                    parameter_meas = param.fit_limits[1]
-            ancillary_measurements[name] = parameter_meas
-
-        return ancillary_measurements
-
     # TODO: Override uncertainty setter to also set the uncertainty of the ancillary ll term (func_args). Or for now override the uncertainty setter to not work and raise a warning.
 
     @property
@@ -143,6 +108,41 @@ class BlueiceExtendedModel(StatisticalModel):
         # IDEA: Also implement data generator for ancillary ll term.
         return [BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
 
+    def _ll(self, **generate_values) -> float:
+        return self._likelihood(**generate_values)
+
+    def _generate_data(self, **generate_values):
+        # generate_values are already filtered and filled by the nominal values\
+        # through the generate_data method in the parent class
+        science_data = self._generate_science_data(**generate_values)
+        ancillary_keys = self.parameters.with_uncertainty.names
+        generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
+        ancillary_measurements = self._generate_ancillary_measurements(
+            **generate_values_anc)
+        return science_data + [ancillary_measurements] + [generate_values]
+
+    def _generate_science_data(self, **generate_values):
+        science_data = [gen.simulate(**generate_values)
+                        for gen in self.data_generators]
+        return science_data
+
+    def _generate_ancillary_measurements(self, **generate_values):
+        ancillary_measurements = {}
+        anc_ll = self._likelihood.likelihood_list[-1]
+        ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
+        for name, gen in ancillary_generators.items():
+            parameter_meas = gen.rvs()
+            # correct parameter_meas if out of bounds
+            param = self.parameters[name]
+            if not param.value_in_fit_limits(parameter_meas):
+                if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:
+                    parameter_meas = param.fit_limits[0]
+                elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
+                    parameter_meas = param.fit_limits[1]
+            ancillary_measurements[name] = parameter_meas
+
+        return ancillary_measurements
+
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     """
@@ -179,6 +179,17 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         assert set(d.keys()) == set(self.parameters.names)
         self.constraint_functions = self._get_constraint_functions(**d)
 
+    def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
+        """Return the sum of all constraint terms.
+
+        Args:
+            evaluate_at (dict): Values of the ancillary measurements.
+
+        Returns:
+            float: Sum of all constraint terms.
+        """
+        return np.sum([term(evaluate_at[name]) for name, term in self.constraint_terms.items()])
+
     def _get_constraint_functions(self, **generate_values) -> dict:
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
@@ -195,14 +206,3 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     "Only float uncertainties are supported at the moment.")
             constraint_functions[name] = func
         return constraint_functions
-
-    def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
-        """Return the sum of all constraint terms.
-
-        Args:
-            evaluate_at (dict): Values of the ancillary measurements.
-
-        Returns:
-            float: Sum of all constraint terms.
-        """
-        return np.sum([term(evaluate_at[name]) for name, term in self.constraint_terms.items()])

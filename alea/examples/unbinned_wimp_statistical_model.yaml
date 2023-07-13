@@ -50,6 +50,7 @@ parameter_definition:
 
 likelihood_config:
   likelihood_weights: [1, 1, 1]
+  template_folder: alea/examples/templates/wimp_templates
   likelihood_terms:
     # SR0
     - name: sr0
@@ -67,7 +68,7 @@ likelihood_config:
         parameters:
           - er_rate_multiplier
           # - er_band_shift
-        templatepath: examples/templates/wimp_templates/er_template.h5
+        template_filename: er_template.h5
         histogram_scale_factor: 1
 
       - name: wimp
@@ -75,7 +76,7 @@ likelihood_config:
         parameters:
           - wimp_rate_multiplier
           - wimp_mass
-        templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
+        template_filename: wimp50gev_template.h5
         apply_efficiency: False
         efficiency_name: 'signal_eff'  # TODO: Check
 
@@ -95,7 +96,7 @@ likelihood_config:
         parameters:
           - er_rate_multiplier
           # - er_band_shift
-        templatepath: examples/templates/wimp_templates/er_template.h5
+        template_filename: er_template.h5
         histogram_scale_factor: 2
 
       - name: wimp
@@ -103,6 +104,6 @@ likelihood_config:
         parameters:
           - wimp_rate_multiplier
           - wimp_mass
-        templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
+        template_filename: wimp50gev_template.h5
         apply_efficiency: False
         efficiency_name: 'wimp_eff'  # TODO: Check

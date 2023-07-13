@@ -80,7 +80,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             likelihood_object = locate(config["likelihood_type"])
-            blueice_config = adapt_likelihood_config_for_blueice(config)
+            blueice_config = adapt_likelihood_config_for_blueice(
+                config, likelihood_config["template_folder"])
             blueice_config["livetime_days"] = self.parameters[
                 blueice_config["livetime_parameter"]].nominal_value
             ll = likelihood_object(blueice_config)

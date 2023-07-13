@@ -263,17 +263,23 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
     return inference_object_config
 
 
-def adapt_likelihood_config_for_blueice(likelihood_config: dict) -> dict:
+def adapt_likelihood_config_for_blueice(likelihood_config: dict,
+                                        template_folder: str) -> dict:
+    # if template folder starts with alea: get location of alea
+    if template_folder.startswith("alea/"):
+        import alea
+        alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
+        template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
+
     likelihood_config["analysis_space"] = get_analysis_space(
         likelihood_config["analysis_space"])
 
     likelihood_config["default_source_class"] = locate(
         likelihood_config["default_source_class"])
 
-    path = "alea"
-
     for source in likelihood_config["sources"]:
-        source["templatename"] = os.path.join(path, source["templatepath"])
+        source["templatename"] = os.path.join(template_folder,
+                                              source["template_filename"])
     return likelihood_config
 
 

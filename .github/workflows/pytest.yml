@@ -56,14 +56,14 @@ jobs:
           coverage run --source=alea -m pytest --durations 0
           coverage report
 
-      - name: Coveralls
-        # Make the coverage report and upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.test == 'coveralls'
-        run: |
-          coverage run --source=alea -m pytest -v
-          coveralls --service=github
+      # - name: Coveralls
+      #   # Make the coverage report and upload
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   if: matrix.test == 'coveralls'
+      #   run: |
+      #     coverage run --source=alea -m pytest -v
+      #     coveralls --service=github
 
       - name: goodbye
         run: echo "tests done, bye bye"

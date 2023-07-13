@@ -1,4 +1,6 @@
 from pydoc import locate  # to lookup likelihood class
+from typing import List
+
 from alea.statistical_model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import adapt_likelihood_config_for_blueice
@@ -78,7 +80,7 @@ class BlueiceExtendedModel(StatisticalModel):
         for ll in self._likelihood.likelihood_list[:-1]:  # ancillary likelihood does not contribute
 
             ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
-            call_args = {k:i for k,i in kwargs.items() if k in ll_pars}
+            call_args = {k:i for k, i in kwargs.items() if k in ll_pars}
             if "livetime_days" in kwargs:
                 call_args["livetime_days"] = kwargs["livetime_days"]
 
@@ -114,16 +116,18 @@ class BlueiceExtendedModel(StatisticalModel):
             for p in self.parameters:
                 blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
 
-            #add all parameters to extra_dont_hash for each source unless it is used:
-            for i,source in enumerate(config["sources"]):
-                parameters_to_ignore = [ p.name for p in self.parameters if (p.type == "shape") & (p.name not in source["parameters"])]
-                parameters_to_ignore += [ p.name for p in self.parameters if (p.type == "efficiency")] # no efficiency affects PDF
+            # add all parameters to extra_dont_hash for each source unless it is used:
+            for i, source in enumerate(config["sources"]):
+                parameters_to_ignore: List[str] = [p.name for p in self.parameters if (p.type == "shape")
+                                                   & (p.name not in source["parameters"])]
+                # no efficiency affects PDF:
+                parameters_to_ignore += [ p.name for p in self.parameters if (p.type == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])
 
-                #ignore all shape parameters known to this model not named specifically in the source:
-                blueice_config["sources"][i]["extra_dont_hash_settings"] =  parameters_to_ignore
+                # ignore all shape parameters known to this model not named specifically in the source:
+                blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
 
-            ll = likelihood_object(blueice_config)
+            ll = likelihood_object(blueice_config) # noqa: E127
 
             for source in config["sources"]:
 
@@ -152,16 +156,17 @@ class BlueiceExtendedModel(StatisticalModel):
                 # Set efficiency parameters
                 if source.get("apply_efficiency", False):
                     assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
-                    efficiency_name  = source["efficiency_name"]
+                    efficiency_name = source["efficiency_name"]
                     assert efficiency_name in source["parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
                     efficiency_parameter = self.parameters[efficiency_name]
-                    assert efficiency_parameter.type == "efficiency", "The parameter {:s} must be an efficiency".format(efficiency_name)
+                    assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
+                                                                      " be an efficiency".format(efficiency_name)
                     limits = efficiency_parameter.fit_limits
-                    assert 0<=limits[0], "Efficiency parameters including {:s} must be constrained to be nonngative".format(efficiency_name)
-                    assert np.isfinite(limits[1]), "Efficiency parameters including {:s} must be constrained to be finite".format(efficiency_name)
-                    ll.add_shape_parameter(efficiency_name, anchors=(limits[0],limits[1]))
-
-
+                    assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
+                                         ' constrained to be nonnegative'.format(efficiency_name)
+                    assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
+                                                   ' constrained to be finite'.format(efficiency_name)
+                    ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
 
 
             ll.prepare()

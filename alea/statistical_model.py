@@ -163,7 +163,8 @@ class StatisticalModel:
         kw = {'metadata': metadata} if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-    def get_expectation_values(self):
+    def get_expectation_values(self, **parameter_values):
+        mus = self._ll(full_output=True, **parameter_values)
         return NotImplementedError("get_expectation_values is optional to implement")
 
     @property

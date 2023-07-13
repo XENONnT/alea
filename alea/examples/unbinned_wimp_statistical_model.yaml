@@ -48,60 +48,61 @@ parameter_definition:
   #     - 1
   #   description: ER band shape parameter (shifts the ER band up and down)
 
+likelihood_config:
+  likelihood_weights: [1, 1, 1]
+  likelihood_terms:
+    # SR0
+    - name: sr0
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": 'np.arange(0, 102, 2)'
+        - "cs2": 'np.geomspace(100, 100000, 51)'
+      in_events_per_bin: true
+      livetime_parameter: livetime_0
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template  # TODO: implement a default histname based on the source name
+        parameters:
+          - er_rate_multiplier
+          # - er_band_shift
+        templatepath: examples/templates/wimp_templates/er_template.h5
+        histogram_scale_factor: 1
 
-likelihood_terms:
-# SR0
-  - name: sr0
-    default_source_class: alea.template_source.TemplateSource
-    likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-    analysis_space:
-      - "cs1": 'np.arange(0, 102, 2)'
-      - "cs2": 'np.geomspace(100, 100000, 51)'
-    in_events_per_bin: true
-    livetime_parameter: livetime_0
-    slice_args: {}
-    sources:
-    - name: er
-      histname: er_template  # TODO: implement a default histname based on the source name
-      parameters:
-        - er_rate_multiplier
-        # - er_band_shift
-      templatepath: examples/templates/wimp_templates/er_template.h5
-      histogram_scale_factor: 1
+      - name: wimp
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+        templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
+        apply_efficiency: False
+        efficiency_name: 'signal_eff'  # TODO: Check
 
-    - name: wimp
-      histname: wimp_template
-      parameters:
-        - wimp_rate_multiplier
-        - wimp_mass
-      templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
-      apply_efficiency: False
-      efficiency_name: 'signal_eff'  # TODO: Check
+    # SR1
+    - name: sr1
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": 'np.arange(0, 102, 2)'
+        - "cs2": 'np.geomspace(100, 100000, 51)'
+      in_events_per_bin: true
+      livetime_parameter: livetime_1
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template
+        parameters:
+          - er_rate_multiplier
+          # - er_band_shift
+        templatepath: examples/templates/wimp_templates/er_template.h5
+        histogram_scale_factor: 2
 
-# SR1
-  - name: sr1
-    default_source_class: alea.template_source.TemplateSource
-    likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-    analysis_space:
-      - "cs1": 'np.arange(0, 102, 2)'
-      - "cs2": 'np.geomspace(100, 100000, 51)'
-    in_events_per_bin: true
-    livetime_parameter: livetime_1
-    slice_args: {}
-    sources:
-    - name: er
-      histname: er_template
-      parameters:
-        - er_rate_multiplier
-        # - er_band_shift
-      templatepath: examples/templates/wimp_templates/er_template.h5
-      histogram_scale_factor: 2
-
-    - name: wimp
-      histname: wimp_template
-      parameters:
-        - wimp_rate_multiplier
-        - wimp_mass
-      templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
-      apply_efficiency: False
-      efficiency_name: 'wimp_eff'  # TODO: Check
+      - name: wimp
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+        templatepath: examples/templates/wimp_templates/wimp50gev_template.h5
+        apply_efficiency: False
+        efficiency_name: 'wimp_eff'  # TODO: Check

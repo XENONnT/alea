@@ -120,6 +120,10 @@ class Parameters:
     def __init__(self):
         self.parameters: Dict[str, Parameter] = {}
 
+    def __iter__(self) -> iter:
+        """Returns an iterator over the parameters. Each iteration returns a Parameter object."""
+        return iter(self.parameters.values())
+
     @classmethod
     def from_config(cls, config: Dict[str, dict]):
         """

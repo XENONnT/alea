@@ -9,6 +9,12 @@ logging.basicConfig( level=logging.INFO)
 
 
 class BlueiceDataGenerator:
+    """
+    A class for generating data from a blueice likelihood term.
+
+    Args:
+        ll_term (blueice.likelihood.BinnedLogLikelihood or blueice.likelihood.UnbinnedLogLikelihood): A blueice likelihood term.
+    """
     def __init__(self, ll_term):
         if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
             binned = True
@@ -28,7 +34,6 @@ class BlueiceDataGenerator:
             bins.append(direction[1])
             binc = 0.5 * (direction[1][1::] + direction[1][0:-1])
             bincs.append(binc)
-            #binc_dict[direction[0]] = binc
             dtype.append((direction[0], float))
             data_length *= len(direction[1]) - 1
             data_lengths.append(len(direction[1]) - 1)

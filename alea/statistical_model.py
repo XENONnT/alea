@@ -94,12 +94,29 @@ class StatisticalModel:
             " or use a subclass where it is written for you")
 
     def ll(self, **kwargs) -> float:
-        # CAUTION:
-        # This implementation won't allow you to call the likelihood by positional arguments.
+        """
+        Likelihod function, returns the loglikelihood for the given parameters.
+        The parameters are passed as keyword arguments, positional arguments are not possible.
+        If a parameter is not given, the default value is used.
+
+        Returns:
+            float: Likelihood value
+        """
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
     def generate_data(self, **kwargs):
+        """
+        Generate data for the given parameters.
+        The parameters are passed as keyword arguments, positional arguments are not possible.
+        If a parameter is not given, the default value is used.
+
+        Raises:
+            ValueError: If the parameters are not within the fit limits
+
+        Returns:
+            Data
+        """
         # CAUTION:
         # This implementation won't allow you to call generate_data by positional arguments.
         if not self.parameters.values_in_fit_limits(**kwargs):
@@ -151,6 +168,11 @@ class StatisticalModel:
 
     @property
     def nominal_expectation_values(self):
+        """
+        Nominal expectation values for the sources of the likelihood.
+
+        For this to work, you must implement `get_expectation_values`.
+        """
         return self.get_expectation_values()  # no kwargs for nominal
 
     def get_likelihood_term_from_name(self, likelihood_name):

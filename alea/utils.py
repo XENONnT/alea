@@ -783,3 +783,15 @@ def get_analysis_space(analysis_space: dict) -> list:
                                               sep=" "))
             eval_analysis_space.append(eval_element)
     return eval_analysis_space
+
+def find_file_resource(file: str, possible_locations: list) -> str:
+    """
+    Function to look for a file in a list of folders (the file name may include folder structure too).
+    Return the complete path of the first location found,
+    and throw error if no file is found.
+    """
+    for loc in possible_locations:
+        fname = Path(loc, file)
+        if fname.is_file():
+            return str(fname)
+    raise FileNotFoundError("{:s} not found in any of {:s}".format(file, ",".join(possible_locations)))

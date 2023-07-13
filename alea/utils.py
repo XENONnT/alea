@@ -264,23 +264,34 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
 
 
 def adapt_likelihood_config_for_blueice(likelihood_config: dict,
-                                        template_folder: str) -> dict:
+                                        template_folder_list: list) -> dict:
     """
     Adapt likelihood config to be compatible with blueice.
 
     Args:
         likelihood_config (dict): likelihood config dict
-        template_folder (str): base folder where templates are located.
-            If the folder starts with alea/, the alea folder is used as base.
+        template_folder_list (str): list of possible base folders where
+            templates are located. If a folder starts with alea/,
+            the alea folder is used as base.
+            Ordered by priority.
 
     Returns:
         dict: adapted likelihood config
     """
-    # if template folder starts with alea: get location of alea
-    if template_folder.startswith("alea/"):
-        import alea
-        alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
-        template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
+    for template_folder in template_folder_list:
+        # if template folder starts with alea: get location of alea
+        if template_folder.startswith("alea/"):
+            import alea
+            alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
+            template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
+            # check if template folder exists
+            if not os.path.isdir(template_folder):
+                template_folder = None
+            else:
+                break
+    # raise error if no template folder is found
+    if template_folder is None:
+        raise FileNotFoundError("No template folder found. Please provide a valid template folder.")
 
     likelihood_config["analysis_space"] = get_analysis_space(
         likelihood_config["analysis_space"])
@@ -290,7 +301,7 @@ def adapt_likelihood_config_for_blueice(likelihood_config: dict,
 
     for source in likelihood_config["sources"]:
         source["templatename"] = os.path.join(template_folder,
-                                              source["template_filename"])
+                                            source["template_filename"])
     return likelihood_config
 
 

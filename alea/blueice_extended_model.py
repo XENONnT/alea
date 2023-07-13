@@ -93,8 +93,16 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             likelihood_object = locate(config["likelihood_type"])
+            if isinstance(likelihood_config["template_folder"], str):
+                template_folder_list = [likelihood_config["template_folder"]]
+            elif isinstance(likelihood_config["template_folder"], list):
+                template_folder_list = likelihood_config["template_folder"]
+            else:
+                raise ValueError(
+                    "template_folder must be either a string or a list of strings.")
+
             blueice_config = adapt_likelihood_config_for_blueice(
-                config, likelihood_config["template_folder"])
+                config, template_folder_list)
             blueice_config["livetime_days"] = self.parameters[
                 blueice_config["livetime_parameter"]].nominal_value
             ll = likelihood_object(blueice_config)

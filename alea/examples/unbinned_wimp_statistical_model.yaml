@@ -4,12 +4,12 @@ parameter_definition:
     fittable: false
     description: WIMP mass in GeV/c^2
 
-  livetime_0:
+  livetime_sr0:
     nominal_value: 0.2
     fittable: false
     description: Livetime of SR0 in years
 
-  livetime_1:
+  livetime_sr1:
     nominal_value: 1.0
     fittable: false
     description: Livetime of SR1 in years
@@ -60,7 +60,7 @@ likelihood_config:
         - "cs1": 'np.arange(0, 102, 2)'
         - "cs2": 'np.geomspace(100, 100000, 51)'
       in_events_per_bin: true
-      livetime_parameter: livetime_0
+      livetime_parameter: livetime_sr0
       slice_args: {}
       sources:
       - name: er
@@ -88,7 +88,7 @@ likelihood_config:
         - "cs1": 'np.arange(0, 102, 2)'
         - "cs2": 'np.geomspace(100, 100000, 51)'
       in_events_per_bin: true
-      livetime_parameter: livetime_1
+      livetime_parameter: livetime_sr1
       slice_args: {}
       sources:
       - name: er

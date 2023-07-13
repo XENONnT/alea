@@ -270,7 +270,7 @@ def adapt_likelihood_config_for_blueice(likelihood_config: dict,
 
     Args:
         likelihood_config (dict): likelihood config dict
-        template_folder_list (str): list of possible base folders where
+        template_folder_list (list): list of possible base folders where
             templates are located. If a folder starts with alea/,
             the alea folder is used as base.
             Ordered by priority.
@@ -278,6 +278,7 @@ def adapt_likelihood_config_for_blueice(likelihood_config: dict,
     Returns:
         dict: adapted likelihood config
     """
+    template_folder = None
     for template_folder in template_folder_list:
         # if template folder starts with alea: get location of alea
         if template_folder.startswith("alea/"):
@@ -301,7 +302,7 @@ def adapt_likelihood_config_for_blueice(likelihood_config: dict,
 
     for source in likelihood_config["sources"]:
         source["templatename"] = os.path.join(template_folder,
-                                            source["template_filename"])
+                                              source["template_filename"])
     return likelihood_config
 
 

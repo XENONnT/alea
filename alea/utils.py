@@ -265,6 +265,17 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
 
 def adapt_likelihood_config_for_blueice(likelihood_config: dict,
                                         template_folder: str) -> dict:
+    """
+    Adapt likelihood config to be compatible with blueice.
+
+    Args:
+        likelihood_config (dict): likelihood config dict
+        template_folder (str): base folder where templates are located.
+            If the folder starts with alea/, the alea folder is used as base.
+
+    Returns:
+        dict: adapted likelihood config
+    """
     # if template folder starts with alea: get location of alea
     if template_folder.startswith("alea/"):
         import alea

@@ -23,6 +23,12 @@ class BlueiceExtendedModel(StatisticalModel):
     """
 
     def __init__(self, parameter_definition: dict, likelihood_config: dict):
+        """Initializes the statistical model.
+
+        Args:
+            parameter_definition (dict): A dictionary defining the model parameters.
+            likelihood_config (dict): A dictionary defining the likelihood.
+        """
         super().__init__(parameter_definition=parameter_definition)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
@@ -33,15 +39,21 @@ class BlueiceExtendedModel(StatisticalModel):
 
     @classmethod
     def from_config(cls, config_file_path: str) -> "BlueiceExtendedModel":
+        """Initializes the statistical model from a yaml config file.
+
+        Args:
+            config_file_path (str): Path to the yaml config file.
+
+        Returns:
+            BlueiceExtendedModel: Statistical model.
+        """
         with open(config_file_path, "r") as f:
             config = yaml.safe_load(f)
         return cls(**config)
 
     @property
     def data(self) -> list:
-        """
-        Returns the data of the statistical model.
-        """
+        """Returns the data of the statistical model."""
         return super().data
 
     @data.setter
@@ -72,6 +84,7 @@ class BlueiceExtendedModel(StatisticalModel):
     def _build_ll_from_config(self, likelihood_config: dict) -> "LogLikelihoodSum":
         """
         Iterate through all likelihood terms and build blueice ll
+
         Args:
             likelihood_config (dict): A dictionary defining the likelihood.
         """
@@ -105,7 +118,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 # Set shape parameters
                 shape_parameters = [
                     p for p in source["parameters"] if self.parameters[p].type == "shape"]
-                if len(shape_parameters) > 0:
+                if shape_parameters:
                     # TODO: Implement setting shape parameters
                     raise NotImplementedError("Shape parameters are not yet supported.")
 
@@ -161,13 +174,21 @@ class BlueiceExtendedModel(StatisticalModel):
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     """
-    Custom ancillary likelihood that can be used to add constraint terms for parameters of the likelihood.
+    Custom ancillary likelihood that can be used to add constraint terms
+    for parameters of the likelihood.
 
     Args:
-        parameters (Parameters): Parameters object containing the parameters to be constrained.
+        parameters (Parameters): Parameters object containing the
+            parameters to be constrained.
     """
 
     def __init__(self, parameters: Parameters):
+        """Initialize the CustomAncillaryLikelihood.
+
+        Args:
+            parameters (Parameters): Parameters object containing the
+                parameters to be constrained.
+        """
         self.parameters = parameters
         # check that there are no None values in the uncertainties dict
         assert set(self.parameters.uncertainties.keys()) == set(self.parameters.names)
@@ -181,13 +202,15 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     @property
     def constraint_terms(self) -> dict:
         """
-        Dict of all constraint terms (logpdf of constraint functions) of the ancillary likelihood.
+        Dict of all constraint terms (logpdf of constraint functions)
+        of the ancillary likelihood.
         """
         return {name: func.logpdf for name, func in self.constraint_functions.items()}
 
     def set_data(self, d: dict):
         """
         Set the data of the ancillary likelihood (ancillary measurements).
+
         Args:
             d (dict): Data in this case is a dict of ancillary measurements.
         """

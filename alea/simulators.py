@@ -5,7 +5,7 @@ from itertools import product
 import scipy.stats as sps
 import logging
 import blueice
-logging.basicConfig( level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 class BlueiceDataGenerator:
@@ -13,8 +13,11 @@ class BlueiceDataGenerator:
     A class for generating data from a blueice likelihood term.
 
     Args:
-        ll_term (blueice.likelihood.BinnedLogLikelihood or blueice.likelihood.UnbinnedLogLikelihood): A blueice likelihood term.
+        ll_term (blueice.likelihood.BinnedLogLikelihood
+            or blueice.likelihood.UnbinnedLogLikelihood):
+            A blueice likelihood term.
     """
+
     def __init__(self, ll_term):
         if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
             binned = True

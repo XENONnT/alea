@@ -86,20 +86,13 @@ class BlueiceExtendedModel(StatisticalModel):
 
         self._data = data
 
-    @property
-    def nominal_expectation_values(self):
-        # TODO
-        # IDEA also enable a setter that changes the rate parameters?
-        #Knut: can this not be done in the parent class using get_expectation_values?
-        raise NotImplementedError
-
     def get_expectation_values(self, **kwargs):
         """
         return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
         """
         ret = dict()
-        for ll in self._likelihood.likelihood_list[:-1]: #generate args does not contribute
+        for ll in self._likelihood.likelihood_list[:-1]: # ancillary likelihood does not contribute
             mus = ll(full_output=True, **kwargs)[1]
             for n, mu in zip(ll.source_name_list, mus):
                 ret[n] = ret.get(n, 0) + mu

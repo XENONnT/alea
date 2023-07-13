@@ -149,6 +149,10 @@ class StatisticalModel:
     def get_expectation_values(self):
         return NotImplementedError("get_expectation_values is optional to implement")
 
+    @property
+    def nominal_expectation_values(self):
+        return self.get_expectation_values()  # no kwargs for nominal
+
     def get_likelihood_term_from_name(self, likelihood_name):
         """
         Returns the index of a likelihood term if the likelihood has several names
@@ -232,7 +236,7 @@ class StatisticalModel:
         return m.values.to_dict(), -1 * m.fval
 
     def _confidence_interval_checks(
-            self, parameter: str,
+            self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float],
             confidence_level: float,
             confidence_interval_kind: str,
@@ -247,9 +251,9 @@ class StatisticalModel:
 
         mask = (confidence_level > 0) and (confidence_level < 1)
         assert mask, "the confidence level must lie between 0 and 1"
-        parameter_of_interest = self.parameters[parameter]
+        parameter_of_interest = self.parameters[poi_name]
         assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
-        assert parameter not in kwargs, "you cannot set the parameter you're constraining"
+        assert poi_name not in kwargs, "you cannot set the parameter you're constraining"
 
         if parameter_interval_bounds is None:
             parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
@@ -260,7 +264,11 @@ class StatisticalModel:
 
         if parameter_of_interest.type == "rate":
             try:
-                mu_parameter = self.get_expectation_values(**kwargs)[parameter_of_interest.name]
+                if parameter_of_interest.type == "rate" and poi_name.endswith("_rate_multiplier"):
+                    source_name = poi_name.replace("_rate_multiplier", "")
+                else:
+                    source_name = poi_name
+                mu_parameter = self.get_expectation_values(**kwargs)[source_name]
                 parameter_interval_bounds = (
                     parameter_interval_bounds[0] / mu_parameter,
                     parameter_interval_bounds[1] / mu_parameter)
@@ -285,7 +293,7 @@ class StatisticalModel:
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
     def confidence_interval(
-            self, parameter: str,
+            self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float] = None,
             confidence_level: float = None,
             confidence_interval_kind: str = None,
@@ -293,7 +301,7 @@ class StatisticalModel:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter
 
-        parameter: string, name of fittable parameter of the model
+        poi_name: string, name of fittable parameter of the model
         parameter_interval_bounds: range in which to search for the confidence interval edges.
             May be specified as:
             - setting the property "parameter_interval_bounds" for the parameter
@@ -305,7 +313,7 @@ class StatisticalModel:
         """
 
         ci_objects = self._confidence_interval_checks(
-            parameter,
+            poi_name,
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
@@ -314,7 +322,7 @@ class StatisticalModel:
 
         # find best-fit:
         best_result, best_ll = self.fit(**kwargs)
-        best_parameter = best_result[parameter]
+        best_parameter = best_result[poi_name]
         mask = (parameter_interval_bounds[0] < best_parameter)
         mask &= (best_parameter < parameter_interval_bounds[1])
         assert mask, ("the best-fit is outside your confidence interval"
@@ -325,7 +333,7 @@ class StatisticalModel:
         def t(hypothesis):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
-            kwargs[parameter] = hypothesis
+            kwargs[poi_name] = hypothesis
             _, ll = self.fit(**kwargs)  # ll is + log-likelihood here
             ret = 2. * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded

@@ -16,7 +16,7 @@ parameter_definition:
 
   wimp_rate_multiplier:
     nominal_value: 1.0
-    ptype: rate
+    type: rate
     fittable: true
     fit_limits:
       - 0
@@ -24,7 +24,7 @@ parameter_definition:
 
   er_rate_multiplier:
     nominal_value: 1.0
-    ptype: rate
+    type: rate
     uncertainty: 0.2
     relative_uncertainty: true
     fittable: true
@@ -35,7 +35,7 @@ parameter_definition:
 
   signal_efficiency:
     nominal_value: 1.0
-    ptype: efficiency
+    type: efficiency
     uncertainty: 0.1
     relative_uncertainty: true
     fittable: true
@@ -47,7 +47,7 @@ parameter_definition:
 
   # er_band_shift:
   #   nominal_value: 0
-  #   ptype: shape
+  #   type: shape
   #   uncertainty: scipy.stats.uniform(loc=-1, scale=2)
   #   relative_uncertainty: false
   #   fittable: true

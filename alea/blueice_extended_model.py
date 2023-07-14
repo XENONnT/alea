@@ -80,9 +80,8 @@ class BlueiceExtendedModel(StatisticalModel):
         for ll in self._likelihood.likelihood_list[:-1]:  # ancillary likelihood does not contribute
 
             ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
+            ll_pars += ["livetime_days"]
             call_args = {k:i for k, i in kwargs.items() if k in ll_pars}
-            if "livetime_days" in kwargs:
-                call_args["livetime_days"] = kwargs["livetime_days"]
 
             mus = ll(full_output=True, **call_args)[1]
             for n, mu in zip(ll.source_name_list, mus):

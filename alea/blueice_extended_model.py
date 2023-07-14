@@ -132,7 +132,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # Set rate parameters
                 rate_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].type == "rate"]
+                    p for p in source["parameters"] if self.parameters[p].ptype == "rate"]
                 if len(rate_parameters) != 1:
                     raise ValueError(
                         f"Source {source['name']} must have exactly one rate parameter.")
@@ -146,7 +146,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # Set shape parameters
                 shape_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].type == "shape"]
+                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
                 if shape_parameters:
                     # TODO: Implement setting shape parameters
                     raise NotImplementedError("Shape parameters are not yet supported.")

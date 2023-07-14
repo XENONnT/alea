@@ -284,9 +284,9 @@ class StatisticalModel:
                     "You must set parameter_interval_bounds in the parameter config"
                     " or when calling confidence_interval")
 
-        if parameter_of_interest.type == "rate":
+        if parameter_of_interest.ptype == "rate":
             try:
-                if parameter_of_interest.type == "rate" and poi_name.endswith("_rate_multiplier"):
+                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
                     source_name = poi_name.replace("_rate_multiplier", "")
                 else:
                     source_name = poi_name

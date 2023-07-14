@@ -9,7 +9,7 @@ class Parameter:
         name (str): The name of the parameter.
         nominal_value (float, optional): The nominal value of the parameter.
         fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
-        type (str, optional): The type of the parameter.
+        ptype (str, optional): The ptype of the parameter.
         uncertainty (float or str, optional):
             The uncertainty of the parameter. If a string,
             it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
@@ -27,7 +27,7 @@ class Parameter:
         name: str,
         nominal_value: Optional[float] = None,
         fittable: bool = True,
-        type: Optional[str] = None,
+        ptype: Optional[str] = None,
         uncertainty: Optional[float or str] = None,
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
@@ -39,7 +39,7 @@ class Parameter:
         self.name = name
         self.nominal_value = nominal_value
         self.fittable = fittable
-        self.type = type
+        self.ptype = ptype
         self._uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors

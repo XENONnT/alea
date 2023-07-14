@@ -91,7 +91,7 @@ likelihood_config:
           - signal_efficiency
         template_filename: wimp50gev_template.h5
         apply_efficiency: True
-        efficiency_name: signal_efficiency  # TODO: Check
+        efficiency_name: signal_efficiency
 
     # SR1
     - name: sr1
@@ -120,4 +120,4 @@ likelihood_config:
           - signal_efficiency
         template_filename: wimp50gev_template.h5
         apply_efficiency: True
-        efficiency_name: signal_efficiency  # TODO: Check
+        efficiency_name: signal_efficiency

@@ -155,18 +155,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # Set efficiency parameters
                 if source.get("apply_efficiency", False):
-                    assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
-                    efficiency_name = source["efficiency_name"]
-                    assert efficiency_name in source["parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
-                    efficiency_parameter = self.parameters[efficiency_name]
-                    assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
-                                                                      " be an efficiency".format(efficiency_name)
-                    limits = efficiency_parameter.fit_limits
-                    assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
-                                         ' constrained to be nonnegative'.format(efficiency_name)
-                    assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
-                                                   ' constrained to be finite'.format(efficiency_name)
-                    ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
+                    self._set_efficiency(source, ll)
 
 
             ll.prepare()
@@ -295,3 +284,18 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     "Only float uncertainties are supported at the moment.")
             constraint_functions[name] = func
         return constraint_functions
+
+    def _set_efficiency(self, source, ll):
+        assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
+        efficiency_name = source["efficiency_name"]
+        assert efficiency_name in source[
+            "parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
+        efficiency_parameter = self.parameters[efficiency_name]
+        assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
+                                                          " be an efficiency".format(efficiency_name)
+        limits = efficiency_parameter.fit_limits
+        assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
+                               ' constrained to be nonnegative'.format(efficiency_name)
+        assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
+                                       ' constrained to be finite'.format(efficiency_name)
+        ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))

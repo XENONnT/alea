@@ -81,7 +81,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
             ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
             ll_pars += ["livetime_days"]
-            call_args = {k:i for k, i in kwargs.items() if k in ll_pars}
+            call_args = {k: i for k, i in kwargs.items() if k in ll_pars}
 
             mus = ll(full_output=True, **call_args)[1]
             for n, mu in zip(ll.source_name_list, mus):
@@ -120,13 +120,13 @@ class BlueiceExtendedModel(StatisticalModel):
                 parameters_to_ignore: List[str] = [p.name for p in self.parameters if (p.type == "shape")
                                                    & (p.name not in source["parameters"])]
                 # no efficiency affects PDF:
-                parameters_to_ignore += [ p.name for p in self.parameters if (p.type == "efficiency")]
+                parameters_to_ignore += [p.name for p in self.parameters if (p.type == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])
 
                 # ignore all shape parameters known to this model not named specifically in the source:
                 blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
 
-            ll = likelihood_object(blueice_config) # noqa: E127
+            ll = likelihood_object(blueice_config)
 
             for source in config["sources"]:
 
@@ -151,11 +151,9 @@ class BlueiceExtendedModel(StatisticalModel):
                     # TODO: Implement setting shape parameters
                     raise NotImplementedError("Shape parameters are not yet supported.")
 
-
                 # Set efficiency parameters
                 if source.get("apply_efficiency", False):
                     self._set_efficiency(source, ll)
-
 
             ll.prepare()
             lls.append(ll)
@@ -205,6 +203,21 @@ class BlueiceExtendedModel(StatisticalModel):
             ancillary_measurements[name] = parameter_meas
 
         return ancillary_measurements
+
+    def _set_efficiency(self, source, ll):
+        assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
+        efficiency_name = source["efficiency_name"]
+        assert efficiency_name in source[
+            "parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
+        efficiency_parameter = self.parameters[efficiency_name]
+        assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
+                                                          " be an efficiency".format(efficiency_name)
+        limits = efficiency_parameter.fit_limits
+        assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
+                               ' constrained to be nonnegative'.format(efficiency_name)
+        assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
+                                       ' constrained to be finite'.format(efficiency_name)
+        ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
@@ -284,17 +297,3 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             constraint_functions[name] = func
         return constraint_functions
 
-    def _set_efficiency(self, source, ll):
-        assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
-        efficiency_name = source["efficiency_name"]
-        assert efficiency_name in source[
-            "parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
-        efficiency_parameter = self.parameters[efficiency_name]
-        assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
-                                                          " be an efficiency".format(efficiency_name)
-        limits = efficiency_parameter.fit_limits
-        assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
-                               ' constrained to be nonnegative'.format(efficiency_name)
-        assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
-                                       ' constrained to be finite'.format(efficiency_name)
-        ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))

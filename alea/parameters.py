@@ -9,7 +9,7 @@ class Parameter:
         name (str): The name of the parameter.
         nominal_value (float, optional): The nominal value of the parameter.
         fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
-        ptype (str, optional): The type of the parameter.
+        ptype (str, optional): The ptype of the parameter.
         uncertainty (float or str, optional):
             The uncertainty of the parameter. If a string,
             it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
@@ -39,7 +39,7 @@ class Parameter:
         self.name = name
         self.nominal_value = nominal_value
         self.fittable = fittable
-        self.type = ptype
+        self.ptype = ptype
         self._uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
@@ -119,6 +119,10 @@ class Parameters:
 
     def __init__(self):
         self.parameters: Dict[str, Parameter] = {}
+
+    def __iter__(self) -> iter:
+        """Returns an iterator over the parameters. Each iteration returns a Parameter object."""
+        return iter(self.parameters.values())
 
     @classmethod
     def from_config(cls, config: Dict[str, dict]):
@@ -212,6 +216,25 @@ class Parameters:
         Returns a list of parameter names which are not fittable.
         """
         return [name for name, param in self.parameters.items() if not param.fittable]
+
+    @property
+    def uncertainties(self) -> dict:
+        """
+        return a dict of name:uncertainty for all parameters with a not-NaN uncertainty.
+        """
+        return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
+
+    @property
+    def with_uncertainty(self) -> "Parameters":
+        """
+        Return parameters with a not-NaN uncertainty.
+        The parameters are the same objects as in the original Parameters object, not a copy.
+        """
+        param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
+        params = Parameters()
+        for param in param_dict.values():
+            params.add_parameter(param)
+        return params
 
     @property
     def nominal_values(self) -> dict:

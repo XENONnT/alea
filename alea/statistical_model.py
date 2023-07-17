@@ -32,16 +32,12 @@ class StatisticalModel:
         _generate_data
 
         optional to implement:
-        get_mus
-        get_likelihood_term_names
+        get_expectation_values
 
         Implemented here:
         store_data
         fit
-        get_confidence_interval
-        get_expectations
         get_parameter_list
-        print_config
 
     Other members:
         _data = None
@@ -98,18 +94,35 @@ class StatisticalModel:
             " or use a subclass where it is written for you")
 
     def ll(self, **kwargs) -> float:
-        # CAUTION:
-        # This implementation won't allow you to call the likelihood by positional arguments.
+        """
+        Likelihod function, returns the loglikelihood for the given parameters.
+        The parameters are passed as keyword arguments, positional arguments are not possible.
+        If a parameter is not given, the default value is used.
+
+        Returns:
+            float: Likelihood value
+        """
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
     def generate_data(self, **kwargs):
+        """
+        Generate data for the given parameters.
+        The parameters are passed as keyword arguments, positional arguments are not possible.
+        If a parameter is not given, the default value is used.
+
+        Raises:
+            ValueError: If the parameters are not within the fit limits
+
+        Returns:
+            Data
+        """
         # CAUTION:
         # This implementation won't allow you to call generate_data by positional arguments.
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
-        parameters = self.parameters(**kwargs)
-        return self._generate_data(**parameters)
+        generate_values = self.parameters(**kwargs)
+        return self._generate_data(**generate_values)
 
     @property
     def data(self):
@@ -150,39 +163,33 @@ class StatisticalModel:
         kw = {'metadata': metadata} if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-    def get_expectations(self):
-        return NotImplementedError("get_expectation is optional to implement")
+    def get_expectation_values(self, **parameter_values):
+        return NotImplementedError("get_expectation_values is optional to implement")
 
-    def get_likelihood_term_names(self):
+    @property
+    def nominal_expectation_values(self):
         """
-        It may be convenient to partition the likelihood in several terms,
-        you can implement this function to give them names (list of strings)
+        Nominal expectation values for the sources of the likelihood.
+
+        For this to work, you must implement `get_expectation_values`.
         """
-        raise NotImplementedError("get_likelihood_term_names is optional to implement")
+        return self.get_expectation_values()  # no kwargs for nominal
 
     def get_likelihood_term_from_name(self, likelihood_name):
         """
         Returns the index of a likelihood term if the likelihood has several names
         """
-        try:
-            if hasattr(self, 'likelihood_names'):
-                likelihood_names = self.likelihood_names
-            else:
-                likelihood_names = self.get_likelihood_term_names()
-            return {n: i for i, n in enumerate(likelihood_names)}[likelihood_name]
-        except Exception as e:
-            print(e)
-            return None
+        if hasattr(self, "likelihood_names"):
+            likelihood_names = self.likelihood_names
+            return {n:i for i,n in enumerate(likelihood_names)}[likelihood_name]
+        else:
+            raise NotImplementedError("The attribute likelihood_names is not defined.")
 
     def get_parameter_list(self):
         """
         Returns a set of all parameters that the generate_data and likelihood accepts
         """
-        return self._parameter_list
-
-    def print_config(self):
-        for k, i in self.config:
-            print(k, i)
+        return self.parameters.names
 
     def make_objective(self, minus=True, **kwargs):
         sign = -1 if minus else 1
@@ -251,7 +258,7 @@ class StatisticalModel:
         return m.values.to_dict(), -1 * m.fval
 
     def _confidence_interval_checks(
-            self, parameter: str,
+            self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float],
             confidence_level: float,
             confidence_interval_kind: str,
@@ -266,9 +273,9 @@ class StatisticalModel:
 
         mask = (confidence_level > 0) and (confidence_level < 1)
         assert mask, "the confidence level must lie between 0 and 1"
-        parameter_of_interest = self.parameters[parameter]
+        parameter_of_interest = self.parameters[poi_name]
         assert parameter_of_interest.fittable, "The parameter of interest must be fittable"
-        assert parameter not in kwargs, "you cannot set the parameter you're constraining"
+        assert poi_name not in kwargs, "you cannot set the parameter you're constraining"
 
         if parameter_interval_bounds is None:
             parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
@@ -277,15 +284,19 @@ class StatisticalModel:
                     "You must set parameter_interval_bounds in the parameter config"
                     " or when calling confidence_interval")
 
-        if parameter_of_interest.type == "rate":
+        if parameter_of_interest.ptype == "rate":
             try:
-                mu_parameter = self.get_expectations(**kwargs)[parameter_of_interest.name]
+                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
+                    source_name = poi_name.replace("_rate_multiplier", "")
+                else:
+                    source_name = poi_name
+                mu_parameter = self.get_expectation_values(**kwargs)[source_name]
                 parameter_interval_bounds = (
                     parameter_interval_bounds[0] / mu_parameter,
                     parameter_interval_bounds[1] / mu_parameter)
             except NotImplementedError:
                 warnings.warn(
-                    "The statistical model does not have a get_expectations model implemented,"
+                    "The statistical model does not have a get_expectation_values model implemented,"
                     " confidence interval bounds will be set directly.")
                 pass  # no problem, continuing with bounds as set
 
@@ -304,7 +315,7 @@ class StatisticalModel:
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
     def confidence_interval(
-            self, parameter: str,
+            self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float] = None,
             confidence_level: float = None,
             confidence_interval_kind: str = None,
@@ -312,7 +323,7 @@ class StatisticalModel:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter
 
-        parameter: string, name of fittable parameter of the model
+        poi_name: string, name of fittable parameter of the model
         parameter_interval_bounds: range in which to search for the confidence interval edges.
             May be specified as:
             - setting the property "parameter_interval_bounds" for the parameter
@@ -324,7 +335,7 @@ class StatisticalModel:
         """
 
         ci_objects = self._confidence_interval_checks(
-            parameter,
+            poi_name,
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
@@ -333,7 +344,7 @@ class StatisticalModel:
 
         # find best-fit:
         best_result, best_ll = self.fit(**kwargs)
-        best_parameter = best_result[parameter]
+        best_parameter = best_result[poi_name]
         mask = (parameter_interval_bounds[0] < best_parameter)
         mask &= (best_parameter < parameter_interval_bounds[1])
         assert mask, ("the best-fit is outside your confidence interval"
@@ -344,7 +355,7 @@ class StatisticalModel:
         def t(hypothesis):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
-            kwargs[parameter] = hypothesis
+            kwargs[poi_name] = hypothesis
             _, ll = self.fit(**kwargs)  # ll is + log-likelihood here
             ret = 2. * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded

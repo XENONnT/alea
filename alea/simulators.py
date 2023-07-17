@@ -4,12 +4,29 @@ import multihist as mh
 from itertools import product
 import scipy.stats as sps
 import logging
-logging.basicConfig( level=logging.INFO)
+import blueice
+logging.basicConfig(level=logging.INFO)
 
 
-class simulate_interpolated:
-    def __init__(self, ll_template, binned=False, mute=True):
-        ll = deepcopy(ll_template)
+class BlueiceDataGenerator:
+    """
+    A class for generating data from a blueice likelihood term.
+
+    Args:
+        ll_term (blueice.likelihood.BinnedLogLikelihood
+            or blueice.likelihood.UnbinnedLogLikelihood):
+            A blueice likelihood term.
+    """
+
+    def __init__(self, ll_term):
+        if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
+            binned = True
+        elif isinstance(ll_term, blueice.likelihood.UnbinnedLogLikelihood):
+            binned = False
+        else:
+            raise NotImplementedError
+
+        ll = deepcopy(ll_term)
         bins = []  # bin edges
         bincs = []  # bin centers of each component
         direction_names = []
@@ -20,7 +37,6 @@ class simulate_interpolated:
             bins.append(direction[1])
             binc = 0.5 * (direction[1][1::] + direction[1][0:-1])
             bincs.append(binc)
-            #binc_dict[direction[0]] = binc
             dtype.append((direction[0], float))
             data_length *= len(direction[1]) - 1
             data_lengths.append(len(direction[1]) - 1)

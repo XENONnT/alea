@@ -45,20 +45,22 @@ parameter_definition:
     fit_guess: 1.0
     description: Parameter to account for the uncertain signal expectation given a certain cross-section
 
-  # er_band_shift:
-  #   nominal_value: 0
-  #   ptype: shape
-  #   uncertainty: scipy.stats.uniform(loc=-1, scale=2)
-  #   relative_uncertainty: false
-  #   fittable: true
-  #   blueice_anchors:
-  #     - -1
-  #     - 0
-  #     - 1
-  #   fit_limits:
-  #     - -1
-  #     - 1
-  #   description: ER band shape parameter (shifts the ER band up and down)
+  er_band_shift:
+    nominal_value: 0
+    ptype: shape
+    uncertainty: null  # scipy.stats.uniform(loc=-1, scale=2)
+    # relative_uncertainty: false
+    fittable: true
+    blueice_anchors:
+      - -2
+      - -1
+      - 0
+      - 1
+      - 2
+    fit_limits:
+      - -2
+      - 2
+    description: ER band shape parameter (shifts the ER band up and down)
 
 likelihood_config:
   likelihood_weights: [1, 1, 1]
@@ -79,8 +81,10 @@ likelihood_config:
         histname: er_template  # TODO: implement a default histname based on the source name
         parameters:
           - er_rate_multiplier
-          # - er_band_shift
-        template_filename: er_template.h5
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.h5
         histogram_scale_factor: 1
 
       - name: wimp
@@ -108,8 +112,10 @@ likelihood_config:
         histname: er_template
         parameters:
           - er_rate_multiplier
-          # - er_band_shift
-        template_filename: er_template.h5
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.h5
         histogram_scale_factor: 2
 
       - name: wimp

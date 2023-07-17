@@ -117,10 +117,10 @@ class BlueiceExtendedModel(StatisticalModel):
 
             # add all parameters to extra_dont_hash for each source unless it is used:
             for i, source in enumerate(config["sources"]):
-                parameters_to_ignore: List[str] = [p.name for p in self.parameters if (p.type == "shape")
+                parameters_to_ignore: List[str] = [p.name for p in self.parameters if (p.ptype == "shape")
                                                    & (p.name not in source["parameters"])]
                 # no efficiency affects PDF:
-                parameters_to_ignore += [p.name for p in self.parameters if (p.type == "efficiency")]
+                parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])
 
                 # ignore all shape parameters known to this model not named specifically in the source:
@@ -210,8 +210,8 @@ class BlueiceExtendedModel(StatisticalModel):
         assert efficiency_name in source[
             "parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
         efficiency_parameter = self.parameters[efficiency_name]
-        assert efficiency_parameter.type == "efficiency", "The parameter {:s} must" \
-                                                          " be an efficiency".format(efficiency_name)
+        assert efficiency_parameter.ptype == "efficiency", "The parameter {:s} must" \
+            " be an efficiency".format(efficiency_name)
         limits = efficiency_parameter.fit_limits
         assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
                                ' constrained to be nonnegative'.format(efficiency_name)
@@ -296,4 +296,3 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     "Only float uncertainties are supported at the moment.")
             constraint_functions[name] = func
         return constraint_functions
-

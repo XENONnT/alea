@@ -163,7 +163,7 @@ class StatisticalModel:
         kw = {'metadata': metadata} if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-    def get_expectation_values(self):
+    def get_expectation_values(self, **parameter_values):
         return NotImplementedError("get_expectation_values is optional to implement")
 
     @property
@@ -284,9 +284,9 @@ class StatisticalModel:
                     "You must set parameter_interval_bounds in the parameter config"
                     " or when calling confidence_interval")
 
-        if parameter_of_interest.type == "rate":
+        if parameter_of_interest.ptype == "rate":
             try:
-                if parameter_of_interest.type == "rate" and poi_name.endswith("_rate_multiplier"):
+                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
                     source_name = poi_name.replace("_rate_multiplier", "")
                 else:
                     source_name = poi_name

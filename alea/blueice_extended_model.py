@@ -144,16 +144,20 @@ class BlueiceExtendedModel(StatisticalModel):
                     raise NotImplementedError(
                         "Only rate multipliers that end on _rate_multiplier are currently supported.")
 
-                # Set shape parameters
-                shape_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
-                if shape_parameters:
-                    # TODO: Implement setting shape parameters
-                    raise NotImplementedError("Shape parameters are not yet supported.")
-
                 # Set efficiency parameters
                 if source.get("apply_efficiency", False):
                     self._set_efficiency(source, ll)
+
+            # Set shape parameters
+            shape_parameters = [
+                p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
+            for p in shape_parameters:
+                nominal = self.parameters[p].nominal_value
+                anchors = self.parameters[p].blueice_anchors
+                if anchors is None:
+                    raise ValueError(f"Shape parameter {p} does not have any anchors.")
+                ll.add_shape_parameter(p, anchors=anchors, log_prior=None,
+                                       base_value=nominal)
 
             ll.prepare()
             lls.append(ll)

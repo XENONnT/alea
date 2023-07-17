@@ -12,9 +12,11 @@ __pycache__
 *.pdf
 *.ipynb
 !notebooks/*.ipynb
+!alea/examples/*.ipynb
 *.h5
 *.hdf5
 !templates/*.h5
 !templates/*.hdf5
 docs/build
 build
+debug.py

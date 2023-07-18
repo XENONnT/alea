@@ -1,15 +1,16 @@
 from pydoc import locate  # to lookup likelihood class
 from typing import List
 
-from alea.statistical_model import StatisticalModel
-from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice
-from alea.parameters import Parameters
 import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood
 from blueice.likelihood import LogLikelihoodSum
+
+from alea.statistical_model import StatisticalModel
+from alea.simulators import BlueiceDataGenerator
+from alea.utils import adapt_likelihood_config_for_blueice
+from alea.parameters import Parameters
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -183,8 +184,8 @@ class BlueiceExtendedModel(StatisticalModel):
         return science_data + [ancillary_measurements] + [generate_values]
 
     def _generate_science_data(self, **generate_values) -> list:
-        science_data = [gen.simulate(**generate_values)
-                        for gen in self.data_generators]
+        science_data = [
+            gen.simulate(**generate_values) for gen in self.data_generators]
         return science_data
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
@@ -205,18 +206,21 @@ class BlueiceExtendedModel(StatisticalModel):
         return ancillary_measurements
 
     def _set_efficiency(self, source, ll):
-        assert "efficiency_name" in source, "Unspecified efficiency_name for source {:s}".format(source["name"])
+        assert "efficiency_name" in source, f"Unspecified efficiency_name for source {source['name']:s}"
         efficiency_name = source["efficiency_name"]
+
         assert efficiency_name in source[
-            "parameters"], "The efficiency_name for source {:s} is not in its parameter list".format(source["name"])
+            "parameters"], f"The efficiency_name for source {source['name']:s} is not in its parameter list"
         efficiency_parameter = self.parameters[efficiency_name]
+
         assert efficiency_parameter.ptype == "efficiency", "The parameter {:s} must" \
             " be an efficiency".format(efficiency_name)
         limits = efficiency_parameter.fit_limits
-        assert 0 <= limits[0], 'Efficiency parameters including {:s} must be' \
-                               ' constrained to be nonnegative'.format(efficiency_name)
-        assert np.isfinite(limits[1]), 'Efficiency parameters including {:s} must be' \
-                                       ' constrained to be finite'.format(efficiency_name)
+
+        assert 0 <= limits[0], (
+            f"Efficiency parameters including {efficiency_name:s} must be constrained to be nonnegative")
+        assert np.isfinite(limits[1]), (
+            f"Efficiency parameters including {efficiency_name:s} must be constrained to be finite")
         ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
 
 
@@ -243,9 +247,10 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         parameter_list = self.parameters.names
 
         self.constraint_functions = self._get_constraint_functions()
-        super().__init__(func=self.ancillary_likelihood_sum,
-                         parameter_list=parameter_list,
-                         config=self.parameters.nominal_values)
+        super().__init__(
+            func=self.ancillary_likelihood_sum,
+            parameter_list=parameter_list,
+            config=self.parameters.nominal_values)
 
     @property
     def constraint_terms(self) -> dict:

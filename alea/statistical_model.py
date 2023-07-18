@@ -155,9 +155,9 @@ class StatisticalModel:
         if not defined, it will be ["0", "1", ..., "n-1"]
         """
         if data_name_list is None:
-            try:
-                data_name_list = self.get_likelihood_term_names()
-            except NotImplementedError:
+            if hasattr(self, "likelihood_names"):
+                data_name_list = self.likelihood_names
+            else:
                 data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
         kw = {'metadata': metadata} if metadata is not None else dict()

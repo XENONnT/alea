@@ -208,7 +208,7 @@ def detect_path(config_data):
         path = config_data["midway_path"]
         on_remote = True
     else:
-        path = "alea/data"
+        path = "alea"
         on_remote = False
     return path, on_remote
 
@@ -261,6 +261,49 @@ def adapt_inference_object_config(config_data, wimp_mass, cache_dir=None):
                 if cache_dir is not None:
                     source["cache_dir"] = cache_dir
     return inference_object_config
+
+
+def adapt_likelihood_config_for_blueice(likelihood_config: dict,
+                                        template_folder_list: list) -> dict:
+    """
+    Adapt likelihood config to be compatible with blueice.
+
+    Args:
+        likelihood_config (dict): likelihood config dict
+        template_folder_list (list): list of possible base folders where
+            templates are located. If a folder starts with alea/,
+            the alea folder is used as base.
+            Ordered by priority.
+
+    Returns:
+        dict: adapted likelihood config
+    """
+    template_folder = None
+    for template_folder in template_folder_list:
+        # if template folder starts with alea: get location of alea
+        if template_folder.startswith("alea/"):
+            import alea
+            alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
+            template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
+            # check if template folder exists
+            if not os.path.isdir(template_folder):
+                template_folder = None
+            else:
+                break
+    # raise error if no template folder is found
+    if template_folder is None:
+        raise FileNotFoundError("No template folder found. Please provide a valid template folder.")
+
+    likelihood_config["analysis_space"] = get_analysis_space(
+        likelihood_config["analysis_space"])
+
+    likelihood_config["default_source_class"] = locate(
+        likelihood_config["default_source_class"])
+
+    for source in likelihood_config["sources"]:
+        source["templatename"] = os.path.join(template_folder,
+                                              source["template_filename"])
+    return likelihood_config
 
 
 class VariationConvenience(object):
@@ -725,3 +768,31 @@ def _get_generate_args_from_toyfile(toydata_file):
     if not all_generate_args_equal:
         raise ValueError("generate_args in toyfile are not all the same")
     return structured_array_to_dict(generate_args_list[0])
+
+
+def get_analysis_space(analysis_space: dict) -> list:
+    eval_analysis_space = []
+
+    for element in analysis_space:
+        for key, value in element.items():
+            if value.startswith("np."):
+                eval_element = (key, eval(value))
+            else:
+                eval_element = (key,
+                                np.fromstring(value,
+                                              dtype=float,
+                                              sep=" "))
+            eval_analysis_space.append(eval_element)
+    return eval_analysis_space
+
+def find_file_resource(file: str, possible_locations: list) -> str:
+    """
+    Function to look for a file in a list of folders (the file name may include folder structure too).
+    Return the complete path of the first location found,
+    and throw error if no file is found.
+    """
+    for loc in possible_locations:
+        fname = Path(loc, file)
+        if fname.is_file():
+            return str(fname)
+    raise FileNotFoundError("{:s} not found in any of {:s}".format(file, ",".join(possible_locations)))

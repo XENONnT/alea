@@ -219,10 +219,6 @@ class StatisticalModel:
         if not self.parameters.values_in_fit_limits(**guesses):
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
-        if any(i is None for k, i in defaults.items()):
-            emptypars = ", ".join([k for k, i in defaults.items() if i is None])
-            raise AssertionError("All parameters must be set explicitly, or have a guess for the fit,"
-                                 " encountered for: " + emptypars)
 
         cost = self.make_objective(minus=True, **kwargs)
 

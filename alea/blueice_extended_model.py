@@ -122,8 +122,8 @@ class BlueiceExtendedModel(StatisticalModel):
             # add all parameters to extra_dont_hash for each source unless it is used:
             for i, source in enumerate(config["sources"]):
                 parameters_to_ignore: List[str] = [
-                    p.name for p in self.parameters
-                    if (p.ptype == "shape") & (p.name not in source["parameters"])]
+                    p.name for p in self.parameters if (
+                        p.ptype == "shape") & (p.name not in source["parameters"])]
                 # no efficiency affects PDF:
                 parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])

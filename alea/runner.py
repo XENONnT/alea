@@ -15,19 +15,19 @@ class Runner:
     def __init__(
             self,
             statistical_model: str,
-            statistical_model_args: dict = {},
+            statistical_model_args: dict = None,
             parameter_definition: Optional[dict or list] = None,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = 'central',
             confidence_interval_threshold: Callable[[float], float] = None,
             poi: str = None,
-            hypotheses: list = [{}],
-            common_generate_values: dict = {},
-            true_generate_values: dict = {},
+            hypotheses: list = None,
+            common_generate_values: dict = None,
+            true_generate_values: dict = None,
             n_mc: int = 1,
             toydata_file: str = None,
             toydata_mode: str = None,
-            metadata: dict = {},
+            metadata: dict = None,
             output_file: str = 'test_toymc.hdf5',
         ):
         statistical_model_class = locate(statistical_model)
@@ -42,37 +42,37 @@ class Runner:
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
             confidence_interval_threshold=confidence_interval_threshold,
-            **statistical_model_args,
+            **(statistical_model_args if statistical_model_args else {}),
         )
 
         self.poi = poi
-        self.hypotheses = hypotheses
+        self.hypotheses = hypotheses if hypotheses else []
         self.common_generate_values = common_generate_values
         self.true_generate_values = true_generate_values
         self.n_mc = n_mc
         self.toydata_file = toydata_file
         self.toydata_mode = toydata_mode
-        self.metadata = metadata
+        self.metadata = metadata if metadata else {}
         self.output_file = output_file
 
-        self.parameter_list, self.result_list, self.result_dtype = self.get_parameter_list()
+        self.parameter_list, self.result_list, self.result_dtype = self._get_parameter_list()
 
-        self.generate_values = self.get_generate_values()
+        self.generate_values = self._get_generate_values()
 
-    def get_parameter_list(self):
+    def _get_parameter_list(self):
         # parameter_list and result_dtype
         parameter_list = sorted(self.statistical_model.get_parameter_list())
         result_list = parameter_list + ['ll', 'dl', 'ul']
         result_dtype = [(n, float) for n in parameter_list]
         result_dtype += [(n, float) for n in ['ll', 'dl', 'ul']]
-        try:
-            parameter_list += self.statistical_model.additional_parameters
-            result_dtype += [(n, float) for n in self.statistical_model.additional_parameters]
-        except:
-            pass
+        # try:
+        #     parameter_list += self.statistical_model.additional_parameters
+        #     result_dtype += [(n, float) for n in self.statistical_model.additional_parameters]
+        # except:
+        #     pass
         return parameter_list, result_list, result_dtype
 
-    def get_generate_values(self):
+    def _get_generate_values(self):
         generate_values = []
         hypotheses = deepcopy(self.hypotheses)
 
@@ -87,7 +87,7 @@ class Runner:
                         f'{self.poi} should be provided in true_generate_values',
                     )
                 hypothesis = {
-                    self.poi: self.true_generate_values.get(self.poi)
+                    self.poi: self.true_generate_values.get(self.poi),
                 }
             elif hypothesis == 'free':
                 hypothesis = {}
@@ -155,7 +155,8 @@ class Runner:
                 if flag_read_toydata:
                     self.statistical_model.data = toydata[i_mc]
                 if flag_generate_toydata:
-                    self.statistical_model.data = self.statistical_model.generate_data(**generate_values)
+                    self.statistical_model.data = self.statistical_model.generate_data(
+                        **generate_values)
 
                 fit_result, max_llh = self.statistical_model.fit(**generate_values)
                 fit_result['ll'] = max_llh

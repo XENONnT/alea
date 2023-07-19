@@ -1,39 +1,48 @@
 from copy import deepcopy
-from pydoc import locate
 from typing import Callable, Optional
+from datetime import datetime
+from pydoc import locate
+import inspect
 
 from tqdm import tqdm
 import numpy as np
+
+from inference_interface import toydata_from_file, numpy_to_toyfile
+from alea.statistical_model import StatisticalModel
 
 
 class Runner:
     def __init__(
             self,
-            model_name: str,
+            statistical_model: str,
+            statistical_model_args: dict = {},
             parameter_definition: Optional[dict or list] = None,
-            likelihood_config: dict = None,
             confidence_level: float = 0.9,
-            confidence_interval_kind: str = "central",  # one of central, upper, lower
+            confidence_interval_kind: str = 'central',
             confidence_interval_threshold: Callable[[float], float] = None,
             poi: str = None,
             hypotheses: list = [{}],
-            common_generate_values: dict={},
-            true_generate_values: dict={},
-            guess: dict={},
-            n_mc: int = 10,
+            common_generate_values: dict = {},
+            true_generate_values: dict = {},
+            n_mc: int = 1,
             toydata_file: str = None,
             toydata_mode: str = None,
-            metadata: dict = None,
-            output_file: str='test_toymc.hdf5',
-            **kwargs):
-        model_class = locate(model_name)
-        self.model = model_class(
-            parameter_definition,
-            likelihood_config,
-            confidence_level,
-            confidence_interval_kind,
-            confidence_interval_threshold,
-            **kwargs,
+            metadata: dict = {},
+            output_file: str = 'test_toymc.hdf5',
+        ):
+        statistical_model_class = locate(statistical_model)
+        if statistical_model_class is None:
+            raise ValueError(f'Could not find {statistical_model}!')
+        if not inspect.isclass(statistical_model_class):
+            raise ValueError(f'{statistical_model_class} is not a class!')
+        if not issubclass(statistical_model_class, StatisticalModel):
+            raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
+        self.statistical_model = statistical_model_class(
+            parameter_definition=parameter_definition,
+            confidence_level=confidence_level,
+            confidence_interval_kind=confidence_interval_kind,
+            confidence_interval_threshold=confidence_interval_threshold,
+            **statistical_model_args,
         )
 
         self.poi = poi
@@ -45,25 +54,26 @@ class Runner:
         self.toydata_mode = toydata_mode
         self.metadata = metadata
         self.output_file = output_file
-        self.guess = guess
 
-        self.parameter_list, self.result_dtype = self.get_parameter_list()
+        self.parameter_list, self.result_list, self.result_dtype = self.get_parameter_list()
 
         self.generate_values = self.get_generate_values()
 
     def get_parameter_list(self):
         # parameter_list and result_dtype
-        parameter_list = sorted(self.model.get_parameter_list())
+        parameter_list = sorted(self.statistical_model.get_parameter_list())
+        result_list = parameter_list + ['ll', 'dl', 'ul']
         result_dtype = [(n, float) for n in parameter_list]
+        result_dtype += [(n, float) for n in ['ll', 'dl', 'ul']]
         try:
-            parameter_list += self.model.additional_parameters
-            result_dtype += [(n, float) for n in self.model.additional_parameters]
+            parameter_list += self.statistical_model.additional_parameters
+            result_dtype += [(n, float) for n in self.statistical_model.additional_parameters]
         except:
             pass
-        return parameter_list, result_dtype
+        return parameter_list, result_list, result_dtype
 
     def get_generate_values(self):
-        arrays = []
+        generate_values = []
         hypotheses = deepcopy(self.hypotheses)
 
         for hypothesis in hypotheses:
@@ -74,7 +84,7 @@ class Runner:
                 # the true signal component is used
                 if self.poi not in self.true_generate_values:
                     raise ValueError(
-                        f"{self.poi} should be provided in true_generate_values",
+                        f'{self.poi} should be provided in true_generate_values',
                     )
                 hypothesis = {
                     self.poi: self.true_generate_values.get(self.poi)
@@ -84,70 +94,85 @@ class Runner:
 
             array = deepcopy(self.common_generate_values)
             array.update(hypothesis)
-            arrays.append(array)
-        return arrays
-
-    def write_toydata(self):
-        self.model.write_toydata()
-        if self.inference_class_name == 'binference.likelihoods.ll_GOF.InferenceObject':
-            self.model.write_reference()
+            generate_values.append(array)
+        return generate_values
 
     def write_output(self, results):
         metadata = deepcopy(self.metadata)
-        result_names = self.result_names
 
-        # TODO: this might not be needed
-        if (self.extra_args[0] == 'iterate') and (result_names is None):
-            result_names = ['{:.3f}'.format(float(v)) for v in self.extra_args[2]]
-
-        if result_names is None:
-            # TODO: whether just save dict as string?
-            result_names = [f'{i:d}' for i in range(len(self.extra_args))]
-            for i, ea in enumerate(
-                    self.extra_args
-                ):  #if using named extra args (free, null, true), use that name
-                if ea in ['null', 'free', 'true']:
-                    result_names[i] = ea
+        result_names = [f'{i:d}' for i in range(len(self.generate_values))]
+        for i, ea in enumerate(self.hypotheses):
+            if ea in ['null', 'free', 'true']:
+                result_names[i] = ea
 
         metadata['date'] = datetime.now().strftime('%Y%m%d_%H:%M:%S')
-        metadata['generate_args'] = self.generate_args
-        metadata['signal_expectation'] = self.signal_expectation
-        metadata['signal_component_name'] = self.signal_component_name
-        metadata['nominal_expectations'] = self.nominal_expectations
+        metadata['poi'] = self.poi
+        metadata['common_generate_values'] = self.common_generate_values
+        metadata['true_generate_values'] = self.true_generate_values
 
-        # TODO: this might not be needed
-        if self.extra_args[0] == 'iterate':
-            eas = [{self.extra_args[1]: v} for v in self.extra_args[2]]
-            array_metadatas = [{'extra_args': ea} for ea in eas]
-        else:
-            array_metadatas = [{'extra_args': ea} for ea in self.extra_args]
+        array_metadatas = [{'generate_values': ea} for ea in self.generate_values]
 
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
 
-        print(f'Saving {self.output_filename}')
+        print(f'Saving {self.output_file}')
         numpy_to_toyfile(
-            self.output_filename,
+            self.output_file,
             numpy_arrays_and_names=numpy_arrays_and_names,
             metadata=metadata,
             array_metadatas=array_metadatas)
 
+    def read_toydata(self):
+        toydata, toydata_names = toydata_from_file(self.toydata_file)
+        return toydata, toydata_names
+
     def toy_simulation(self):
+        flag_read_toydata = False
+        flag_generate_toydata = False
+        flag_write_toydata = False
+
+        if self.toydata_mode == 'read':
+            flag_read_toydata = True
+        elif self.toydata_mode == 'generate':
+            flag_generate_toydata = True
+        elif self.toydata_mode == 'generate_and_write':
+            flag_generate_toydata = True
+            flag_write_toydata = True
+        elif self.toydata_mode == 'no_toydata':
+            pass
+
+        if flag_read_toydata and flag_generate_toydata:
+            raise ValueError('Cannot both read and generate toydata')
+
+        toydata = []
+        toydata_names = None
+        if flag_read_toydata:
+            toydata, toydata_names = self.read_toydata()
+
         results = [np.zeros(self.n_mc, dtype=self.result_dtype) for _ in self.generate_values]
-        for i in tqdm(range(self.n_mc)):
-            fit_results = self.model.
+        for i_mc in tqdm(range(self.n_mc)):
+            fit_results = []
+            for generate_values in self.generate_values:
+                if flag_read_toydata:
+                    self.statistical_model.data = toydata[i_mc]
+                if flag_generate_toydata:
+                    self.statistical_model.data = self.statistical_model.generate_data(**generate_values)
+
+                fit_result, max_llh = self.statistical_model.fit(**generate_values)
+                fit_result['ll'] = max_llh
+                fit_result['dl'] = -1.
+                fit_result['ul'] = -1.
+
+                fit_results.append(fit_result)
+                toydata.append(self.statistical_model.data)
             for fit_result, result_array in zip(fit_results, results):
-                fit_result_array = tuple(fit_result[pn] for pn in self.parameter_list)
-                result_array[i] = fit_result_array
+                result_array[i_mc] = tuple(fit_result[pn] for pn in self.result_list)
+
+        if flag_write_toydata:
+            self.statistical_model.store_data(self.toydata_file, toydata, toydata_names)
+
         return results
 
-    def run(self, n_mc):
-        simple_data = self.model.generate_data()
-        self.model.store_data('simple_data', [simple_data])
-
-    def run_toymcs(self):
+    def run(self):
         results = self.toy_simulation()
-
-        if self.toydata_mode == 'write':
-            self.write_toydata()
 
         self.write_output(results)

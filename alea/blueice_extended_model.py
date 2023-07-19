@@ -164,7 +164,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ll = CustomAncillaryLikelihood(self.parameters.with_uncertainty)
         lls.append(ll)
 
-        return LogLikelihoodSum(lls, likelihood_weights=likelihood_config["likelihood_weights"])
+        return LogLikelihoodSum(lls, likelihood_weights=likelihood_config.get("likelihood_weights", None))
 
     def _build_data_generators(self) -> list:
         # last one is AncillaryLikelihood

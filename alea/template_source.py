@@ -64,7 +64,7 @@ class TemplateSource(bi.HistogramPdfSource):
                 slice_axis_limits = sa.get("slice_axis_limits",
                                             [bes[0], bes[-1]])
                 if sum_axis:
-                    logging.info(f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
+                    logging.debug(f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
                     axis_names = h.axis_names_without(slice_axis)
                     h = h.slicesum(axis=slice_axis,
                                    start=slice_axis_limits[0],
@@ -72,7 +72,7 @@ class TemplateSource(bi.HistogramPdfSource):
                     h.axis_names = axis_names
                 else:
                     logging.debug(f"Normalization before slicing: {h.n}.")
-                    logging.info(f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
+                    logging.debug(f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
                     h = h.slice(axis=slice_axis,
                                 start=slice_axis_limits[0],
                                 stop=slice_axis_limits[1])
@@ -131,8 +131,8 @@ class TemplateSource(bi.HistogramPdfSource):
         self._n_events_histogram = h.similar_blank_histogram(
         )  # Shouldn't be in HistogramSource... anyway
 
-        h *= self.config.get('histogram_multiplier', 1)
-        logging.debug(f"Multiplying histogram with histogram_multiplier {self.config.get('histogram_multiplier', 1)}. Histogram is now normalised to {h.n}.")
+        h *= self.config.get('histogram_scale_factor', 1)
+        logging.debug(f"Multiplying histogram with histogram_scale_factor {self.config.get('histogram_scale_factor', 1)}. Histogram is now normalised to {h.n}.")
 
         # Convert h to density...
         if self.config.get('in_events_per_bin'):

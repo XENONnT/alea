@@ -252,6 +252,7 @@ class StatisticalModel:
 
         # Call migrad to do the actual minimization
         m.migrad()
+        self.minuit_object = m
         if verbose:
             print(m)
         # alert! This gives the _maximum_ likelihood

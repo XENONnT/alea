@@ -80,11 +80,10 @@ class BlueiceExtendedModel(StatisticalModel):
         given a number of named parameters (kwargs)
         """
         ret = dict()
-        for ll in self._likelihood.likelihood_list[:-1]:  # ancillary likelihood does not contribute
-
-            ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
-            ll_pars += ["livetime_days"]
-            call_args = {k: i for k, i in kwargs.items() if k in ll_pars}
+        # TODO: Make a self.likelihood_temrs dict with the likelihood names as keys and the corresponding likelihood terms as values.
+        for ll, parameter_names in zip(self._likelihood.likelihood_list[:-1],
+                                       self._likelihood.likelihood_parameters):  # ancillary likelihood does not contribute
+            call_args = {k: i for k, i in kwargs.items() if k in parameter_names}  # WARNING: This silently drops parameters it can't handle!
 
             mus = ll(full_output=True, **call_args)[1]
             for n, mu in zip(ll.source_name_list, mus):

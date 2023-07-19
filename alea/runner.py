@@ -12,6 +12,15 @@ from alea.statistical_model import StatisticalModel
 
 
 class Runner:
+    """
+    Runner manipulates statistical model and toydata.
+        - initialize statistical model
+        - generate or read toy data
+        - save toy data if needed
+        - fit parameters
+        - write output file
+    """
+
     def __init__(
             self,
             statistical_model: str,
@@ -30,6 +39,11 @@ class Runner:
             metadata: dict = None,
             output_file: str = 'test_toymc.hdf5',
         ):
+        """
+        Initialize statistical model,
+        parameters list, and generate values list
+        """
+
         statistical_model_class = locate(statistical_model)
         if statistical_model_class is None:
             raise ValueError(f'Could not find {statistical_model}!')
@@ -60,7 +74,8 @@ class Runner:
         self.generate_values = self._get_generate_values()
 
     def _get_parameter_list(self):
-        # parameter_list and result_dtype
+        """Get parameter list and result list from statistical model"""
+
         parameter_list = sorted(self.statistical_model.get_parameter_list())
         result_list = parameter_list + ['ll', 'dl', 'ul']
         result_dtype = [(n, float) for n in parameter_list]
@@ -73,6 +88,8 @@ class Runner:
         return parameter_list, result_list, result_dtype
 
     def _get_generate_values(self):
+        """Get generate values list from hypotheses"""
+
         generate_values = []
         hypotheses = deepcopy(self.hypotheses)
 
@@ -98,6 +115,8 @@ class Runner:
         return generate_values
 
     def write_output(self, results):
+        """Write output file with metadata"""
+
         metadata = deepcopy(self.metadata)
 
         result_names = [f'{i:d}' for i in range(len(self.generate_values))]
@@ -122,10 +141,17 @@ class Runner:
             array_metadatas=array_metadatas)
 
     def read_toydata(self):
+        """Read toydata from file"""
+
         toydata, toydata_names = toydata_from_file(self.toydata_file)
         return toydata, toydata_names
 
     def toy_simulation(self):
+        """
+        Run toy simulation a specified different toydata mode
+        and loop over generate values
+        """
+
         flag_read_toydata = False
         flag_generate_toydata = False
         flag_write_toydata = False
@@ -174,6 +200,8 @@ class Runner:
         return results
 
     def run(self):
+        """Run toy simulation"""
+
         results = self.toy_simulation()
 
         self.write_output(results)

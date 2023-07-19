@@ -57,7 +57,7 @@ class BlueiceDataGenerator:
             source_histograms.append(mh.Histdd(bins=bins))
 
         self.ll = ll
-        logging.info("initing simulator, binned: " + str(binned))
+        logging.debug("initing simulator, binned: " + str(binned))
         self.binned = binned
         self.bincs = bincs
         self.direction_names = direction_names

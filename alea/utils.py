@@ -10,15 +10,18 @@ def get_analysis_space(analysis_space: dict) -> list:
 
     for element in analysis_space:
         for key, value in element.items():
-            if value.startswith("np."):
+            if isinstance(value, str) and value.startswith("np."):
                 eval_element = (key, eval(value))
+            elif isinstance(value, str):
+                eval_element = (key,
+                                np.fromstring(value,
+                                              dtype=float,
+                                              sep=" "))
+            elif isinstance(value, list):
+                eval_element = (key, np.array(value))
             else:
-                eval_element = (
-                    key,
-                    np.fromstring(
-                        value,
-                        dtype=float,
-                        sep=" "))
+                raise ValueError(f"analysis_space for dimension {key} not understood.")
+
             eval_analysis_space.append(eval_element)
     return eval_analysis_space
 
@@ -45,12 +48,11 @@ def adapt_likelihood_config_for_blueice(
         if template_folder.startswith("alea/"):
             alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
             template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
-            # check if template folder exists
-            if not os.path.isdir(template_folder):
-                template_folder = None
-            else:
-                break
-
+        # check if template folder exists
+        if not os.path.isdir(template_folder):
+            template_folder = None
+        else:
+            break
     # raise error if no template folder is found
     if template_folder is None:
         raise FileNotFoundError("No template folder found. Please provide a valid template folder.")

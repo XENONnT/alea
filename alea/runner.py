@@ -43,7 +43,6 @@ class Runner:
         Initialize statistical model,
         parameters list, and generate values list
         """
-
         statistical_model_class = locate(statistical_model)
         if statistical_model_class is None:
             raise ValueError(f'Could not find {statistical_model}!')
@@ -75,7 +74,6 @@ class Runner:
 
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model"""
-
         parameter_list = sorted(self.statistical_model.get_parameter_list())
         result_list = parameter_list + ['ll', 'dl', 'ul']
         result_dtype = [(n, float) for n in parameter_list]
@@ -89,7 +87,6 @@ class Runner:
 
     def _get_generate_values(self):
         """Get generate values list from hypotheses"""
-
         generate_values = []
         hypotheses = deepcopy(self.hypotheses)
 
@@ -116,7 +113,6 @@ class Runner:
 
     def write_output(self, results):
         """Write output file with metadata"""
-
         metadata = deepcopy(self.metadata)
 
         result_names = [f'{i:d}' for i in range(len(self.generate_values))]
@@ -142,7 +138,6 @@ class Runner:
 
     def read_toydata(self):
         """Read toydata from file"""
-
         toydata, toydata_names = toydata_from_file(self.toydata_file)
         return toydata, toydata_names
 
@@ -151,7 +146,6 @@ class Runner:
         Run toy simulation a specified different toydata mode
         and loop over generate values
         """
-
         flag_read_toydata = False
         flag_generate_toydata = False
         flag_write_toydata = False
@@ -201,7 +195,6 @@ class Runner:
 
     def run(self):
         """Run toy simulation"""
-
         results = self.toy_simulation()
 
         self.write_output(results)

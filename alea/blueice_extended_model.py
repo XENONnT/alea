@@ -54,20 +54,23 @@ class BlueiceExtendedModel(StatisticalModel):
         return cls(**config)
 
     @property
-    def data(self) -> list:
+    def data(self) -> dict:
         """Returns the data of the statistical model."""
         return super().data
 
     @data.setter
-    def data(self, data: list):
+    def data(self, data: dict):
         """
         Overrides default setter. Will also set the data of the blueice ll.
         Data-sets are expected to be in the form of a list of one or more structured arrays-- representing the data-sets of one or more likelihood terms.
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
-        for d, ll_term in zip(data[:-1], self._likelihood.likelihood_list):
-            ll_term.set_data(d)
+        for i, (dataset_name, d) in enumerate(data.items()):
+            if not dataset_name == "generate_values":
+                ll_term = self._likelihood.likelihood_list[i]
+                assert dataset_name == self._likelihood.likelihood_list[i].pdf_base_config["name"], "Likelihood names do not match."
+                ll_term.set_data(d)
 
         self._data = data
 
@@ -174,20 +177,21 @@ class BlueiceExtendedModel(StatisticalModel):
     def _ll(self, **generate_values) -> float:
         return self._likelihood(**generate_values)
 
-    def _generate_data(self, **generate_values) -> list:
+    def _generate_data(self, **generate_values) -> dict:
         # generate_values are already filtered and filled by the nominal values\
         # through the generate_data method in the parent class
-        science_data = self._generate_science_data(**generate_values)
+        data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        ancillary_measurements = self._generate_ancillary_measurements(
+        data["ancillary_likelihood"] = self._generate_ancillary_measurements(
             **generate_values_anc)
-        return science_data + [ancillary_measurements] + [generate_values]
+        data["generate_values"] = generate_values
+        return data
 
-    def _generate_science_data(self, **generate_values) -> list:
+    def _generate_science_data(self, **generate_values) -> dict:
         science_data = [gen.simulate(**generate_values)
                         for gen in self.data_generators]
-        return science_data
+        return {k: v for k, v in zip(self.likelihood_names, science_data)}
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
         ancillary_measurements = {}
@@ -248,6 +252,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         super().__init__(func=self.ancillary_likelihood_sum,
                          parameter_list=parameter_list,
                          config=self.parameters.nominal_values)
+        self.pdf_base_config["name"] = "ancillary_likelihood"
 
     @property
     def constraint_terms(self) -> dict:

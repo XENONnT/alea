@@ -6,7 +6,6 @@ import numpy as np
 from scipy.stats import chi2
 from scipy.optimize import brentq
 from iminuit import Minuit
-from iminuit.util import make_func_code
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
@@ -230,25 +229,23 @@ class StatisticalModel:
             the dictionary passed to the Minuit call.
             """
 
-            def __init__(self, f, s_args):
+            def __init__(self, f, parameters: Parameters):
                 self.func = f
-                self.s_args = s_args
-                self.func_code = make_func_code(s_args)
+                self.s_args = parameters.names
+                self._parameters = {p.name: p.fit_limits for p in parameters}
 
             def __call__(self, *args):
                 return self.func(args)
 
         # Make the Minuit object
-        cost.errordef = Minuit.LIKELIHOOD
         m = Minuit(
-            MinuitWrap(cost, s_args=self.parameters.names),
+            MinuitWrap(cost, parameters=self.parameters),
             **defaults)
+        m.errordef = Minuit.LIKELIHOOD
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:
             m.fixed[par] = True
-        for n, l in self.parameters.fit_limits.items():
-            m.limits[n] = l
 
         # Call migrad to do the actual minimization
         m.migrad()

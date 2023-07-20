@@ -82,11 +82,12 @@ class BlueiceExtendedModel(StatisticalModel):
         Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
         """
+        generate_values = self.parameters(**kwargs)  # kwarg or nominal value
         ret = dict()
         # TODO: Make a self.likelihood_temrs dict with the likelihood names as keys and the corresponding likelihood terms as values.
         for ll, parameter_names in zip(self._likelihood.likelihood_list[:-1],
                                        self._likelihood.likelihood_parameters):  # ancillary likelihood does not contribute
-            call_args = {k: i for k, i in kwargs.items() if k in parameter_names}  # WARNING: This silently drops parameters it can't handle!
+            call_args = {k: i for k, i in generate_values.items() if k in parameter_names}  # WARNING: This silently drops parameters it can't handle!
 
             mus = ll(full_output=True, **call_args)[1]
             for n, mu in zip(ll.source_name_list, mus):
@@ -118,7 +119,10 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config["livetime_days"] = self.parameters[
                 blueice_config["livetime_parameter"]].nominal_value
             for p in self.parameters:
-                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+                # adding the nominal rate values will screw things up in blueice!
+                # So here we're just adding the nominal values of all other parameters
+                if not p.ptype == "rate":
+                    blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
 
             # add all parameters to extra_dont_hash for each source unless it is used:
             for i, source in enumerate(config["sources"]):

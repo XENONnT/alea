@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import scipy.stats as sps
 from alea._plotting import pdf_plotter
-from alea.simulators import simulate_interpolated
+from alea.simulators import BlueiceDataGenerator
 from blueice.inference import bestfit_scipy, one_parameter_interval
 from blueice.likelihood import LogLikelihoodSum
 from inference_interface import (dict_to_structured_array,
@@ -272,13 +272,13 @@ class InferenceObject:
         self.toydata_mode = toydata_mode
         self.toydata_file = toydata_file
         if toydata_mode == "none":
-            self.rgs = [simulate_interpolated(ll, binned=b) for ll, b in zip(self.lls, self.binned)]
+            self.rgs = [BlueiceDataGenerator(ll, binned=b) for ll, b in zip(self.lls, self.binned)]
             if hasattr(self, "datasets_array"):
                 del self.datasets_array
             if hasattr(self, "toydata_index"):
                 del self.toydata_index
         elif toydata_mode == "write":
-            self.rgs = [simulate_interpolated(ll, binned=b) for ll, b in zip(self.lls, self.binned)]
+            self.rgs = [BlueiceDataGenerator(ll, binned=b) for ll, b in zip(self.lls, self.binned)]
             self.datasets_array = []
             if hasattr(self, "toydata_index"):
                 del self.toydata_index

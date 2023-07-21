@@ -7,7 +7,10 @@ computation:
   discovery_power:
     parameters_to_zip: {}
     parameters_to_vary:
-      {poi_expectation: "np.linspace(0, 30, 10)", wimp_mass: [10, 50, 200] }
+      {
+        poi_expectation: "np.linspace(0, 30, 10)",
+        wimp_mass: [10, 50, 200],
+      }
     parameters_in_common:
       {
         hypotheses: ["true", "null", "free"],
@@ -19,7 +22,7 @@ computation:
 
   threshold:
     parameters_to_zip: {}
-    parameters_to_vary: { wimp_mass: [10, 50, 200] }
+    parameters_to_vary: {wimp_mass: [10, 50, 200]}
     parameters_in_common:
       {
         hypotheses: ["true", "null", "free"],
@@ -33,7 +36,7 @@ computation:
 
   sensitivity:
     parameters_to_zip: {}
-    parameters_to_vary: { poi_expectation: [0.], wimp_mass: [10, 50, 200] }
+    parameters_to_vary: {poi_expectation: [0.], wimp_mass: [10, 50, 200]}
     parameters_in_common:
       {
         hypotheses: ["true", "null", "free"],

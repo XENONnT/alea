@@ -1,6 +1,6 @@
 import inspect
 import warnings
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Optional
 
 import numpy as np
 from scipy.stats import chi2
@@ -53,11 +53,11 @@ class StatisticalModel:
     def __init__(
             self,
             data = None,
-            parameter_definition: dict or list = None,
+            parameter_definition: Optional[dict or list] = None,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
-            **kwargs):
+        ):
         self._data = data
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind

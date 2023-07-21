@@ -134,7 +134,6 @@ class BlueiceExtendedModel(StatisticalModel):
             ll = likelihood_object(blueice_config)
 
             for source in config["sources"]:
-
                 # Set rate parameters
                 rate_parameters = [
                     p for p in source["parameters"] if self.parameters[p].ptype == "rate"]

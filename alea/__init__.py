@@ -1,8 +1,15 @@
-from alea import likelihoods
+__version__ = '0.0.0'
 
-from alea import plotting
-from alea import simulators
-from alea import template_source
-from alea import toymc_running
-from alea import utils
-from alea import runner
+from . import model
+from .model import *
+
+from . import models
+
+from . import utils
+from .utils import *
+
+from . import parameters
+from .parameters import *
+
+from . import simulators
+from .simulators import *

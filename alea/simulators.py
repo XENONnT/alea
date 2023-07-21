@@ -1,10 +1,12 @@
-import numpy as np
 from copy import deepcopy
-import multihist as mh
 from itertools import product
-import scipy.stats as sps
 import logging
+
+import numpy as np
+import scipy.stats as sps
 import blueice
+import multihist as mh
+
 logging.basicConfig(level=logging.INFO)
 
 

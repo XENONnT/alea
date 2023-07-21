@@ -3,7 +3,7 @@ from typing import Optional
 from scipy import stats
 import numpy as np
 
-from alea.statistical_model import StatisticalModel
+from alea.model import StatisticalModel
 
 
 class GaussianModel(StatisticalModel):

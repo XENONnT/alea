@@ -10,3 +10,4 @@ scipy
 setuptools
 tqdm
 mergedeep
+iminuit

@@ -2,20 +2,21 @@ from alea.examples.gaussian_model import GaussianModel
 
 
 def test_gaussian_model():
+    """Test of the GaussianModel class"""
     parameter_definition = {
         'mu': {
-            'fit_guess': 0.0,
+            'fit_guess': 0.,
             'fittable': True,
-            'nominal_value': 0.0
+            'nominal_value': 0.,
         },
         'sigma': {
-            'fit_guess': 1.0,
+            'fit_guess': 1.,
             'fit_limits': [
-                0,
-                None
+                0.,
+                None,
             ],
             'fittable': True,
-            'nominal_value': 1.0
+            'nominal_value': 1.,
         }
     }
     simple_model = GaussianModel(

@@ -7,12 +7,11 @@ from alea.blueice_extended_model import BlueiceExtendedModel, CustomAncillaryLik
 
 
 class TestBlueiceExtendedModel(TestCase):
-    # self.assertIsInstance(json_as_text, str)
-    # self.assertEqual(json_as_dict, get_resource(self.json_file, fmt='json'))
+    """Test of the BlueiceExtendedModel class"""
 
     def __init__(self, *args, **kwargs):
-        # TODO: super().__init__(*args, **kwargs)
-        super(TestBlueiceExtendedModel, self).__init__(*args, **kwargs)
+        """Initialize the BlueiceExtendedModel class"""
+        super().__init__(*args, **kwargs)
         # TODO: put the file path searching in utils.py
         with open(pkg_resources.resource_filename(
             'alea', 'examples/unbinned_wimp_statistical_model.yaml'), 'r') as f:
@@ -24,11 +23,13 @@ class TestBlueiceExtendedModel(TestCase):
         )
 
     def test_expectation_values(self):
+        """Test of the expectation_values method"""
         expectation_values = self.model.get_expectation_values()
         # TODO: assert expectation values after test template source
         # self.assertEqual()
 
     def test_generate_data(self):
+        """Test of the generate_data method"""
         data = self.model.generate_data()
         self.assertEqual(
             len(data), self.n_likelihood_terms + 2)
@@ -36,6 +37,7 @@ class TestBlueiceExtendedModel(TestCase):
             raise ValueError('Data does not contain source information.')
 
     def test_likelihood(self):
+        """Test of the _likelihood attribute"""
         self.assertIsInstance(self.model._likelihood, LogLikelihoodSum)
         self.assertIsInstance(self.model._likelihood.likelihood_list[-1], CustomAncillaryLikelihood)
         self.assertEqual(
@@ -45,12 +47,15 @@ class TestBlueiceExtendedModel(TestCase):
         self.model._likelihood()
 
     def test_fit(self):
+        """Test of the fit method"""
         self.model.data = self.model.generate_data()
         fit_result, max_llh = self.model.fit()
-        # TODO: check whether all parameters are in fit_result and whether fittable parameters are fitted
+        # TODO: check whether all parameters are in fit_result
+        # and whether fittable parameters are fitted
 
 
 class TestCustomAncillaryLikelihood(TestCase):
+    """Test of the CustomAncillaryLikelihood class"""
     def test_ancillary_likelihood(self):
+        """Test of the ancillary_likelihood method"""
         pass
-

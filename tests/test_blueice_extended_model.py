@@ -24,6 +24,7 @@ class TestBlueiceExtendedModel(TestCase):
 
     def test_expectation_values(self):
         """Test of the expectation_values method"""
+        self.model.data = self.model.generate_data()
         expectation_values = self.model.get_expectation_values()
         # TODO: assert expectation values after test template source
         # self.assertEqual()
@@ -56,6 +57,7 @@ class TestBlueiceExtendedModel(TestCase):
 
 class TestCustomAncillaryLikelihood(TestCase):
     """Test of the CustomAncillaryLikelihood class"""
+
     def test_ancillary_likelihood(self):
         """Test of the ancillary_likelihood method"""
         pass

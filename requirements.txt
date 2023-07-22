@@ -1,5 +1,5 @@
-git+https://github.com/JelleAalbers/blueice.git#egg=blueice
-git+https://github.com/XENONnT/inference_interface.git#egg=inference_interface
+git+https://github.com/JelleAalbers/blueice
+git+https://github.com/XENONnT/inference_interface
 atomicwrites
 h5py
 matplotlib

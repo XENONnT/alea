@@ -33,6 +33,18 @@ parameter_definition:
       - null
     fit_guess: 1.0
 
+  signal_efficiency:
+    nominal_value: 1.0
+    ptype: efficiency
+    uncertainty: 0.1
+    relative_uncertainty: true
+    fittable: true
+    fit_limits:
+      - 0
+      - 10.
+    fit_guess: 1.0
+    description: Parameter to account for the uncertain signal expectation given a certain cross-section
+
   # er_band_shift:
   #   nominal_value: 0
   #   ptype: shape
@@ -76,9 +88,10 @@ likelihood_config:
         parameters:
           - wimp_rate_multiplier
           - wimp_mass
+          - signal_efficiency
         template_filename: wimp50gev_template.h5
-        apply_efficiency: False
-        efficiency_name: 'signal_eff'  # TODO: Check
+        apply_efficiency: True
+        efficiency_name: signal_efficiency
 
     # SR1
     - name: sr1
@@ -104,6 +117,7 @@ likelihood_config:
         parameters:
           - wimp_rate_multiplier
           - wimp_mass
+          - signal_efficiency
         template_filename: wimp50gev_template.h5
-        apply_efficiency: False
-        efficiency_name: 'wimp_eff'  # TODO: Check
+        apply_efficiency: True
+        efficiency_name: signal_efficiency

@@ -9,7 +9,7 @@ class Parameter:
         name (str): The name of the parameter.
         nominal_value (float, optional): The nominal value of the parameter.
         fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
-        ptype (str, optional): The type of the parameter.
+        ptype (str, optional): The ptype of the parameter.
         uncertainty (float or str, optional):
             The uncertainty of the parameter. If a string,
             it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
@@ -39,7 +39,7 @@ class Parameter:
         self.name = name
         self.nominal_value = nominal_value
         self.fittable = fittable
-        self.type = ptype
+        self.ptype = ptype
         self._uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
@@ -272,6 +272,10 @@ class Parameters:
             new_val = kwargs.get(name, None)
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
+        if any(i is None for k, i in values.items()):
+            emptypars = ", ".join([k for k, i in values.items() if i is None])
+            raise AssertionError("All parameters must be set explicitly, or have a nominal value,"
+                                 " encountered for: " + emptypars)
         return values
 
     def __getattr__(self, name: str) -> Parameter:

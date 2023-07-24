@@ -16,9 +16,9 @@ name: Test package
 # Trigger this code when a new release is published
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:

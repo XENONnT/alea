@@ -7,8 +7,11 @@ from alea.statistical_model import StatisticalModel
 
 
 class GaussianModel(StatisticalModel):
-    def __init__(self, parameter_definition: Optional[dict or list] = None,
-                 **kwargs):
+    def __init__(
+            self,
+            parameter_definition: Optional[dict or list] = None,
+            **kwargs,
+        ):
         """
         Initialise a model of a gaussian measurement (hatmu),
         where the model has parameters mu and sigma

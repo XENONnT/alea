@@ -1,6 +1,6 @@
 import inspect
 import warnings
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Optional
 
 import numpy as np
 from scipy.stats import chi2
@@ -53,11 +53,11 @@ class StatisticalModel:
     def __init__(
             self,
             data = None,
-            parameter_definition: dict or list = None,
+            parameter_definition: Optional[dict or list] = None,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
-            **kwargs):
+        ):
         self._data = data
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind
@@ -155,15 +155,15 @@ class StatisticalModel:
         if not defined, it will be ["0", "1", ..., "n-1"]
         """
         if data_name_list is None:
-            try:
-                data_name_list = self.get_likelihood_term_names()
-            except NotImplementedError:
+            if hasattr(self, "likelihood_names"):
+                data_name_list = self.likelihood_names
+            else:
                 data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
 
         kw = {'metadata': metadata} if metadata is not None else dict()
         toydata_to_file(file_name, data_list, data_name_list, **kw)
 
-    def get_expectation_values(self):
+    def get_expectation_values(self, **parameter_values):
         return NotImplementedError("get_expectation_values is optional to implement")
 
     @property
@@ -284,9 +284,9 @@ class StatisticalModel:
                     "You must set parameter_interval_bounds in the parameter config"
                     " or when calling confidence_interval")
 
-        if parameter_of_interest.type == "rate":
+        if parameter_of_interest.ptype == "rate":
             try:
-                if parameter_of_interest.type == "rate" and poi_name.endswith("_rate_multiplier"):
+                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
                     source_name = poi_name.replace("_rate_multiplier", "")
                 else:
                     source_name = poi_name

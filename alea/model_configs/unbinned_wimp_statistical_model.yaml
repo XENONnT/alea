@@ -62,7 +62,7 @@ parameter_definition:
 
 likelihood_config:
   likelihood_weights: [1, 1, 1]
-  template_folder: alea/examples/templates/wimp_templates
+  template_folder: alea/templates
   likelihood_terms:
     # SR0
     - name: sr0

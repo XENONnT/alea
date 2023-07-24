@@ -1,12 +1,12 @@
-git+https://github.com/JelleAalbers/blueice.git#egg=blueice
-git+https://github.com/XENONnT/inference_interface.git#egg=inference_interface
 atomicwrites
+git+https://github.com/JelleAalbers/blueice
 h5py
+git+https://github.com/XENONnT/inference_interface
 matplotlib
+mergedeep
 multihist
 numpy
 PyYAML
 scipy
 setuptools
 tqdm
-mergedeep

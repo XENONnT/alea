@@ -1,4 +1,3 @@
-# Just a placeholder for now to help thinking about the structure.
 statistical_model_config: unbinned_wimp_statistical_model.yaml
 
 poi: wimp_rate_multiplier

@@ -103,6 +103,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             likelihood_object = locate(config["likelihood_type"])
+            if "template_folder" not in likelihood_config:
+                likelihood_config["template_folder"] = []
             if isinstance(likelihood_config["template_folder"], str):
                 template_folder_list = [likelihood_config["template_folder"]]
             elif isinstance(likelihood_config["template_folder"], list):

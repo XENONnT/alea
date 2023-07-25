@@ -1,8 +1,10 @@
 import os
+import yaml
+import pkg_resources
 from pydoc import locate
+from warnings import warn
 
 import numpy as np
-import alea
 
 
 def get_analysis_space(analysis_space: dict) -> list:
@@ -31,29 +33,12 @@ def adapt_likelihood_config_for_blueice(
 
     Args:
         likelihood_config (dict): likelihood config dict
-        template_folder_list (list): list of possible base folders where
-            templates are located. If a folder starts with alea/,
-            the alea folder is used as base.
+        template_folder_list (list): list of possible base folders.
             Ordered by priority.
 
     Returns:
         dict: adapted likelihood config
     """
-    template_folder = None
-    for template_folder in template_folder_list:
-        # if template folder starts with alea: get location of alea
-        if template_folder.startswith("alea/"):
-            alea_dir = os.path.dirname(os.path.abspath(alea.__file__))
-            template_folder = os.path.join(alea_dir, template_folder.replace("alea/", ""))
-            # check if template folder exists
-            if not os.path.isdir(template_folder):
-                template_folder = None
-            else:
-                break
-
-    # raise error if no template folder is found
-    if template_folder is None:
-        raise FileNotFoundError("No template folder found. Please provide a valid template folder.")
 
     likelihood_config["analysis_space"] = get_analysis_space(
         likelihood_config["analysis_space"])
@@ -62,6 +47,61 @@ def adapt_likelihood_config_for_blueice(
         likelihood_config["default_source_class"])
 
     for source in likelihood_config["sources"]:
-        source["templatename"] = os.path.join(
-            template_folder, source["template_filename"])
+        source["templatename"] = get_file_path(
+            source["template_filename"], template_folder_list)
     return likelihood_config
+
+
+def load_yaml(file_name: str):
+    """Load data from yaml file."""
+    with open(get_file_path(file_name), 'r') as file:
+        data = yaml.safe_load(file)
+    return data
+
+
+def _get_abspath(file_name):
+    """Get the abspath of the file. Raise FileNotFoundError when not found in any subfolder"""
+    for sub_dir in ('model_configs', 'runner_configs', 'templates'):
+        p = os.path.join(_package_path(sub_dir), file_name)
+        if os.path.exists(p):
+            return p
+    raise FileNotFoundError(f'Cannot find {file_name}')
+
+
+def _package_path(sub_directory):
+    """Get the abs path of the requested sub folder"""
+    return pkg_resources.resource_filename('alea', f'{sub_directory}')
+
+
+def get_file_path(fname, folder_list=[]):
+    """Find the full path to the resource file
+    Try 5 methods in the following order
+
+    #. fname begin with '/', return absolute path
+    #. url_base begin with '/', return url_base + name
+    #. can get file from _get_abspath, return alea internal file path
+    #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
+    #. can be downloaded from MongoDB, download and return cached path
+    """
+    # 1. From absolute path
+    # Usually Config.default is a absolute path
+    if fname.startswith('/'):
+        return fname
+
+    # 2. From local folder
+    # Use url_base as prefix
+    for folder in folder_list:
+        if folder.startswith('/'):
+            fpath = os.path.join(folder, fname)
+            if os.path.exists(fpath):
+                warn(f'Load {fname} successfully from {fpath}')
+                return fpath
+
+    # 3. From alea internal files
+    try:
+        return _get_abspath(fname)
+    except FileNotFoundError:
+        pass
+
+    # raise error when can not find corresponding file
+    raise RuntimeError(f'Can not find {fname}, please check your file system')

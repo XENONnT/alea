@@ -1,9 +1,9 @@
-import yaml
 import pkg_resources
 from unittest import TestCase
 
 from blueice.likelihood import LogLikelihoodSum
-from alea.blueice_extended_model import BlueiceExtendedModel, CustomAncillaryLikelihood
+from alea.utils import load_yaml
+from alea.models import BlueiceExtendedModel, CustomAncillaryLikelihood
 
 
 class TestBlueiceExtendedModel(TestCase):
@@ -12,10 +12,7 @@ class TestBlueiceExtendedModel(TestCase):
     def __init__(self, *args, **kwargs):
         """Initialize the BlueiceExtendedModel class"""
         super().__init__(*args, **kwargs)
-        # TODO: put the file path searching in utils.py
-        with open(pkg_resources.resource_filename(
-            'alea', 'examples/unbinned_wimp_statistical_model.yaml'), 'r') as f:
-            self.config = yaml.safe_load(f)
+        self.config = load_yaml('unbinned_wimp_statistical_model.yaml')
         self.n_likelihood_terms = len(self.config['likelihood_config']['likelihood_terms'])
         self.model = BlueiceExtendedModel(
             parameter_definition=self.config['parameter_definition'],

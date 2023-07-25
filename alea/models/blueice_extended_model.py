@@ -239,7 +239,7 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(
                 f"Efficiency parameters including {efficiency_name:s}"
                 " must be constrained to be nonnegative")
-        if  ~np.isfinite(limits[1]):
+        if ~np.isfinite(limits[1]):
             raise ValueError(
                 f"Efficiency parameters including {efficiency_name:s}"
                 " must be constrained to be finite")

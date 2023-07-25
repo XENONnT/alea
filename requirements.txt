@@ -2,6 +2,7 @@ atomicwrites
 git+https://github.com/JelleAalbers/blueice
 h5py
 git+https://github.com/XENONnT/inference_interface
+iminuit >= 2.21
 matplotlib
 mergedeep
 multihist

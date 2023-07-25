@@ -33,9 +33,7 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_config (dict): A dictionary defining the likelihood.
         """
         super().__init__(parameter_definition=parameter_definition)
-        # deepcopy likelihood_config to prevent it to be
-        # changed by adapt_likelihood_config_for_blueice
-        self._likelihood = self._build_ll_from_config(deepcopy(likelihood_config))
+        self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()

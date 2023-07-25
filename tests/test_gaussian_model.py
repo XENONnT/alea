@@ -16,9 +16,7 @@ class TestGaussianModel(TestCase):
 
     @classmethod
     def setUp(cls):
-        """
-        Initialise the GaussianModel
-        """
+        # Initialise the GaussianModel
         parameter_definition = {
             'mu': {
                 'fit_guess': 0.,
@@ -39,9 +37,6 @@ class TestGaussianModel(TestCase):
             parameter_definition=parameter_definition)
 
     def test_data_generation(self):
-        """
-        Test of generate_data and fit method of the GaussianModel class
-        """
         # test data generation:
         self.simple_model.data = self.simple_model.generate_data(mu=0, sigma=2)
 
@@ -51,7 +46,7 @@ class TestGaussianModel(TestCase):
         self.simple_model.data = self.simple_model.generate_data(mu=0, sigma=2)
         self.simple_model.store_data(toydata_file, [self.simple_model.data])
         stored_data = inference_interface.toydata_from_file('simple_data.hdf5')
-        assert self.simple_model.data == stored_data[0] , "Stored data disagrees with data!"
+        assert self.simple_model.data == stored_data[0], "Stored data disagrees with data!"
 
         remove("simple_data.hdf5")
 
@@ -61,5 +56,5 @@ class TestGaussianModel(TestCase):
         hat_meas = self.simple_model.data[0]["hat_mu"]
         best_fit, lf = self.simple_model.fit(sigma=2)
         hat_fit = best_fit["mu"]
-        np.testing.assert_almost_equal(hat_meas, hat_fit), "best-fit does not agree"
-        np.testing.assert_almost_equal(lf, sps.norm(hat_fit, 2).logpdf(hat_meas)) , "likelihood function disagrees"
+        np.testing.assert_almost_equal(hat_meas, hat_fit)
+        np.testing.assert_almost_equal(lf, sps.norm(hat_fit, 2).logpdf(hat_meas))

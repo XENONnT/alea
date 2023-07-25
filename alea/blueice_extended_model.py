@@ -67,9 +67,9 @@ class BlueiceExtendedModel(StatisticalModel):
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
         for i, (dataset_name, d) in enumerate(data.items()):
-            if not dataset_name == "generate_values":
+            if dataset_name != "generate_values":
                 ll_term = self._likelihood.likelihood_list[i]
-                assert dataset_name == self._likelihood.likelihood_list[i].pdf_base_config["name"], "Likelihood names do not match."
+                assert dataset_name == ll_term.pdf_base_config["name"], "Likelihood names do not match."
                 ll_term.set_data(d)
 
         self._data = data
@@ -118,7 +118,7 @@ class BlueiceExtendedModel(StatisticalModel):
             for p in self.parameters:
                 # adding the nominal rate values will screw things up in blueice!
                 # So here we're just adding the nominal values of all other parameters
-                if not p.ptype == "rate":
+                if p.ptype != "rate":
                     blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
 
             # add all parameters to extra_dont_hash for each source unless it is used:
@@ -170,7 +170,8 @@ class BlueiceExtendedModel(StatisticalModel):
         ll = CustomAncillaryLikelihood(self.parameters.with_uncertainty)
         lls.append(ll)
 
-        return LogLikelihoodSum(lls, likelihood_weights=likelihood_config.get("likelihood_weights", None))
+        likelihood_weights = likelihood_config.get("likelihood_weights", None)
+        return LogLikelihoodSum(lls, likelihood_weights=likelihood_weights)
 
     def _build_data_generators(self) -> list:
         # last one is AncillaryLikelihood
@@ -194,7 +195,7 @@ class BlueiceExtendedModel(StatisticalModel):
     def _generate_science_data(self, **generate_values) -> dict:
         science_data = [gen.simulate(**generate_values)
                         for gen in self.data_generators]
-        return {k: v for k, v in zip(self.likelihood_names, science_data)}
+        return dict(zip(self.likelihood_names, science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
         ancillary_measurements = {}

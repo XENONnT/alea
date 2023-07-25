@@ -59,6 +59,13 @@ class StatisticalModel:
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
         ):
+        """Initialize a statistical model"""
+        if type(self) == StatisticalModel:
+            raise RuntimeError(
+                "You cannot instantiate the StatisticalModel class directly, "
+                "you must use a subclass where the likelihood function and data generation "
+                "method are implemented")
+
         # following https://github.com/JelleAalbers/blueice/blob/
         # 7c10222a13227e78dc7224b1a7e56ff91e4a8043/blueice/likelihood.py#L97
         self.is_data_set = False

@@ -1,6 +1,6 @@
 from alea import StatisticalModel
 
-def test_gaussian_model():
+def test_statistical_model():
     try:
         error_raised = True
         StatisticalModel()

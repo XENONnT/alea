@@ -6,7 +6,7 @@ import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
-from inference_interface import dict_to_structured_array
+from inference_interface import dict_to_structured_array, structured_array_to_dict
 
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
@@ -291,10 +291,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             d (np.array): Data of ancillary measurements, stored as numpy array
         """
         # This results in shifted constraint terms.
-        if set(d.keys()) != set(self.parameters.names):
+        d_dict = structured_array_to_dict(d)
+        if set(d_dict.keys()) != set(self.parameters.names):
             raise ValueError(
                 "The data dict must contain all parameters as keys in CustomAncillaryLikelihood.")
-        self.constraint_functions = self._get_constraint_functions(**d)
+        self.constraint_functions = self._get_constraint_functions(**d_dict)
 
     def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
         """Return the sum of all constraint terms.

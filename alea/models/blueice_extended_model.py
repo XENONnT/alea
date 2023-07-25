@@ -108,18 +108,19 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         lls = []
 
+        if "template_folder" not in likelihood_config:
+            likelihood_config["template_folder"] = []
+        if isinstance(likelihood_config["template_folder"], str):
+            template_folder_list = [likelihood_config["template_folder"]]
+        elif isinstance(likelihood_config["template_folder"], list):
+            template_folder_list = likelihood_config["template_folder"]
+        else:
+            raise ValueError(
+                "template_folder must be either a string or a list of strings.")
+
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             likelihood_object = locate(config["likelihood_type"])
-            if "template_folder" not in likelihood_config:
-                likelihood_config["template_folder"] = []
-            if isinstance(likelihood_config["template_folder"], str):
-                template_folder_list = [likelihood_config["template_folder"]]
-            elif isinstance(likelihood_config["template_folder"], list):
-                template_folder_list = likelihood_config["template_folder"]
-            else:
-                raise ValueError(
-                    "template_folder must be either a string or a list of strings.")
 
             blueice_config = adapt_likelihood_config_for_blueice(
                 config, template_folder_list)
@@ -143,7 +144,6 @@ class BlueiceExtendedModel(StatisticalModel):
             ll = likelihood_object(blueice_config)
 
             for source in config["sources"]:
-
                 # Set rate parameters
                 rate_parameters = [
                     p for p in source["parameters"] if self.parameters[p].ptype == "rate"]

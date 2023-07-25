@@ -13,3 +13,6 @@ from .parameters import *
 
 from . import simulators
 from .simulators import *
+
+from . import template_source
+from .template_source import *

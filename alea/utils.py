@@ -1,6 +1,7 @@
 import os
 import yaml
 import pkg_resources
+from copy import deepcopy
 from pydoc import locate
 from warnings import warn
 
@@ -40,16 +41,18 @@ def adapt_likelihood_config_for_blueice(
         dict: adapted likelihood config
     """
 
-    likelihood_config["analysis_space"] = get_analysis_space(
-        likelihood_config["analysis_space"])
+    likelihood_config_copy = deepcopy(likelihood_config)
 
-    likelihood_config["default_source_class"] = locate(
-        likelihood_config["default_source_class"])
+    likelihood_config_copy["analysis_space"] = get_analysis_space(
+        likelihood_config_copy["analysis_space"])
 
-    for source in likelihood_config["sources"]:
+    likelihood_config_copy["default_source_class"] = locate(
+        likelihood_config_copy["default_source_class"])
+
+    for source in likelihood_config_copy["sources"]:
         source["templatename"] = get_file_path(
             source["template_filename"], template_folder_list)
-    return likelihood_config
+    return likelihood_config_copy
 
 
 def load_yaml(file_name: str):

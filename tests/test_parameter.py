@@ -8,11 +8,11 @@ from alea.parameters import Parameters
 class TestParameters(TestCase):
     """Test of the Parameters class"""
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the BlueiceExtendedModel class"""
-        super().__init__(*args, **kwargs)
-        self.config = load_yaml('unbinned_wimp_statistical_model.yaml')
-        self.parameters = Parameters.from_config(self.config['parameter_definition'])
+    @classmethod
+    def setUp(cls):
+        """Initialise the Parameters instance"""
+        config = load_yaml('unbinned_wimp_statistical_model.yaml')
+        cls.parameters = Parameters.from_config(config['parameter_definition'])
 
     def test_deep_copyable(self):
         """Test of whether Parameters instance can be deepcopied"""

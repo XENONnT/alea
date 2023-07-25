@@ -8,12 +8,12 @@ from alea.models import BlueiceExtendedModel, CustomAncillaryLikelihood
 class TestBlueiceExtendedModel(TestCase):
     """Test of the BlueiceExtendedModel class"""
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the BlueiceExtendedModel class"""
-        super().__init__(*args, **kwargs)
-        self.config = load_yaml('unbinned_wimp_statistical_model.yaml')
-        self.n_likelihood_terms = len(self.config['likelihood_config']['likelihood_terms'])
-        self.set_new_model()
+    @classmethod
+    def setUp(cls):
+        """Initialise the BlueiceExtendedModel instance"""
+        cls.config = load_yaml('unbinned_wimp_statistical_model.yaml')
+        cls.n_likelihood_terms = len(cls.config['likelihood_config']['likelihood_terms'])
+        cls.set_new_model(cls)
 
     def set_new_model(self):
         """Set a new BlueiceExtendedModel instance"""
@@ -57,8 +57,10 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the fit method"""
         self.model.data = self.model.generate_data()
         fit_result, max_llh = self.model.fit()
-        # TODO: check whether all parameters are in fit_result
+        # TODO:
+        # check whether all parameters are in fit_result
         # and whether fittable parameters are fitted
+        # and whether the results are in boundaries
 
 
 class TestCustomAncillaryLikelihood(TestCase):

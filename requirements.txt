@@ -2,6 +2,7 @@ git+https://github.com/JelleAalbers/blueice.git#egg=blueice
 git+https://github.com/XENONnT/inference_interface.git#egg=inference_interface
 atomicwrites
 h5py
+iminuit >= 2.21
 matplotlib
 multihist
 numpy

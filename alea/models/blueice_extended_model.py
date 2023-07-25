@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
-from inference_interface import dict_to_structured_array, structured_array_to_dict
+from inference_interface import dict_to_structured_array
 
 from alea.model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator

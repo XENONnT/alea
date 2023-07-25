@@ -1,4 +1,4 @@
-from alea.examples.gaussian_model import GaussianModel
+from alea.models.gaussian_model import GaussianModel
 
 
 def test_gaussian_model():

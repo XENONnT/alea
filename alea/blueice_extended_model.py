@@ -4,10 +4,9 @@ from typing import List
 import yaml
 import numpy as np
 import scipy.stats as stats
-from blueice.likelihood import LogAncillaryLikelihood
-from blueice.likelihood import LogLikelihoodSum
+from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
 
-from alea.statistical_model import StatisticalModel
+from alea.model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import adapt_likelihood_config_for_blueice
 from alea.parameters import Parameters

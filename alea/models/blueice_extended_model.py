@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
+from inference_interface import dict_to_structured_array
 
 from alea.model import StatisticalModel
 from alea.simulators import BlueiceDataGenerator
@@ -186,7 +187,7 @@ class BlueiceExtendedModel(StatisticalModel):
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
         ancillary_measurements = self._generate_ancillary_measurements(
             **generate_values_anc)
-        return science_data + [ancillary_measurements] + [generate_values]
+        return science_data + [ancillary_measurements] + [dict_to_structured_array(generate_values)]
 
     def _generate_science_data(self, **generate_values) -> list:
         science_data = [
@@ -208,7 +209,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     parameter_meas = param.fit_limits[1]
             ancillary_measurements[name] = parameter_meas
 
-        return ancillary_measurements
+        return dict_to_structured_array(ancillary_measurements)
 
     def _set_efficiency(self, source, ll):
         if "efficiency_name" not in source:
@@ -274,12 +275,12 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         """
         return {name: func.logpdf for name, func in self.constraint_functions.items()}
 
-    def set_data(self, d: dict):
+    def set_data(self, d: np.array):
         """
         Set the data of the ancillary likelihood (ancillary measurements).
 
         Args:
-            d (dict): Data in this case is a dict of ancillary measurements.
+            d (np.array): Data of ancillary measurements, stored as numpy array
         """
         # This results in shifted constraint terms.
         if set(d.keys()) != set(self.parameters.names):

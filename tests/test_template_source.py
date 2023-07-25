@@ -5,5 +5,7 @@ from alea.template_source import TemplateSource
 
 class TestTemplateSource(TestCase):
     """Test of the TemplateSource class"""
-    # TODO:
-    pass
+
+    def test_load_templates(self):
+        # TODO:
+        pass

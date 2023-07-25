@@ -73,7 +73,7 @@ def _package_path(sub_directory):
     return pkg_resources.resource_filename('alea', f'{sub_directory}')
 
 
-def get_file_path(fname, folder_list=[]):
+def get_file_path(fname, folder_list=None):
     """Find the full path to the resource file
     Try 5 methods in the following order
 
@@ -83,6 +83,8 @@ def get_file_path(fname, folder_list=[]):
     #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
     #. can be downloaded from MongoDB, download and return cached path
     """
+    if folder_list is None:
+        folder_list = []
     # 1. From absolute path
     # Usually Config.default is a absolute path
     if fname.startswith('/'):

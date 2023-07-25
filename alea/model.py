@@ -59,7 +59,8 @@ class StatisticalModel:
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
         ):
-        # following https://github.com/JelleAalbers/blueice/blob/7c10222a13227e78dc7224b1a7e56ff91e4a8043/blueice/likelihood.py#L97
+        # following https://github.com/JelleAalbers/blueice/blob/
+        # 7c10222a13227e78dc7224b1a7e56ff91e4a8043/blueice/likelihood.py#L97
         self.is_data_set = False
         if data is not None:
             self.data = data

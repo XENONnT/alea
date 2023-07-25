@@ -22,7 +22,7 @@ class TestGaussianModel(TestCase):
                 ],
                 'fittable': True,
                 'nominal_value': 1.,
-            }
+            },
         }
         simple_model = GaussianModel(
             parameter_definition=parameter_definition)

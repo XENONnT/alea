@@ -16,6 +16,7 @@ class TestBlueiceExtendedModel(TestCase):
         self.set_new_model()
 
     def set_new_model(self):
+        """Set a new BlueiceExtendedModel instance"""
         self.model = BlueiceExtendedModel(
             parameter_definition=self.config['parameter_definition'],
             likelihood_config=self.config['likelihood_config'],

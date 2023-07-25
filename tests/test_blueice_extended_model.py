@@ -1,4 +1,3 @@
-import pkg_resources
 from unittest import TestCase
 
 from blueice.likelihood import LogLikelihoodSum
@@ -14,6 +13,9 @@ class TestBlueiceExtendedModel(TestCase):
         super().__init__(*args, **kwargs)
         self.config = load_yaml('unbinned_wimp_statistical_model.yaml')
         self.n_likelihood_terms = len(self.config['likelihood_config']['likelihood_terms'])
+        self.set_new_model()
+
+    def set_new_model(self):
         self.model = BlueiceExtendedModel(
             parameter_definition=self.config['parameter_definition'],
             likelihood_config=self.config['likelihood_config'],
@@ -21,8 +23,16 @@ class TestBlueiceExtendedModel(TestCase):
 
     def test_expectation_values(self):
         """Test of the expectation_values method"""
-        self.model.data = self.model.generate_data()
+        self.set_new_model()
         expectation_values = self.model.get_expectation_values()
+
+        # should avoid accidentally set data
+        is_data_set = False
+        for ll_term in self.model._likelihood.likelihood_list[:-1]:
+            is_data_set |= ll_term.is_data_set
+        if is_data_set:
+            raise ValueError('Data should not be set after get_expectation_values.')
+
         # TODO: assert expectation values after test template source
         # self.assertEqual()
 
@@ -57,4 +67,5 @@ class TestCustomAncillaryLikelihood(TestCase):
 
     def test_ancillary_likelihood(self):
         """Test of the ancillary_likelihood method"""
+        # TODO:
         pass

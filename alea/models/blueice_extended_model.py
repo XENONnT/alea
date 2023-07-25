@@ -1,5 +1,6 @@
-from pydoc import locate  # to lookup likelihood class
 from typing import List
+from copy import deepcopy
+from pydoc import locate
 
 import yaml
 import numpy as np
@@ -7,9 +8,9 @@ import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
 
 from alea.model import StatisticalModel
+from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import adapt_likelihood_config_for_blueice
-from alea.parameters import Parameters
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -32,7 +33,9 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_config (dict): A dictionary defining the likelihood.
         """
         super().__init__(parameter_definition=parameter_definition)
-        self._likelihood = self._build_ll_from_config(likelihood_config)
+        # deepcopy likelihood_config to prevent it to be
+        # changed by adapt_likelihood_config_for_blueice
+        self._likelihood = self._build_ll_from_config(deepcopy(likelihood_config))
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
@@ -72,6 +75,7 @@ class BlueiceExtendedModel(StatisticalModel):
             ll_term.set_data(d)
 
         self._data = data
+        self.is_data_set = True
 
     def get_expectation_values(self, **kwargs) -> dict:
         """
@@ -79,15 +83,19 @@ class BlueiceExtendedModel(StatisticalModel):
         given a number of named parameters (kwargs)
         """
         ret = dict()
-        # ancillary likelihood does not contribute
-        for ll in self._likelihood.likelihood_list[:-1]:
 
-            ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
+        # calling ll need data to be set
+        self_copy = deepcopy(self)
+        self_copy.data = self_copy.generate_data()
+
+        # ancillary likelihood does not contribute
+        for ll_term in self_copy._likelihood.likelihood_list[:-1]:
+            ll_pars = list(ll_term.rate_parameters.keys()) + list(ll_term.shape_parameters.keys())
             ll_pars += ["livetime_days"]
             call_args = {k: i for k, i in kwargs.items() if k in ll_pars}
 
-            mus = ll(full_output=True, **call_args)[1]
-            for n, mu in zip(ll.source_name_list, mus):
+            mus = ll_term(full_output=True, **call_args)[1]
+            for n, mu in zip(ll_term.source_name_list, mus):
                 ret[n] = ret.get(n, 0) + mu
         return ret
 

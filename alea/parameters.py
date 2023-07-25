@@ -274,8 +274,9 @@ class Parameters:
                 values[name] = new_val if new_val is not None else param.nominal_value
         if any(i is None for k, i in values.items()):
             emptypars = ", ".join([k for k, i in values.items() if i is None])
-            raise AssertionError("All parameters must be set explicitly, or have a nominal value,"
-                                 " encountered for: " + emptypars)
+            raise AssertionError(
+                "All parameters must be set explicitly, or have a nominal value,"
+                " encountered for: " + emptypars)
         return values
 
     def __getattr__(self, name: str) -> Parameter:
@@ -291,9 +292,9 @@ class Parameters:
         Raises:
             AttributeError: If the attribute is not found.
         """
-        if name in self.parameters:
-            return self.parameters[name]
-        else:
+        try:
+            return super().__getattribute__('parameters')[name]
+        except KeyError:
             raise AttributeError(f"Attribute '{name}' not found.")
 
     def __getitem__(self, name: str) -> Parameter:

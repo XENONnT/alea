@@ -24,6 +24,7 @@ class TemplateSource(blueice.HistogramPdfSource):
     :param log10_bins: List of axis numbers.
     If True, bin edges on this axis in the root file are log10() of the actual bin edges.
     """
+
     def build_histogram(self):
         format_dict = {
             k: self.config[k]
@@ -71,7 +72,6 @@ class TemplateSource(blueice.HistogramPdfSource):
                                 stop=slice_axis_limits[1])
                     logging.debug(f"Normalization after slicing: {h.n}.")
 
-
             if collapse_axis is not None:
                 if collapse_slices is None:
                     raise ValueError(
@@ -94,9 +94,8 @@ class TemplateSource(blueice.HistogramPdfSource):
                     self.config['analysis_space']):
                 expected_bin_edges = np.array(expected_bin_edges)
                 seen_bin_edges = h.bin_edges[axis_i]
-                if len(
-                        self.config['analysis_space']
-                ) == 1:  # If 1D, hist1d returns bin_edges straight, not as list
+                # If 1D, hist1d returns bin_edges straight, not as list
+                if len(self.config['analysis_space']) == 1:
                     seen_bin_edges = h.bin_edges
                 logging.debug("axis_i: " + str(axis_i))
                 logging.debug("expected_bin_edges: " + str(expected_bin_edges))
@@ -175,6 +174,7 @@ class CombinedSource(blueice.HistogramPdfSource):
     Must be 1 shorter than histnames, templatenames
     :param histogram_parameters: names of parameters that should be put in the hdf5/histogram names,
     """
+
     def build_histogram(self):
         weight_names = self.config.get("weight_names")
         weights = [
@@ -355,20 +355,6 @@ class CombinedSource(blueice.HistogramPdfSource):
         return ret
 
 
-def get_json_spectrum(fn):
-    """
-    Translates bbf-style JSON files to spectra.
-    units are keV and /kev*day*kg
-    """
-    contents = json.load(open(fn, "r"))
-    logging.debug(contents["description"])
-    esyst = contents["coordinate_system"][0][1]
-    ret = interp1d(
-        np.linspace(*esyst), contents["map"],
-        bounds_error=False, fill_value=0.)
-    return ret
-
-
 class SpectrumTemplateSource(blueice.HistogramPdfSource):
     """
     :param spectrum_name: name of bbf json-like spectrum _OR_ function that can be called
@@ -376,6 +362,21 @@ class SpectrumTemplateSource(blueice.HistogramPdfSource):
     :param histname: histogram name
     :param named_parameters: list of config settings to pass to .format on histname and filename
     """
+
+    @staticmethod
+    def _get_json_spectrum(fn):
+        """
+        Translates bbf-style JSON files to spectra.
+        units are keV and /kev*day*kg
+        """
+        contents = json.load(open(fn, "r"))
+        logging.debug(contents["description"])
+        esyst = contents["coordinate_system"][0][1]
+        ret = interp1d(
+            np.linspace(*esyst), contents["map"],
+            bounds_error=False, fill_value=0.)
+        return ret
+
     def build_histogram(self):
         logging.debug("building a hist")
         format_dict = {
@@ -387,7 +388,7 @@ class SpectrumTemplateSource(blueice.HistogramPdfSource):
 
         spectrum = self.config["spectrum"]
         if type(spectrum) is str:
-            spectrum = get_json_spectrum(spectrum.format(**format_dict))
+            spectrum = self._get_json_spectrum(spectrum.format(**format_dict))
 
         slice_args = self.config.get("slice_args", {})
         if type(slice_args) is dict:

@@ -11,7 +11,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice
+from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -107,15 +107,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         lls = []
 
-        if "template_folder" not in likelihood_config:
-            likelihood_config["template_folder"] = []
-        if isinstance(likelihood_config["template_folder"], str):
-            template_folder_list = [likelihood_config["template_folder"]]
-        elif isinstance(likelihood_config["template_folder"], list):
-            template_folder_list = likelihood_config["template_folder"]
-        else:
-            raise ValueError(
-                "template_folder must be either a string or a list of strings.")
+        template_folder_list = get_template_folder_list(likelihood_config)
 
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:

@@ -73,7 +73,7 @@ def _get_abspath(file_name):
     """Get the abspath of the file. Raise FileNotFoundError when not found in any subfolder"""
     for sub_dir in ('model_configs', 'runner_configs', 'templates'):
         p = os.path.join(_package_path(sub_dir), file_name)
-        if len(glob(formatted_to_asterisked(p))):
+        if glob(formatted_to_asterisked(p)):
             return p
     raise FileNotFoundError(f'Cannot find {file_name}')
 
@@ -117,7 +117,7 @@ def get_file_path(fname, folder_list=None):
     for folder in folder_list:
         if folder.startswith('/'):
             fpath = os.path.join(folder, fname)
-            if len(glob(formatted_to_asterisked(fpath))):
+            if glob(formatted_to_asterisked(fpath)):
                 logging.info(f'Load {fname} successfully from {fpath}')
                 return fpath
 

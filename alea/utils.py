@@ -106,6 +106,10 @@ def get_file_path(fname, folder_list=None):
             if os.path.exists(fpath):
                 logging.info(f'Load {fname} successfully from {fpath}')
                 return fpath
+            # In case of files with placeholders we need to be a bit more flexible
+            elif os.path.exists(folder) and "{" in fname and "}" in fname:
+                logging.info(f'Load {fname} successfully from {fpath}')
+                return fpath
 
     # 3. From alea internal files
     try:

@@ -43,11 +43,10 @@ class TestBlueiceExtendedModel(TestCase):
         if not (('ancillary_likelihood' in data) and ('generate_values' in data)):
             raise ValueError('Data does not contain ancillary_likelihood and generate_values.')
         for k, v in data.items():
-            if k in ['ancillary_likelihood', 'generate_values']:
+            if k in {'ancillary_likelihood', 'generate_values'}:
                 continue
-            else:
-                if 'source' not in v.dtype.names:
-                    raise ValueError('Data does not contain source information.')
+            elif 'source' not in v.dtype.names:
+                raise ValueError('Data does not contain source information.')
 
     def test_likelihood(self):
         """Test of the _likelihood attribute"""

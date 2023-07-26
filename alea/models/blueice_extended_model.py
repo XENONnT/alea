@@ -1,16 +1,17 @@
-from pydoc import locate  # to lookup likelihood class
 from typing import List
+from copy import deepcopy
+from pydoc import locate
 
 import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
-from inference_interface import dict_to_structured_array
+from inference_interface import dict_to_structured_array, structured_array_to_dict
 
 from alea.model import StatisticalModel
-from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice
 from alea.parameters import Parameters
+from alea.simulators import BlueiceDataGenerator
+from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -73,22 +74,30 @@ class BlueiceExtendedModel(StatisticalModel):
             ll_term.set_data(d)
 
         self._data = data
+        self.is_data_set = True
 
     def get_expectation_values(self, **kwargs) -> dict:
         """
         Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
+        TODO: Current implementation is not elegant
+        because it calls the ll and requires data to be set.
+        We should update this function in the future after we stop using blueice.
         """
         ret = dict()
-        # ancillary likelihood does not contribute
-        for ll in self._likelihood.likelihood_list[:-1]:
 
-            ll_pars = list(ll.rate_parameters.keys()) + list(ll.shape_parameters.keys())
+        # calling ll need data to be set
+        self_copy = deepcopy(self)
+        self_copy.data = self_copy.generate_data()
+
+        # ancillary likelihood does not contribute
+        for ll_term in self_copy._likelihood.likelihood_list[:-1]:
+            ll_pars = list(ll_term.rate_parameters.keys()) + list(ll_term.shape_parameters.keys())
             ll_pars += ["livetime_days"]
             call_args = {k: i for k, i in kwargs.items() if k in ll_pars}
 
-            mus = ll(full_output=True, **call_args)[1]
-            for n, mu in zip(ll.source_name_list, mus):
+            mus = ll_term(full_output=True, **call_args)[1]
+            for n, mu in zip(ll_term.source_name_list, mus):
                 ret[n] = ret.get(n, 0) + mu
         return ret
 
@@ -101,16 +110,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         lls = []
 
+        template_folder_list = get_template_folder_list(likelihood_config)
+
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             likelihood_object = locate(config["likelihood_type"])
-            if isinstance(likelihood_config["template_folder"], str):
-                template_folder_list = [likelihood_config["template_folder"]]
-            elif isinstance(likelihood_config["template_folder"], list):
-                template_folder_list = likelihood_config["template_folder"]
-            else:
-                raise ValueError(
-                    "template_folder must be either a string or a list of strings.")
 
             blueice_config = adapt_likelihood_config_for_blueice(
                 config, template_folder_list)
@@ -134,7 +138,6 @@ class BlueiceExtendedModel(StatisticalModel):
             ll = likelihood_object(blueice_config)
 
             for source in config["sources"]:
-
                 # Set rate parameters
                 rate_parameters = [
                     p for p in source["parameters"] if self.parameters[p].ptype == "rate"]
@@ -283,10 +286,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             d (np.array): Data of ancillary measurements, stored as numpy array
         """
         # This results in shifted constraint terms.
-        if set(d.keys()) != set(self.parameters.names):
+        d_dict = structured_array_to_dict(d)
+        if set(d_dict.keys()) != set(self.parameters.names):
             raise ValueError(
                 "The data dict must contain all parameters as keys in CustomAncillaryLikelihood.")
-        self.constraint_functions = self._get_constraint_functions(**d)
+        self.constraint_functions = self._get_constraint_functions(**d_dict)
 
     def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
         """Return the sum of all constraint terms.

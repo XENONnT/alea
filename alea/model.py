@@ -7,6 +7,7 @@ from scipy.stats import chi2
 from scipy.optimize import brentq
 from iminuit import Minuit
 from iminuit.util import make_func_code
+from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
@@ -58,7 +59,18 @@ class StatisticalModel:
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
         ):
-        self._data = data
+        """Initialize a statistical model"""
+        if type(self) == StatisticalModel:
+            raise RuntimeError(
+                "You cannot instantiate the StatisticalModel class directly, "
+                "you must use a subclass where the likelihood function and data generation "
+                "method are implemented")
+
+        # following https://github.com/JelleAalbers/blueice/blob/
+        # 7c10222a13227e78dc7224b1a7e56ff91e4a8043/blueice/likelihood.py#L97
+        self.is_data_set = False
+        if data is not None:
+            self.data = data
         self._confidence_level = confidence_level
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
@@ -93,6 +105,7 @@ class StatisticalModel:
             "You must write a data-generation method (_generate_data) for your statistical model"
             " or use a subclass where it is written for you")
 
+    @_needs_data
     def ll(self, **kwargs) -> float:
         """
         Likelihod function, returns the loglikelihood for the given parameters.
@@ -143,6 +156,7 @@ class StatisticalModel:
         representing the data-sets of one or more likelihood terms.
         """
         self._data = data
+        self.is_data_set = True
 
     def store_data(
             self, file_name, data_list, data_name_list=None, metadata = None):
@@ -205,6 +219,7 @@ class StatisticalModel:
 
         return cost
 
+    @_needs_data
     def fit(self, verbose=False, **kwargs) -> Tuple[dict, float]:
         """
         Fit the model to the data by maximizing the likelihood

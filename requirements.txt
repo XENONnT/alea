@@ -1,6 +1,7 @@
 atomicwrites
 git+https://github.com/JelleAalbers/blueice
 h5py
+iminuit
 git+https://github.com/XENONnT/inference_interface
 matplotlib
 mergedeep

@@ -80,6 +80,9 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
+        TODO: current implementation is not elegant
+        because it calls the ll and requires data to be set. 
+        We should update this function in the future after we stop using blueice.
         """
         ret = dict()
 

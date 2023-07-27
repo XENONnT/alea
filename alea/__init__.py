@@ -11,3 +11,5 @@ from .parameters import *
 from .simulators import *
 
 from .template_source import *
+
+from .examples import *

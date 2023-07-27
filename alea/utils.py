@@ -72,7 +72,7 @@ def load_yaml(file_name: str):
 
 def _get_abspath(file_name):
     """Get the abspath of the file. Raise FileNotFoundError when not found in any subfolder"""
-    for sub_dir in ('model_configs', 'runner_configs', 'templates'):
+    for sub_dir in ('examples/configs', 'examples/templates'):
         p = os.path.join(_package_path(sub_dir), file_name)
         if glob(formatted_to_asterisked(p)):
             return p

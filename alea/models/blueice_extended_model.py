@@ -94,11 +94,13 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy = deepcopy(self)
         self_copy.data = self_copy.generate_data()
 
-        # ancillary likelihood does not contribute
         # TODO: Make a self.likelihood_temrs dict with the likelihood names as keys and the corresponding likelihood terms as values.
-        for ll_term, parameter_names in zip(self_copy._likelihood.likelihood_list[:-1],
-                                            self_copy._likelihood.likelihood_parameters):  # ancillary likelihood does not contribute
-            call_args = {k: i for k, i in generate_values.items() if k in parameter_names}  # WARNING: This silently drops parameters it can't handle!
+        # ancillary likelihood does not contribute
+        for ll_term, parameter_names in zip(
+                self_copy._likelihood.likelihood_list[:-1],
+                self_copy._likelihood.likelihood_parameters):
+            # WARNING: This silently drops parameters it can't handle!
+            call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
 
             mus = ll_term(full_output=True, **call_args)[1]
             for n, mu in zip(ll_term.source_name_list, mus):

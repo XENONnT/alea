@@ -20,10 +20,11 @@ def get_analysis_space(analysis_space: dict) -> list:
             if isinstance(value, str) and value.startswith("np."):
                 eval_element = (key, eval(value))
             elif isinstance(value, str):
-                eval_element = (key,
-                                np.fromstring(value,
-                                              dtype=float,
-                                              sep=" "))
+                eval_element = (
+                    key,
+                    np.fromstring(value,
+                                  dtype=float,
+                                  sep=" "))
             elif isinstance(value, list):
                 eval_element = (key, np.array(value))
             else:
@@ -140,6 +141,8 @@ def get_template_folder_list(likelihood_config):
         template_folder_list = [likelihood_config["template_folder"]]
     elif isinstance(likelihood_config["template_folder"], list):
         template_folder_list = likelihood_config["template_folder"]
+    elif likelihood_config["template_folder"] is None:
+        template_folder_list = []
     else:
         raise ValueError(
             "template_folder must be either a string or a list of strings.")

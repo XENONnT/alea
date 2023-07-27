@@ -1,6 +1,8 @@
 import os
+import re
 import yaml
 import pkg_resources
+from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
@@ -15,15 +17,19 @@ def get_analysis_space(analysis_space: dict) -> list:
 
     for element in analysis_space:
         for key, value in element.items():
-            if value.startswith("np."):
+            if isinstance(value, str) and value.startswith("np."):
                 eval_element = (key, eval(value))
-            else:
+            elif isinstance(value, str):
                 eval_element = (
                     key,
-                    np.fromstring(
-                        value,
-                        dtype=float,
-                        sep=" "))
+                    np.fromstring(value,
+                                  dtype=float,
+                                  sep=" "))
+            elif isinstance(value, list):
+                eval_element = (key, np.array(value))
+            else:
+                raise ValueError(f"analysis_space for dimension {key} not understood.")
+
             eval_analysis_space.append(eval_element)
     return eval_analysis_space
 
@@ -68,7 +74,7 @@ def _get_abspath(file_name):
     """Get the abspath of the file. Raise FileNotFoundError when not found in any subfolder"""
     for sub_dir in ('model_configs', 'runner_configs', 'templates'):
         p = os.path.join(_package_path(sub_dir), file_name)
-        if os.path.exists(p):
+        if glob(formatted_to_asterisked(p)):
             return p
     raise FileNotFoundError(f'Cannot find {file_name}')
 
@@ -76,6 +82,18 @@ def _get_abspath(file_name):
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder"""
     return pkg_resources.resource_filename('alea', f'{sub_directory}')
+
+
+def formatted_to_asterisked(formatted):
+    """
+    Convert formatted string to asterisk
+    Sometimes a parameter(usually shape parameter) is not specified in formatted string,
+    this function replace the parameter with asterisk.
+    """
+    asterisked = formatted
+    for found in re.findall("\{(.*?)\}", formatted):
+        asterisked = asterisked.replace('{' + found + '}', "*")
+    return asterisked
 
 
 def get_file_path(fname, folder_list=None):
@@ -100,7 +118,7 @@ def get_file_path(fname, folder_list=None):
     for folder in folder_list:
         if folder.startswith('/'):
             fpath = os.path.join(folder, fname)
-            if os.path.exists(fpath):
+            if glob(formatted_to_asterisked(fpath)):
                 logging.info(f'Load {fname} successfully from {fpath}')
                 return fpath
 
@@ -123,6 +141,8 @@ def get_template_folder_list(likelihood_config):
         template_folder_list = [likelihood_config["template_folder"]]
     elif isinstance(likelihood_config["template_folder"], list):
         template_folder_list = likelihood_config["template_folder"]
+    elif likelihood_config["template_folder"] is None:
+        template_folder_list = []
     else:
         raise ValueError(
             "template_folder must be either a string or a list of strings.")

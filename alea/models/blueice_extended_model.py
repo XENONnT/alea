@@ -57,12 +57,12 @@ class BlueiceExtendedModel(StatisticalModel):
         return cls(**config)
 
     @property
-    def data(self) -> list:
+    def data(self) -> dict:
         """Returns the data of the statistical model."""
         return super().data
 
     @data.setter
-    def data(self, data: list):
+    def data(self, data: dict):
         """
         Overrides default setter. Will also set the data of the blueice ll.
         Data-sets are expected to be in the form of a list of one
@@ -70,8 +70,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
-        for d, ll_term in zip(data[:-1], self._likelihood.likelihood_list):
-            ll_term.set_data(d)
+        for i, (dataset_name, d) in enumerate(data.items()):
+            if dataset_name != "generate_values":
+                ll_term = self._likelihood.likelihood_list[i]
+                assert dataset_name == ll_term.pdf_base_config["name"], "Likelihood names do not match."
+                ll_term.set_data(d)
 
         self._data = data
         self.is_data_set = True
@@ -84,17 +87,20 @@ class BlueiceExtendedModel(StatisticalModel):
         because it calls the ll and requires data to be set.
         We should update this function in the future after we stop using blueice.
         """
+        generate_values = self.parameters(**kwargs)  # kwarg or nominal value
         ret = dict()
 
         # calling ll need data to be set
         self_copy = deepcopy(self)
         self_copy.data = self_copy.generate_data()
 
+        # TODO: Make a self.likelihood_temrs dict with the likelihood names as keys and the corresponding likelihood terms as values.
         # ancillary likelihood does not contribute
-        for ll_term in self_copy._likelihood.likelihood_list[:-1]:
-            ll_pars = list(ll_term.rate_parameters.keys()) + list(ll_term.shape_parameters.keys())
-            ll_pars += ["livetime_days"]
-            call_args = {k: i for k, i in kwargs.items() if k in ll_pars}
+        for ll_term, parameter_names in zip(
+                self_copy._likelihood.likelihood_list[:-1],
+                self_copy._likelihood.likelihood_parameters):
+            # WARNING: This silently drops parameters it can't handle!
+            call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
 
             mus = ll_term(full_output=True, **call_args)[1]
             for n, mu in zip(ll_term.source_name_list, mus):
@@ -121,7 +127,10 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config["livetime_days"] = self.parameters[
                 blueice_config["livetime_parameter"]].nominal_value
             for p in self.parameters:
-                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+                # adding the nominal rate values will screw things up in blueice!
+                # So here we're just adding the nominal values of all other parameters
+                if p.ptype != "rate":
+                    blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
 
             # add all parameters to extra_dont_hash for each source unless it is used:
             for i, source in enumerate(config["sources"]):
@@ -153,16 +162,18 @@ class BlueiceExtendedModel(StatisticalModel):
                         "Only rate multipliers that end on _rate_multiplier"
                         " are currently supported.")
 
-                # Set shape parameters
-                shape_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
-                if shape_parameters:
-                    # TODO: Implement setting shape parameters
-                    raise NotImplementedError("Shape parameters are not yet supported.")
-
                 # Set efficiency parameters
                 if source.get("apply_efficiency", False):
                     self._set_efficiency(source, ll)
+
+                # Set shape parameters
+                shape_parameters = [
+                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
+                for p in shape_parameters:
+                    anchors = self.parameters[p].blueice_anchors
+                    if anchors is None:
+                        raise ValueError(f"Shape parameter {p} does not have any anchors.")
+                    ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
             ll.prepare()
             lls.append(ll)
@@ -171,7 +182,8 @@ class BlueiceExtendedModel(StatisticalModel):
         ll = CustomAncillaryLikelihood(self.parameters.with_uncertainty)
         lls.append(ll)
 
-        return LogLikelihoodSum(lls, likelihood_weights=likelihood_config["likelihood_weights"])
+        likelihood_weights = likelihood_config.get("likelihood_weights", None)
+        return LogLikelihoodSum(lls, likelihood_weights=likelihood_weights)
 
     def _build_data_generators(self) -> list:
         # last one is AncillaryLikelihood
@@ -182,20 +194,21 @@ class BlueiceExtendedModel(StatisticalModel):
     def _ll(self, **generate_values) -> float:
         return self._likelihood(**generate_values)
 
-    def _generate_data(self, **generate_values) -> list:
+    def _generate_data(self, **generate_values) -> dict:
         # generate_values are already filtered and filled by the nominal values\
         # through the generate_data method in the parent class
-        science_data = self._generate_science_data(**generate_values)
+        data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        ancillary_measurements = self._generate_ancillary_measurements(
+        data["ancillary_likelihood"] = self._generate_ancillary_measurements(
             **generate_values_anc)
-        return science_data + [ancillary_measurements] + [dict_to_structured_array(generate_values)]
+        data["generate_values"] = dict_to_structured_array(generate_values)
+        return data
 
-    def _generate_science_data(self, **generate_values) -> list:
-        science_data = [
-            gen.simulate(**generate_values) for gen in self.data_generators]
-        return science_data
+    def _generate_science_data(self, **generate_values) -> dict:
+        science_data = [gen.simulate(**generate_values)
+                        for gen in self.data_generators]
+        return dict(zip(self.likelihood_names, science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
         ancillary_measurements = {}
@@ -233,7 +246,7 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(
                 f"Efficiency parameters including {efficiency_name:s}"
                 " must be constrained to be nonnegative")
-        if  ~np.isfinite(limits[1]):
+        if ~np.isfinite(limits[1]):
             raise ValueError(
                 f"Efficiency parameters including {efficiency_name:s}"
                 " must be constrained to be finite")
@@ -265,10 +278,10 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         parameter_list = self.parameters.names
 
         self.constraint_functions = self._get_constraint_functions()
-        super().__init__(
-            func=self.ancillary_likelihood_sum,
-            parameter_list=parameter_list,
-            config=self.parameters.nominal_values)
+        super().__init__(func=self.ancillary_likelihood_sum,
+                         parameter_list=parameter_list,
+                         config=self.parameters.nominal_values)
+        self.pdf_base_config["name"] = "ancillary_likelihood"
 
     @property
     def constraint_terms(self) -> dict:

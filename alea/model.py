@@ -237,36 +237,18 @@ class StatisticalModel:
 
         cost = self.make_objective(minus=True, **kwargs)
 
-        class MinuitWrap:
-            """
-            Wrapper for functions to be called by Minuit
-            s_args must be a list of argument names of function f
-            the names in this list must be the same as the keys of
-            the dictionary passed to the Minuit call.
-            """
-
-            def __init__(self, f, s_args):
-                self.func = f
-                self.s_args = s_args
-                self.func_code = make_func_code(s_args)
-
-            def __call__(self, *args):
-                return self.func(args)
-
         # Make the Minuit object
-        cost.errordef = Minuit.LIKELIHOOD
-        m = Minuit(
-            MinuitWrap(cost, s_args=self.parameters.names),
-            **defaults)
+        m = Minuit(MinuitWrap(cost, parameters=self.parameters),
+                   **defaults)
+        m.errordef = Minuit.LIKELIHOOD
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:
             m.fixed[par] = True
-        for n, l in self.parameters.fit_limits.items():
-            m.limits[n] = l
 
         # Call migrad to do the actual minimization
         m.migrad()
+        self.minuit_object = m
         if verbose:
             print(m)
         # alert! This gives the _maximum_ likelihood
@@ -393,3 +375,18 @@ class StatisticalModel:
             dl = np.nan
 
         return dl, ul
+
+
+class MinuitWrap:
+    """
+    Wrapper for functions to be called by Minuit.
+    Initialized with a function f and a Parameters instance.
+    """
+
+    def __init__(self, f, parameters: Parameters):
+        self.func = f
+        self.s_args = parameters.names
+        self._parameters = {p.name: p.fit_limits for p in parameters}
+
+    def __call__(self, *args):
+        return self.func(args)

@@ -29,7 +29,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={
         'alea': [
-            'examples/*',
+            'examples/configs/*',
+            'examples/templates/*',
         ],
     },
     url="https://github.com/XENONnT/alea",

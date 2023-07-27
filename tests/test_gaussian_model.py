@@ -4,7 +4,7 @@ from unittest import TestCase
 import scipy.stats as sps
 import inference_interface
 
-from alea.models import GaussianModel
+from alea.examples import GaussianModel
 
 
 class TestGaussianModel(TestCase):

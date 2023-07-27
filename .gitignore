@@ -12,7 +12,6 @@ __pycache__
 *.pdf
 *.ipynb
 !notebooks/*.ipynb
-!alea/examples/*.ipynb
 *.h5
 *.hdf5
 !alea/examples/templates/*.h5
@@ -22,3 +21,4 @@ __pycache__
 docs/build
 build
 debug.py
+docs/source/reference/*

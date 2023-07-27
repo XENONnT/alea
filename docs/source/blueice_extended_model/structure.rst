@@ -1,0 +1,4 @@
+:orphan:
+
+Structure of BlueiceExtendedModel
+=================================

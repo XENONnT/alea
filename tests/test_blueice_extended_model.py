@@ -1,3 +1,4 @@
+import pytest
 from unittest import TestCase
 
 from blueice.likelihood import LogLikelihoodSum
@@ -5,6 +6,7 @@ from alea.utils import load_yaml
 from alea.models import BlueiceExtendedModel, CustomAncillaryLikelihood
 
 
+@pytest.mark.usefixtures('rm_cache')
 class TestBlueiceExtendedModel(TestCase):
     """Test of the BlueiceExtendedModel class"""
 

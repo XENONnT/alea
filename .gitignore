@@ -12,6 +12,7 @@ __pycache__
 *.pdf
 *.ipynb
 !notebooks/*.ipynb
+!docs/source/notebooks/*.ipynb
 *.h5
 *.hdf5
 !alea/examples/templates/*.h5

@@ -17,7 +17,7 @@ with open('HISTORY.md') as file:
 
 
 setuptools.setup(
-    name='alea',
+    name='alea-inference',
     version='0.0.0',
     description='A tool to perform toyMC-based inference constructions',
     author='Alea contributors, the XENON collaboration',

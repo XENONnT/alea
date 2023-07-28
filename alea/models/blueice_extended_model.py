@@ -83,8 +83,10 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
-        TODO: Current implementation is not elegant
-        because it calls the ll and requires data to be set.
+        TODO: Current implementation is not elegant.
+        It copied the llh and sets the data to the copied llh,
+        because the call of llh needs data to be set.
+        But data is not needed for the expectation values.
         We should update this function in the future after we stop using blueice.
         """
         generate_values = self.parameters(**kwargs)  # kwarg or nominal value

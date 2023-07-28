@@ -1,5 +1,6 @@
 from alea import StatisticalModel
 
+
 def test_statistical_model():
     try:
         error_raised = True

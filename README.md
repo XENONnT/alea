@@ -1,10 +1,9 @@
 # Alea
 A tool to perform toyMC-based inference constructions
 
-[![DOI](https://zenodo.org/badge/*********.svg)](https://zenodo.org/badge/latestdoi/*********)
 [![Test package](https://github.com/XENONnT/alea/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/XENONnT/alea/actions/workflows/pytest.yml)
 [![Coverage Status](https://coveralls.io/repos/github/XENONnT/alea/badge.svg?branch=main)](https://coveralls.io/github/XENONnT/alea?branch=main)
-[![PyPI version shields.io](https://img.shields.io/pypi/v/alea.svg)](https://pypi.python.org/pypi/alea/)
+[![PyPI version shields.io](https://img.shields.io/pypi/v/alea_inference.svg)](https://pypi.python.org/pypi/alea_inference/)
 [![Readthedocs Badge](https://readthedocs.org/projects/alea/badge/?version=latest)](https://alea.readthedocs.io/en/latest/?badge=latest)
 [![CodeFactor](https://www.codefactor.io/repository/github/xenonnt/alea/badge)](https://www.codefactor.io/repository/github/xenonnt/alea)
 

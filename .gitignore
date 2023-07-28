@@ -19,6 +19,7 @@ __pycache__
 !alea/examples/templates/*.hdf5
 !alea/templates/*.h5
 !alea/templates/*.hdf5
+.coverage
 build
 docs/build
 docs/source/_build

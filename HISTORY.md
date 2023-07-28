@@ -32,5 +32,3 @@ New Contributors
 * @dachengx made their first contribution in https://github.com/XENONnT/alea/pull/10
 * @hammannr made their first contribution in https://github.com/XENONnT/alea/pull/12
 * @hoetzsch made their first contribution in https://github.com/XENONnT/alea/pull/30
-
-**Full Changelog**: https://github.com/XENONnT/alea/commits/v0.0.0

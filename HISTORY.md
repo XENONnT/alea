@@ -1,4 +1,4 @@
-0.0.0 / 2023-00-00
+0.0.0 / 2023-07-28
 ------------------
 * readme update with pointer to previous work in lieu of commit history by @kdund in https://github.com/XENONnT/alea/pull/8
 * Adds a statistical model base class (under construction by @kdund in https://github.com/XENONnT/alea/pull/7

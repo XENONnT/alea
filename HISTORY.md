@@ -26,6 +26,7 @@
 * Shape parameters by @hammannr in https://github.com/XENONnT/alea/pull/58
 * Recover examples folder, update file indexing, add notebooks folder, remove legacies by @dachengx in https://github.com/XENONnT/alea/pull/61
 * Remove pdf_cache folder before pytest by @dachengx in https://github.com/XENONnT/alea/pull/65
+* Make 0.0.0, initialize documentation structure based on readthedocs, add badges to README by @dachengx in https://github.com/XENONnT/alea/pull/66
 
 New Contributors
 * @kdund made their first contribution in https://github.com/XENONnT/alea/pull/8

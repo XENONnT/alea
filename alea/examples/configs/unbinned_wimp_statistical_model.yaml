@@ -1,0 +1,129 @@
+parameter_definition:
+  wimp_mass:
+    nominal_value: 50
+    fittable: false
+    description: WIMP mass in GeV/c^2
+
+  livetime_sr0:
+    nominal_value: 0.2
+    fittable: false
+    description: Livetime of SR0 in years
+
+  livetime_sr1:
+    nominal_value: 1.0
+    fittable: false
+    description: Livetime of SR1 in years
+
+  wimp_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+
+  er_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    uncertainty: 0.2
+    relative_uncertainty: true
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    fit_guess: 1.0
+
+  signal_efficiency:
+    nominal_value: 1.0
+    ptype: efficiency
+    uncertainty: 0.1
+    relative_uncertainty: true
+    fittable: true
+    fit_limits:
+      - 0
+      - 10.
+    fit_guess: 1.0
+    description: Parameter to account for the uncertain signal expectation given a certain cross-section
+
+  er_band_shift:
+    nominal_value: 0
+    ptype: shape
+    uncertainty: null  # scipy.stats.uniform(loc=-1, scale=2)
+    # relative_uncertainty: false
+    fittable: true
+    blueice_anchors:
+      - -2
+      - -1
+      - 0
+      - 1
+      - 2
+    fit_limits:
+      - -2
+      - 2
+    description: ER band shape parameter (shifts the ER band up and down)
+
+likelihood_config:
+  likelihood_weights: [1, 1, 1]
+  template_folder: null  # will try to find the templates in alea
+  likelihood_terms:
+    # SR0
+    - name: sr0
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": 'np.arange(0, 102, 2)'
+        - "cs2": 'np.geomspace(100, 100000, 51)'
+      in_events_per_bin: true
+      livetime_parameter: livetime_sr0
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template  # TODO: implement a default histname based on the source name
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.h5
+        histogram_scale_factor: 1
+
+      - name: wimp
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+          - signal_efficiency
+        template_filename: wimp50gev_template.h5
+        apply_efficiency: True
+        efficiency_name: signal_efficiency
+
+    # SR1
+    - name: sr1
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - "cs1": 'np.arange(0, 102, 2)'
+        - "cs2": 'np.geomspace(100, 100000, 51)'
+      in_events_per_bin: true
+      livetime_parameter: livetime_sr1
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.h5
+        histogram_scale_factor: 2
+
+      - name: wimp
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+          - signal_efficiency
+        template_filename: wimp50gev_template.h5
+        apply_efficiency: True
+        efficiency_name: signal_efficiency

@@ -1,0 +1,56 @@
+statistical_model_config: unbinned_wimp_statistical_model.yaml
+
+poi: wimp_rate_multiplier
+
+computation:
+  discovery_power:
+    parameters_to_zip: {}
+    parameters_to_vary:
+      {
+        poi_expectation: "np.linspace(0, 30, 10)",
+        wimp_mass: [10, 50, 200],
+      }
+    parameters_in_common:
+      {
+        hypotheses: ["true", "null", "free"],
+        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.hdf5",
+        n_mc: 5000,
+        n_batch: 40,
+      }
+    toydata_mode: "generate"
+
+  threshold:
+    parameters_to_zip: {}
+    parameters_to_vary: {wimp_mass: [10, 50, 200]}
+    parameters_in_common:
+      {
+        hypotheses: ["true", "null", "free"],
+        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.hdf5",
+        n_mc: 5000,
+        n_batch: 40,
+      }
+    limit_threshold: "thresholds.hdf5"
+    toydata_mode: "generate"
+    parameters_as_wildcards: ["poi_expectation", "n_mc", "n_batch"]
+
+  sensitivity:
+    parameters_to_zip: {}
+    parameters_to_vary: {poi_expectation: [0.], wimp_mass: [10, 50, 200]}
+    parameters_in_common:
+      {
+        hypotheses: ["true", "null", "free"],
+        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.hdf5",
+        n_mc: 5000,
+        n_batch: 40,
+        compute_confidence_interval: True,
+        limit_threshold: "thresholds.hdf5",
+      }
+    toydata_mode: "generate"
+
+midway_path: null
+OSG_path: null
+OSG_parameters:
+  request_memory: "8000Mb"
+  singularity_container: null
+
+outputfolder: null

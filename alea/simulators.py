@@ -1,10 +1,12 @@
-import numpy as np
 from copy import deepcopy
-import multihist as mh
 from itertools import product
-import scipy.stats as sps
 import logging
+
+import numpy as np
+import scipy.stats as sps
 import blueice
+import multihist as mh
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -55,7 +57,7 @@ class BlueiceDataGenerator:
             source_histograms.append(mh.Histdd(bins=bins))
 
         self.ll = ll
-        logging.info("initing simulator, binned: " + str(binned))
+        logging.debug("initing simulator, binned: " + str(binned))
         self.binned = binned
         self.bincs = bincs
         self.direction_names = direction_names

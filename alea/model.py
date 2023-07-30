@@ -6,7 +6,6 @@ import numpy as np
 from scipy.stats import chi2
 from scipy.optimize import brentq
 from iminuit import Minuit
-from iminuit.util import make_func_code
 from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 

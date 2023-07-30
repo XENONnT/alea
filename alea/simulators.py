@@ -6,6 +6,7 @@ import numpy as np
 import scipy.stats as sps
 import blueice
 import multihist as mh
+from blueice.likelihood import BinnedLogLikelihood, UnbinnedLogLikelihood
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,19 +15,35 @@ class BlueiceDataGenerator:
     """
     A class for generating data from a blueice likelihood term.
 
-    Args:
-        ll_term (blueice.likelihood.BinnedLogLikelihood
-            or blueice.likelihood.UnbinnedLogLikelihood):
-            A blueice likelihood term.
+    :ivar ll: The blueice likelihood term.
+    :ivar binned: True if the likelihood term is binned.
+    :ivar bincs: The bin centers of the likelihood term.
+    :vartype bincs: list
+    :ivar direction_names: The names of the directions of the likelihood term.
+    :vartype direction_names: list
+    :ivar source_histograms: The histograms of the sources of the likelihood term.
+    :vartype source_histograms: list
+    :ivar data_lengths: The number of bins of each component of the likelihood term.
+    :vartype data_lengths: list
+    :ivar dtype: The data type of the likelihood term.
+    :vartype dtype: list
+    :ivar last_kwargs: The last kwargs used to generate data.
+    :vartype last_kwargs: dict
+    :ivar mus: The expected number of events of each source of the likelihood term.
+    :ivar parameters: The parameters of the likelihood term.
+    :vartype parameters: list
+    :param ll_term: A blueice likelihood term.
+    :type ll_term: blueice.likelihood.BinnedLogLikelihood or blueice.likelihood.UnbinnedLogLikelihood
     """
 
     def __init__(self, ll_term):
-        if isinstance(ll_term, blueice.likelihood.BinnedLogLikelihood):
-            binned = True
-        elif isinstance(ll_term, blueice.likelihood.UnbinnedLogLikelihood):
-            binned = False
+        if isinstance(ll_term, BinnedLogLikelihood):
+            self.binned = True
+        elif isinstance(ll_term, UnbinnedLogLikelihood):
+            self.binned = False
         else:
             raise NotImplementedError
+        logging.debug("initing simulator, binned: " + str(self.binned))
 
         ll = deepcopy(ll_term)
         bins = []  # bin edges
@@ -35,7 +52,7 @@ class BlueiceDataGenerator:
         dtype = []
         data_length = 1  # number of bins in nD histogram
         data_lengths = []  # list of number of bins of each component
-        for direction in ll.base_model.config['analysis_space']:
+        for direction in ll.base_model.config["analysis_space"]:
             bins.append(direction[1])
             binc = 0.5 * (direction[1][1::] + direction[1][0:-1])
             bincs.append(binc)
@@ -43,7 +60,7 @@ class BlueiceDataGenerator:
             data_length *= len(direction[1]) - 1
             data_lengths.append(len(direction[1]) - 1)
             direction_names.append(direction[0])
-        dtype.append(('source', int))
+        dtype.append(("source", int))
         logging.debug("init simulate_interpolated with bins: " + str(bins))
 
         data_binc = np.zeros(data_length, dtype=dtype)
@@ -57,8 +74,6 @@ class BlueiceDataGenerator:
             source_histograms.append(mh.Histdd(bins=bins))
 
         self.ll = ll
-        logging.debug("initing simulator, binned: " + str(binned))
-        self.binned = binned
         self.bincs = bincs
         self.direction_names = direction_names
         self.source_histograms = source_histograms
@@ -68,26 +83,35 @@ class BlueiceDataGenerator:
         self.mus = ll.base_model.expected_events()
         self.parameters = list(ll.shape_parameters.keys())
         self.parameters += [
-            n + '_rate_multiplier' for n in ll.rate_parameters.keys()
+            n + "_rate_multiplier" for n in ll.rate_parameters.keys()
         ]
 
-    def simulate(self,
-                 filter_kwargs=True,
-                 n_toys=None,
-                 sample_n_toys=False,
-                 **kwargs):
+    def simulate(
+            self,
+            filter_kwargs=True,
+            n_toys=None,
+            sample_n_toys=False,
+            **kwargs):
         """simulate toys for each source
 
-        Args:
-            filter_kwargs (bool, optional): If True, only parameters of
-                the ll object are accepted as kwargs. Defaults to True.
-            n_toys (int, optional): If not None: a fixed number n_toys of
-                toys is generated for each source component.
-
-        Returns:
-            structured array: array of simulated data for all sources in
-                the given analysis space. The index 'source' indicates
-                the corresponding source of an entry.
+        :param filter_kwargs:
+            If True, only parameters of the ll object are accepted as kwargs.
+            Defaults to True.
+        :type filter_kwargs: bool, optional
+        :param n_toys:
+            If not None, a fixed number n_toys of toys is generated for each source component.
+            Defaults to None.
+        :type n_toys: int, optional
+        :param sample_n_toys:
+            If True, the number of toys is sampled from a Poisson distribution with mean n_toys.
+            Defaults to False. Only works if n_toys is not None.
+        :type sample_n_toys: bool, optional
+        :param kwargs: The parameters pasted to the likelihood function.
+        :return:
+            Array of simulated data for all sources in the given analysis space.
+            The index "source" indicates the corresponding source of an entry.
+            The dtype follows self.dtype.
+        :rtype: numpy.ndarray
         """
         if filter_kwargs:
             kwargs = {k: v for k, v in kwargs.items() if k in self.parameters}
@@ -118,8 +142,8 @@ class BlueiceDataGenerator:
         if n_toys is not None:
             if sample_n_toys:
                 self.n_toys_rv = sps.poisson(n_toys).rvs()
-                n_sources = np.full(len(self.ll.base_model.sources),
-                                    self.n_toys_rv)
+                n_sources = np.full(
+                    len(self.ll.base_model.sources), self.n_toys_rv)
             else:
                 n_sources = np.full(len(self.ll.base_model.sources), n_toys)
         else:
@@ -129,6 +153,7 @@ class BlueiceDataGenerator:
             logging.debug("number of events drawn from Poisson: " + str(n_sources))
             if len(self.ll.base_model.sources) == 1:
                 n_sources = np.array([n_sources])
+
         r_data = np.zeros(np.sum(n_sources), dtype=self.dtype)
         i_write = 0
         for i, n_source in enumerate(n_sources):
@@ -136,53 +161,7 @@ class BlueiceDataGenerator:
                 rvs = self.source_histograms[i].get_random(n_source)
                 for j, n in enumerate(self.direction_names):
                     r_data[n][i_write:i_write + n_source] = rvs[:, j]
-                r_data['source'][i_write:i_write + n_source] = i
+                r_data["source"][i_write:i_write + n_source] = i
                 i_write += n_source
         logging.debug("return simulated data with length: " + str(len(r_data)))
         return r_data
-
-
-class simulate_nearest:
-    def __init__(self, ll):
-        self.ll = ll
-        self.parameters = list(ll.shape_parameters.keys())
-        self.parameters += [
-            n + '_rate_multiplier' for n in ll.rate_parameters.keys()
-        ]
-
-    def simulate(self, **kwargs):
-        call_args_shape = {}
-        shape_coordinates = {}
-        rate_multipliers = {}
-        for k, v in kwargs.items():
-            if k in self.parameters:
-                if k.endswith('_rate_multiplier'):
-                    rate_multipliers[k.replace('_rate_multiplier', '')] = v
-                else:
-                    call_args_shape[k] = v
-        if len(self.ll.shape_parameters) == 0:
-            return self.ll.base_model.simulate(
-                rate_multipliers=rate_multipliers)
-
-        for sp in self.ll.shape_parameters.keys():
-            if self.ll.shape_parameters[sp][2] is None:
-                # non-numerical parameters have their default values in shape_paramters, otherwise in config
-                shape_coordinates[sp] = self.ll.base_model.config[sp]
-            else:
-                shape_coordinates[sp] = self.ll.shape_parameters[sp][2]
-        call_args_closest = {}
-        for sp in call_args_shape:
-            # store key not value (same for numerical, but makes a difference for string nuisance pars)
-            diff_dir = {
-                abs(k - call_args_shape[sp]): k
-                for k, val in self.ll.shape_parameters[sp][0].items()
-            }
-            call_args_closest[sp] = diff_dir[min(diff_dir.keys())]
-        shape_coordinates.update(call_args_closest)
-        shape_key = []
-        for sp in self.ll.shape_parameters.keys():
-            shape_key.append(shape_coordinates[sp])
-        shape_key = tuple(shape_key)
-        m = self.ll.anchor_models[shape_key]
-
-        return m.simulate(rate_multipliers=rate_multipliers)

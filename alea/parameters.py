@@ -5,21 +5,31 @@ class Parameter:
     """
     Represents a single parameter with its properties.
 
-    Attributes:
-        name (str): The name of the parameter.
-        nominal_value (float, optional): The nominal value of the parameter.
-        fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
-        ptype (str, optional): The ptype of the parameter.
-        uncertainty (float or str, optional):
-            The uncertainty of the parameter. If a string,
-            it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
-        relative_uncertainty (bool, optional):
-        Indicates if the uncertainty is relative to the nominal_value.
-        blueice_anchors (list, optional): Anchors for blueice template morphing.
-        fit_limits (tuple, optional): The limits for fitting the parameter.
-        parameter_interval_bounds (tupe, optional): limits for computing confidence intervals
-        fit_guess (float, optional): The initial guess for fitting the parameter.
-        description (str, optional): A description of the parameter.
+    :ivar name: The name of the parameter.
+    :vartype name: str
+    :ivar nominal_value: The nominal value of the parameter.
+    :vartype nominal_value: Optional[float]
+    :ivar fittable: Indicates if the parameter is fittable or always fixed.
+    :vartype fittable: bool
+    :ivar ptype: The ptype of the parameter.
+    :vartype ptype: Optional[str]
+    :ivar _uncertainty:
+        The uncertainty of the parameter.
+        If a string, it can be evaluated as a numpy or
+        scipy function to define non-gaussian constraints.
+    :vartype _uncertainty: Optional[float or str]
+    :ivar relative_uncertainty: Indicates if the uncertainty is relative to the nominal_value.
+    :vartype relative_uncertainty: Optional[bool]
+    :ivar blueice_anchors: Anchors for blueice template morphing.
+    :vartype blueice_anchors: Optional[List]
+    :ivar fit_limits: The limits for fitting the parameter.
+    :vartype fit_limits: Optional[Tuple]
+    :ivar parameter_interval_bounds: Limits for computing confidence intervals
+    :vartype parameter_interval_bounds: Optional[Tuple]
+    :ivar _fit_guess: The initial guess for fitting the parameter.
+    :vartype _fit_guess: Optional[float]
+    :ivar description: A description of the parameter.
+    :vartype description: Optional[str]
     """
 
     def __init__(
@@ -79,6 +89,7 @@ class Parameter:
 
     @property
     def fit_guess(self) -> float:
+        """Returns the initial guess for fitting the parameter."""
         # make sure to only return fit_guess if fittable
         if self._fit_guess is not None and not self.fittable:
             raise ValueError(
@@ -113,8 +124,8 @@ class Parameters:
     """
     Represents a collection of parameters.
 
-    Attributes:
-        parameters (dict): A dictionary to store the parameters, with parameter name as key.
+    :ivar parameters: A dictionary to store the parameters, with parameter name as key.
+    :vartype parameters: Dict[str, Parameter]
     """
 
     def __init__(self):
@@ -129,11 +140,10 @@ class Parameters:
         """
         Creates a Parameters object from a configuration dictionary.
 
-        Args:
-            config (dict): The configuration dictionary.
-
-        Returns:
-            Parameters: The created Parameters object.
+        :param config: A dictionary of parameter configurations.
+        :type config: Dict[str, dict]
+        :return: The created Parameters object.
+        :rtype: Parameters
         """
         parameters = cls()
         for name, param_config in config.items():
@@ -147,11 +157,10 @@ class Parameters:
         Creates a Parameters object from a list of parameter names.
         Everything else is set to default values.
 
-        Args:
-            names (list): List of parameter names.
-
-        Returns:
-            Parameters: The created Parameters object.
+        :param names: List of parameter names.
+        :type names: List[str]
+        :return: The created Parameters object.
+        :rtype: Parameters
         """
         parameters = cls()
         for name in names:
@@ -169,8 +178,8 @@ class Parameters:
         """
         Adds a Parameter object to the Parameters collection.
 
-        Args:
-            parameter (Parameter): The Parameter object to add.
+        :param parameter: The Parameter object to add.
+        :type parameter: Parameter
         """
         if parameter.name in self.names:
             raise ValueError(f"Parameter {parameter.name} already exists.")
@@ -179,14 +188,16 @@ class Parameters:
     @property
     def names(self) -> List[str]:
         """
-        Returns a list of parameter names.
+        :return: A list of parameter names.
+        :rtype: List[str]
         """
         return list(self.parameters.keys())
 
     @property
     def fit_guesses(self) -> Dict[str, float]:
         """
-        Returns a dictionary of fit guesses.
+        :return: A dictionary of fit guesses.
+        :rtype: Dict[str, float]
         """
         return {
             name: param.fit_guess
@@ -196,7 +207,8 @@ class Parameters:
     @property
     def fit_limits(self) -> Dict[str, float]:
         """
-        Returns a dictionary of fit limits.
+        :return: A dictionary of fit limits.
+        :rtype: Dict[str, float]
         """
         return {
             name: param.fit_limits
@@ -206,21 +218,27 @@ class Parameters:
     @property
     def fittable(self) -> List[str]:
         """
-        Returns a list of parameter names which are fittable.
+        :return: A list of parameter names which are fittable.
+        :rtype: List[str]
         """
         return [name for name, param in self.parameters.items() if param.fittable]
 
     @property
     def not_fittable(self) -> List[str]:
         """
-        Returns a list of parameter names which are not fittable.
+        :return: A list of parameter names which are not fittable.
+        :rtype: List[str]
         """
         return [name for name, param in self.parameters.items() if not param.fittable]
 
     @property
     def uncertainties(self) -> dict:
         """
-        return a dict of name:uncertainty for all parameters with a not-NaN uncertainty.
+        A dict of uncertainties for all parameters with a not-NaN uncertainty.
+        Note: this is not the same as the parameter.uncertainty property.
+
+        :return: A dictionary of parameter uncertainties.
+        :rtype: Dict[str, float or Any]
         """
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
@@ -229,6 +247,9 @@ class Parameters:
         """
         Return parameters with a not-NaN uncertainty.
         The parameters are the same objects as in the original Parameters object, not a copy.
+
+        :return: A Parameters object with parameters with a not-NaN uncertainty.
+        :rtype: Parameters
         """
         param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
         params = Parameters()
@@ -239,7 +260,10 @@ class Parameters:
     @property
     def nominal_values(self) -> dict:
         """
-        return a dict of name:nominal value for all applicable parameters
+        A dict of nominal values for all parameters with a nominal value.
+
+        :return: A dictionary of parameter nominal values.
+        :rtype: Dict[str, float]
         """
         return {
             k: i.nominal_value
@@ -247,19 +271,17 @@ class Parameters:
             if i.nominal_value is not None}
 
     def __call__(
-            self, return_fittable: bool = False,
+            self, return_fittable: Optional[bool] = False,
             **kwargs: Any) -> Dict[str, float]:
         """
         Returns a dictionary of parameter values, optionally filtered
         to return only fittable parameters.
 
-        Args:
-            return_fittable (bool, optional):
-                Indicates if only fittable parameters should be returned.
-            **kwargs: Additional keyword arguments to override parameter values.
-
-        Returns:
-            dict: A dictionary of parameter values.
+        :param return_fittable: Indicates if only fittable parameters should be returned.
+        :type return_fittable: Optional[bool]
+        :param kwargs: Additional keyword arguments to override parameter values.
+        :return: A dictionary of parameter values.
+        :rtype: Dict[str, float]
         """
         values = {}
 
@@ -283,14 +305,11 @@ class Parameters:
         """
         Retrieves a Parameter object by attribute access.
 
-        Args:
-            name (str): The name of the parameter.
-
-        Returns:
-            Parameter: The retrieved Parameter object.
-
-        Raises:
-            AttributeError: If the attribute is not found.
+        :param name: The name of the parameter.
+        :type name: str
+        :raises AttributeError: If the attribute is not found.
+        :return: The retrieved Parameter object.
+        :rtype: Parameter
         """
         try:
             return super().__getattribute__('parameters')[name]
@@ -301,14 +320,11 @@ class Parameters:
         """
         Retrieves a Parameter object by dictionary access.
 
-        Args:
-            name (str): The name of the parameter.
-
-        Returns:
-            Parameter: The retrieved Parameter object.
-
-        Raises:
-            KeyError: If the key is not found.
+        :param name: The name of the parameter.
+        :type name: str
+        :raises KeyError: If the key is not found.
+        :return: The retrieved Parameter object.
+        :rtype: Parameter
         """
         if name in self.parameters:
             return self.parameters[name]
@@ -326,6 +342,10 @@ class Parameters:
     def values_in_fit_limits(self, **kwargs: Any) -> bool:
         """
         Returns True if all values are within the fit limits.
+
+        :param kwargs: The parameter values to check.
+        :return: True if all values are within the fit limits.
+        :rtype: bool
         """
         return all(
             self.parameters[name].value_in_fit_limits(value)

@@ -36,6 +36,15 @@ class StatisticalModel:
         - fit
         - get_parameter_list
 
+    :ivar data: data of the model
+    :ivar _data: data of the model
+    :ivar _confidence_level: confidence level for confidence intervals
+    :ivar _confidence_interval_kind: kind of confidence interval to compute
+    :ivar parameters: parameters of the model
+    :ivar confidence_interval_threshold: threshold for confidence interval
+    :ivar is_data_set: True if data is set
+    :vartype is_data_set: bool
+
     :param data: pre-set data of the model
     :param parameter_definition: definition of the parameters of the model
     :type parameter_definition: dict or list
@@ -46,11 +55,6 @@ class StatisticalModel:
     :param confidence_interval_threshold: threshold for confidence interval
     :type confidence_interval_threshold: Callable[[float], float]
     """
-
-    _data = None
-    _config = {}
-    _confidence_level = 0.9
-    _confidence_interval_kind = None
 
     def __init__(
             self,

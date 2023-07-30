@@ -21,6 +21,13 @@ class BlueiceExtendedModel(StatisticalModel):
     This class extends the `StatisticalModel` class and provides methods
     for generating data and computing likelihoods based on blueice.
 
+    :ivar _likelihood: A blueice LogLikelihoodSum instance.
+    :vartype _likelihood: blueice.likelihood.LogLikelihoodSum
+    :ivar likelihood_names: List of likelihood names.
+    :vartype likelihood_names: list
+    :ivar data_generators: List of data generators for each likelihood term.
+    :vartype data_generators: list
+
     :param parameter_definition: A dictionary defining the model parameters.
     :type parameter_definition: dict
     :param likelihood_config: A dictionary defining the likelihood.
@@ -283,6 +290,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     """
     Custom ancillary likelihood that can be used to add constraint terms
     for parameters of the likelihood.
+
+    :ivar parameters: Parameters object containing the parameters to be constrained.
+    :ivar constraint_functions: Dict of constraint functions for all ancillary parameters.
 
     :param parameters: Parameters object containing the parameters to be constrained.
     """

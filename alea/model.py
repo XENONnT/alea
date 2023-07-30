@@ -48,7 +48,7 @@ class StatisticalModel:
     """
 
     _data = None
-    _config = dict()
+    _config = {}
     _confidence_level = 0.9
     _confidence_interval_kind = None
 
@@ -442,6 +442,7 @@ class MinuitWrap:
     """
 
     def __init__(self, f: Callable, parameters: Parameters):
+        """Initialize the wrapper"""
         self.func = f
         self.s_args = parameters.names
         self._parameters = {p.name: p.fit_limits for p in parameters}

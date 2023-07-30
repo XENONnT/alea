@@ -101,7 +101,7 @@ class BlueiceDataGenerator:
             if type(ret) == float:
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
-            #print("ret,kwargs",ret,kwargs)
+            # print("ret, kwargs", ret, kwargs)
             _, mus, ps_array = ret
             for i in range(len(self.ll.base_model.sources)):
                 self.source_histograms[i].histogram = ps_array[i].reshape(
@@ -132,7 +132,7 @@ class BlueiceDataGenerator:
         r_data = np.zeros(np.sum(n_sources), dtype=self.dtype)
         i_write = 0
         for i, n_source in enumerate(n_sources):
-            if 0 < n_source:  #dont generate if 0
+            if 0 < n_source:  # dont generate if 0
                 rvs = self.source_histograms[i].get_random(n_source)
                 for j, n in enumerate(self.direction_names):
                     r_data[n][i_write:i_write + n_source] = rvs[:, j]
@@ -166,13 +166,13 @@ class simulate_nearest:
 
         for sp in self.ll.shape_parameters.keys():
             if self.ll.shape_parameters[sp][2] is None:
-                #Non-numerical parameters have their default values in shape_paramters, otherwise in config
+                # non-numerical parameters have their default values in shape_paramters, otherwise in config
                 shape_coordinates[sp] = self.ll.base_model.config[sp]
             else:
                 shape_coordinates[sp] = self.ll.shape_parameters[sp][2]
         call_args_closest = {}
         for sp in call_args_shape:
-            #store key not value (same for numerical, but makes a difference for string nuisance pars)
+            # store key not value (same for numerical, but makes a difference for string nuisance pars)
             diff_dir = {
                 abs(k - call_args_shape[sp]): k
                 for k, val in self.ll.shape_parameters[sp][0].items()

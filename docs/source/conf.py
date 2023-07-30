@@ -28,11 +28,17 @@ intersphinx_disabled_domains = ['std']
 templates_path = ['_templates']
 
 # -- Options for HTML output
-
 html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+# -- Options for autodoc
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'private-members': True
+}
 
 def setup(app):
     # Hack to import something from this dir. Apparently we're in a weird

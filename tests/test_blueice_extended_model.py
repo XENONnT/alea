@@ -40,6 +40,9 @@ class TestBlueiceExtendedModel(TestCase):
     def test_generate_data(self):
         """Test of the generate_data method"""
         data = self.model.generate_data()
+        self.model.store_data(
+            'simple_data.hdf5',
+            [data for k in self.model.likelihood_names])
         self.assertEqual(
             len(data), self.n_likelihood_terms + 2)
         if not (('ancillary_likelihood' in data) and ('generate_values' in data)):

@@ -29,6 +29,12 @@ intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
 
+# -- Options for NAPOLEON output
+
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = True
+napoleon_include_special_with_doc = True
+
 # -- Options for HTML output
 
 html_theme = 'sphinx_rtd_theme'

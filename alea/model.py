@@ -1,6 +1,6 @@
 import inspect
 import warnings
-from typing import Tuple, Callable, Optional
+from typing import Dict, List, Tuple, Callable, Optional
 
 import numpy as np
 from scipy.stats import chi2
@@ -20,10 +20,10 @@ class StatisticalModel:
         - a likelihood function
             ll(self, parameter_1, parameter_2... parameter_n):
             A function of a set of named parameters which
-            Return a float expressing the loglikelihood for observed data given these parameters.
+            return a float expressing the loglikelihood for observed data given these parameters.
         - a data generation function
-            generate_data(self, parameter_1, parameter_2... parameter_n)
-            A function of the same set of named parameters Return a full data set.
+            generate_data(self, parameter_1, parameter_2... parameter_n):
+            A function of the same set of named parameters return a full data set.
     - Methods that you must implement:
         - _ll
         - _generate_data
@@ -35,24 +35,25 @@ class StatisticalModel:
         - fit
         - get_parameter_list
 
-    :ivar data: data of the model
-    :ivar _data: data of the model
-    :ivar _confidence_level: confidence level for confidence intervals
-    :ivar _confidence_interval_kind: kind of confidence interval to compute
-    :ivar parameters: parameters of the model
-    :ivar confidence_interval_threshold: threshold for confidence interval
-    :ivar is_data_set: True if data is set
-    :vartype is_data_set: bool
+    Attributes:
+        data: data of the model
+        _data: data of the model
+        _confidence_level: confidence level for confidence intervals
+        _confidence_interval_kind: kind of confidence interval to compute
+        parameters: parameters of the model
+        confidence_interval_threshold: threshold for confidence interval
+        is_data_set (bool): True if data is set
 
-    :param data: pre-set data of the model
-    :param parameter_definition: definition of the parameters of the model
-    :type parameter_definition: dict or list
-    :param confidence_level: confidence level for confidence intervals
-    :type confidence_level: float
-    :param confidence_interval_kind: kind of confidence interval to compute
-    :type confidence_interval_kind: str
-    :param confidence_interval_threshold: threshold for confidence interval
-    :type confidence_interval_threshold: Callable[[float], float]
+    Args:
+        data: pre-set data of the model
+        parameter_definition (dict or list): definition of the parameters of the model
+        confidence_level (float): confidence level for confidence intervals
+        confidence_interval_kind (str): kind of confidence interval to compute
+        confidence_interval_threshold (Callable[[float], float]): threshold for confidence interval
+
+    Raise:
+        RuntimeError: if you try to instantiate the StatisticalModel class directly
+        NotImplementedError: if you do not implement the likelihood function or the data generation
     """
 
     def __init__(
@@ -104,7 +105,7 @@ class StatisticalModel:
                 "ll and generate_data must have the same signature (parameters)")
 
     def _ll(self, **kwargs) -> float:
-        """Likelihood function, Return the loglikelihood for the given parameters."""
+        """Likelihood function, return the loglikelihood for the given parameters."""
         raise NotImplementedError(
             "You must write a likelihood function (_ll) for your statistical model"
             " or use a subclass where it is written for you")
@@ -118,25 +119,30 @@ class StatisticalModel:
     @_needs_data
     def ll(self, **kwargs) -> float:
         """
-        Likelihod function, Return the loglikelihood for the given parameters.
+        Likelihod function, return the loglikelihood for the given parameters.
         The parameters are passed as keyword arguments, positional arguments are not possible.
         If a parameter is not given, the default value is used.
 
-        :param kwargs: keyword arguments for the parameters
-        :return: likelihood value
-        :rtype: float
+        Keyword Args:
+            kwargs: keyword arguments for the parameters
+
+        Returns:
+            float: likelihood value
         """
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
-    def generate_data(self, **kwargs):
+    def generate_data(self, **kwargs) -> dict or list:
         """
         Generate data for the given parameters.
         The parameters are passed as keyword arguments, positional arguments are not possible.
         If a parameter is not given, the default values are used.
 
-        :raises ValueError: If the parameters are not within the fit limits
-        :return: generated data
+        Raises:
+            ValueError: If the parameters are not within the fit limits
+
+        Returns:
+            dict or list: generated data
         """
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
@@ -162,7 +168,8 @@ class StatisticalModel:
 
     def store_data(
             self,
-            file_name, data_list, data_name_list=None, metadata=None):
+            file_name, data_list,
+            data_name_list: Optional[List]=None, metadata: Optional[Dict]=None):
         """
         Store a list of datasets (each on the form of a list of one or more structured arrays)
         Using inference_interface, but included here to allow over-writing.
@@ -171,14 +178,11 @@ class StatisticalModel:
         If you specify, it is set, if not it will read from self.get_likelihood_term_names.
         If not defined, it will be ["0", "1", ..., "n-1"]. The metadata is optional.
 
-        :param file_name: name of the file to store the data in
-        :type file_name: str
-        :param data_list: list of datasets
-        :type data_list: list
-        :param data_name_list: list of names of the datasets
-        :type data_name_list: list
-        :param metadata: metadata to store with the data
-        :type metadata: dict
+        Args:
+            file_name (str): name of the file to store the data in
+            data_list (list): list of datasets
+            data_name_list (list): list of names of the datasets
+            metadata (dict): metadata to store with the data
         """
         if data_name_list is None:
             if hasattr(self, "likelihood_names"):
@@ -193,7 +197,8 @@ class StatisticalModel:
         """
         Get the expectation values for the of the measurement.
 
-        :param parameter_values: values of the parameters
+        Args:
+            parameter_values: values of the parameters
         """
         return NotImplementedError("get_expectation_values is optional to implement")
 
@@ -207,14 +212,15 @@ class StatisticalModel:
         # no kwargs for nominal
         return self.get_expectation_values()
 
-    def get_likelihood_term_from_name(self, likelihood_name: str):
+    def get_likelihood_term_from_name(self, likelihood_name: str) -> Dict:
         """
         Return the index of a likelihood term if the likelihood has several names
 
-        :param likelihood_name: name of the likelihood term
-        :type likelihood_name: str
-        :return: index of the likelihood term
-        :rtype: dict
+        Args:
+            likelihood_name (str): name of the likelihood term
+
+        Returns:
+            dict: index of the likelihood term
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
@@ -230,10 +236,11 @@ class StatisticalModel:
         """
         Make a function that can be passed to Minuit
 
-        :param minus: if True, the function is multiplied by -1
-        :type minus: bool
-        :return: function that can be passed to Minuit
-        :rtype: Callable
+        Args:
+            minus (bool): if True, the function is multiplied by -1
+
+        Returns:
+            Callable: function that can be passed to Minuit
         """
         sign = -1 if minus else 1
 
@@ -257,10 +264,11 @@ class StatisticalModel:
         While the optimization is a minimization,
         the likelihood returned is the __maximum__ of the likelihood.
 
-        :param verbose: if True, print the Minuit object
-        :type verbose: bool
-        :return:
-            best-fit values of each parameter,
+        Args:
+            verbose (bool): if True, print the Minuit object
+
+        Returns:
+            dict, float: best-fit values of each parameter,
             and the value of the likelihood evaluated there
         """
         fixed_parameters = list(kwargs.keys())
@@ -296,17 +304,18 @@ class StatisticalModel:
             confidence_interval_kind: str,
             **kwargs):
         """
-        Helper function for confidence_interval that does the input checks and Return bounds
+        Helper function for confidence_interval that does the input checks and return bounds
 
-        :param poi_name: name of the parameter of interest
-        :type poi_name: str
-        :param parameter_interval_bounds: range in which to search for the confidence interval edges
-        :type parameter_interval_bounds: Tuple[float, float]
-        :param confidence_level: confidence level for confidence intervals
-        :type confidence_level: float
-        :param confidence_interval_kind: kind of confidence interval to compute
-        :type confidence_interval_kind: str
-        :return: confidence interval kind, confidence interval threshold, parameter interval bounds
+        Args:
+            poi_name (str): name of the parameter of interest
+            parameter_interval_bounds (Tuple[float, float]): range in which to search for the
+                confidence interval edges
+            confidence_level (float): confidence level for confidence intervals
+            confidence_interval_kind (str): kind of confidence interval to compute
+
+        Returns:
+            Tuple[str, Callable[[float], float], Tuple[float, float]]: confidence interval kind,
+            confidence interval threshold, parameter interval bounds
         """
         if confidence_level is None:
             confidence_level = self._confidence_level
@@ -372,17 +381,16 @@ class StatisticalModel:
         so that the range in the fit is parameter_interval_bounds/mus.
         Otherwise the bound is taken as-is.
 
-        :param poi_name: name of the parameter of interest
-        :type poi_name: str
-        :param parameter_interval_bounds: Range in which to search for the confidence
-            interval edges. May be specified as:
-                - setting the property "parameter_interval_bounds" for the parameter
-                - passing a list here
-        :type parameter_interval_bounds: Tuple[float, float]
-        :param confidence_level: confidence level for confidence intervals
-        :type confidence_level: float
-        :param confidence_interval_kind: kind of confidence interval to compute
-        :type confidence_interval_kind: str
+        Args:
+            poi_name (str): name of the parameter of interest
+            parameter_interval_bounds (Tuple[float, float]): range in which to search for the
+                confidence interval edges. May be specified as:
+                    - setting the property "parameter_interval_bounds" for the parameter
+                    - passing a list here
+                    - passing None here, in which case the parameter_interval_bounds property
+                        of the parameter is used
+            confidence_level (float): confidence level for confidence intervals
+            confidence_interval_kind (str): kind of confidence interval to compute
         """
 
         ci_objects = self._confidence_interval_checks(
@@ -436,10 +444,14 @@ class MinuitWrap:
     Wrapper for functions to be called by Minuit.
     Initialized with a function f and a Parameters instance.
 
-    :param f: function to be wrapped
-    :type f: Callable
-    :param parameters: parameters of the model
-    :type parameters: Parameters
+    Attributes:
+        func: function wrapped
+        s_args (list): parameter names of the model
+        _parameters (dict): parameters of the model
+
+    Args:
+        f (Callable): function to be wrapped
+        parameters (Parameters): parameters of the model
     """
 
     def __init__(self, f: Callable, parameters: Parameters):

@@ -272,7 +272,7 @@ class Parameters:
 
     def __call__(
             self, return_fittable: Optional[bool] = False,
-            **kwargs: Any) -> Dict[str, float]:
+            **kwargs: Optional[Dict]) -> Dict[str, float]:
         """
         Return a dictionary of parameter values, optionally filtered
         to return only fittable parameters.
@@ -339,7 +339,7 @@ class Parameters:
         else:
             return False
 
-    def values_in_fit_limits(self, **kwargs: Any) -> bool:
+    def values_in_fit_limits(self, **kwargs: Dict) -> bool:
         """
         Return True if all values are within the fit limits.
 

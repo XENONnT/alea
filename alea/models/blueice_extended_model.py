@@ -388,6 +388,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
         Returns:
             dict: Dict of constraint functions for all ancillary parameters.
+
+        Todo:
+            Implement str-type uncertainties.
         """
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
@@ -399,7 +402,6 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                 func = stats.norm(
                     central_values[name], uncertainty)
             else:
-                # TODO: Implement str-type uncertainties
                 NotImplementedError(
                     "Only float uncertainties are supported at the moment.")
             constraint_functions[name] = func

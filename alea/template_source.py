@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from blueice import HistogramPdfSource
 from inference_interface import template_to_multihist
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.debug)
 can_check_binning = True
 
 
@@ -128,7 +128,7 @@ class TemplateSource(HistogramPdfSource):
         """
         if slice_args is None:
             slice_args = self.config.get("slice_args", {})
-            if type(slice_args) is dict:
+            if isinstance(slice_args, dict):
                 slice_args = [slice_args]
 
         for sa in slice_args:
@@ -231,6 +231,8 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
     Source that inherits structure from TH2DSource by Jelle,
     but takes in lists of histogram names.
     The first histogram is the base histogram, and the rest are added to it with weights.
+    Currently the weights are hardcoded in the config, can not be changed in the fit.
+    In other words, the weight can not be shape parameter.
 
     :param weights: Weights of the 2nd to the last histograms.
     :param histnames: List of filenames containing the histograms.
@@ -257,9 +259,9 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
                 "weights must be 1 shorter than histnames, templatenames")
 
         slice_args = self.config.get("slice_args", {})
-        if type(slice_args) is dict:
+        if isinstance(slice_args, dict):
             slice_args = [slice_args]
-        if all(type(sa) is dict for sa in slice_args):
+        if all(isinstance(sa, dict) for sa in slice_args):
             # Recognize as a single slice_args for all histograms
             slice_argss = [slice_args] * len(histnames)
         else:
@@ -310,17 +312,22 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
             histograms[0] += h_comp * weights[i]
         h = histograms[0]
 
+        logging.debug("Setting zero for NaNs and Infs in combined template.")
+        h.histogram[np.isinf(h.histogram)] = 0.
+        h.histogram[np.isnan(h.histogram)] = 0.
+        h.histogram[h.histogram < 0] = 0.
+
         # Set pdf values that are below 0 to zero:
         if np.min(h.histogram) < 0:
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries.")
 
-        logging.info(
+        logging.debug(
             "Normalising combined template, "
             "the absolute rate is defined in histogram_multiplier")
         h = h / h.n
         h *= self.config.get("histogram_multiplier", 1)
-        logging.info("Applying slice fraction to combined template")
+        logging.debug("Applying slice fraction to combined template")
         h *= slice_fractions[0]
 
         # Fix the bin sizes
@@ -364,7 +371,7 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
         h = template_to_multihist(templatename, histname)
 
         spectrum = self.config["spectrum"]
-        if type(spectrum) is str:
+        if isinstance(spectrum, str):
             spectrum = self._get_json_spectrum(spectrum.format(**self.format_named_parameters))
 
         # Perform E-scaling, assume first axis is energy

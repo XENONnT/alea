@@ -148,13 +148,13 @@ likelihood_config:
         class: alea.template_source.CombinedSource
         parameters:
           - er_rate_multiplier
-        weight_1: 0.2
-        weight_-1: 0.3
-        weight_names: [weight_1, weight_-1]
-        histnames: [er_template, er_template, er_template,]
+        weight_a: 0.2
+        weight_b: 0.3
+        weight_names: [weight_a, weight_b]  # not meaningful, just an example
+        histnames: [er_template, er_template, er_template]
         template_filenames: [er_template_0.h5, er_template_1.h5, er_template_-1.h5]
-        histogram_multiplier: 200
-        histogram_scale_factor: 3
+        histogram_multiplier: 100  # absolute rate, /year
+        histogram_scale_factor: 2
 
       - name: wimp
         histname: wimp_template

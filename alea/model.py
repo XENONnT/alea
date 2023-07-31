@@ -209,7 +209,7 @@ class StatisticalModel:
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
-            return {n:i for i, n in enumerate(likelihood_names)}[likelihood_name]
+            return {n: i for i, n in enumerate(likelihood_names)}[likelihood_name]
         else:
             raise NotImplementedError("The attribute likelihood_names is not defined.")
 

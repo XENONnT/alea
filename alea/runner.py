@@ -70,7 +70,7 @@ class Runner:
             n_mc: int,
             common_hypothesis: dict = None,
             generate_values: dict = None,
-            statistical_model_args: dict = {},
+            statistical_model_args: dict = None,
             parameter_definition: Optional[dict or list] = None,
             likelihood_config: dict = None,
             confidence_level: float = 0.9,
@@ -94,6 +94,8 @@ class Runner:
             raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
 
         # likelihood_config is keyword argument, because not all statistical model needs it
+        if statistical_model_args is None:
+            statistical_model_args = {}
         statistical_model_args['likelihood_config'] = likelihood_config
         self.statistical_model = statistical_model_class(
             parameter_definition=parameter_definition,
@@ -158,7 +160,7 @@ class Runner:
 
         result_names = [f'{i:d}' for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if ea in ['free', 'null', 'true']:
+            if ea in {'free', 'null', 'true'}:
                 result_names[i] = ea
 
         metadata['date'] = datetime.now().strftime('%Y%m%d_%H:%M:%S')

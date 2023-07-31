@@ -96,6 +96,7 @@ class TemplateSource(HistogramPdfSource):
         return format_named_parameters
 
     def build_histogram(self):
+        """Build the histogram of the source."""
         templatename = self.config["templatename"].format(**self.format_named_parameters)
         histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
@@ -112,7 +113,8 @@ class TemplateSource(HistogramPdfSource):
 
         # Fix the bin sizes
         if can_check_binning:
-            self._check_binning(h, f"{histname:s} in hdf5 file {templatename:s}")
+            histogram_info = f"{histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
 
         self.set_dtype()
         self.set_pdf_histogram(h)
@@ -241,6 +243,7 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
     """
 
     def build_histogram(self):
+        """Build the histogram of the source."""
         if not self.config.get("in_events_per_bin", True):
             raise ValueError(
                 "CombinedSource does not support in_events_per_bin=False")
@@ -293,21 +296,12 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
         for i in range(len(weights)):
             h_comp = histograms[0].similar_blank_histogram()
             h = histograms[i + 1]
-            # base_part_norm = 0.
-            # h_centers = h_comp.bin_centers()
-            # h_inds = [range(len(hc)) for hc in h_centers]
-            # for inds in product(*h_inds):
-            #     bincs = [h_centers[j][k] for j, k in enumerate(inds)]
-            #     inds_comp = h_comp.get_bin_indices(bincs)
-            #     base_part_norm += histograms[0][inds]
-            #     h_comp[inds] = h[inds_comp]
-            # h_comp *= base_part_norm
             hslices = []
             for j, bincs in enumerate(h.bin_centers()):
                 hsliced = h_comp.get_axis_bin_index(bincs[0], j)
                 hsliceu = h_comp.get_axis_bin_index(bincs[-1], j) + 1
-                hslices.append(slice(hsliced, hsliceu))
-            # TODO: check here what norm I want.
+                hslices.append(slice(hsliced, hsliceu, 1))
+            # TODO: check the normalization here.
             h_comp[hslices] += h.histogram
             histograms[0] += h_comp * weights[i]
         h = histograms[0]
@@ -332,7 +326,8 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
 
         # Fix the bin sizes
         if can_check_binning:
-            self._check_binning(h, f"combined template {histnames} in hdf5 file {templatenames}")
+            histogram_info = f"combined template {histnames} in hdf5 file {templatenames}"
+            self._check_binning(h, histogram_info)
 
         self.set_dtype()
         self.set_pdf_histogram(h)
@@ -357,7 +352,8 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
         :param filename: Name of the JSON file.
         :type filename: str
         """
-        contents = json.load(open(filename, "r"))
+        with open(filename, "r") as f:
+            contents = json.load(f)
         logging.debug(contents["description"])
         esyst = contents["coordinate_system"][0][1]
         ret = interp1d(
@@ -366,6 +362,7 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
         return ret
 
     def build_histogram(self):
+        """Build the histogram of the source."""
         templatename = self.config["templatename"].format(**self.format_named_parameters)
         histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
@@ -394,7 +391,8 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
 
         # Fix the bin sizes
         if can_check_binning:
-            self._check_binning(h, f"reweighted {histname:s} in hdf5 file {templatename:s}")
+            histogram_info = f"reweighted {histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
 
         self.set_dtype()
         self.set_pdf_histogram(h)

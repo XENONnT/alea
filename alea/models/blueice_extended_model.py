@@ -229,11 +229,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Generate data for all likelihood terms and ancillary likelihood.
 
-        Args:
+        Keyword Args:
             generate_values (dict): A dictionary of parameter values.
 
         Returns:
-            numpy.array: A numpy structured array of data-sets,
+            dict: A dict of data-sets,
             with key of the likelihood term name, "ancillary_likelihood" and "generate_values".
         """
         # generate_values are already filtered and filled by the nominal values

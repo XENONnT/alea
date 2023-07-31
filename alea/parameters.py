@@ -135,7 +135,7 @@ class Parameters:
         self.parameters: Dict[str, Parameter] = {}
 
     def __iter__(self) -> iter:
-        """Return an iterator over the parameters. Each iteration Return a Parameter object."""
+        """Return an iterator over the parameters. Each iteration return a Parameter object."""
         return iter(self.parameters.values())
 
     @classmethod

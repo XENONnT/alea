@@ -125,7 +125,6 @@ class BlueiceDataGenerator:
             if type(ret) == float:
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
-            # print("ret, kwargs", ret, kwargs)
             _, mus, ps_array = ret
             for i in range(len(self.ll.base_model.sources)):
                 self.source_histograms[i].histogram = ps_array[i].reshape(
@@ -157,7 +156,7 @@ class BlueiceDataGenerator:
         r_data = np.zeros(np.sum(n_sources), dtype=self.dtype)
         i_write = 0
         for i, n_source in enumerate(n_sources):
-            if 0 < n_source:  # dont generate if 0
+            if n_source > 0:  # dont generate if 0
                 rvs = self.source_histograms[i].get_random(n_source)
                 for j, n in enumerate(self.direction_names):
                     r_data[n][i_write:i_write + n_source] = rvs[:, j]

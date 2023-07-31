@@ -300,8 +300,7 @@ class StatisticalModel:
 
         :param poi_name: name of the parameter of interest
         :type poi_name: str
-        :param parameter_interval_bounds:
-            range in which to search for the confidence interval edges
+        :param parameter_interval_bounds: range in which to search for the confidence interval edges
         :type parameter_interval_bounds: Tuple[float, float]
         :param confidence_level: confidence level for confidence intervals
         :type confidence_level: float
@@ -375,9 +374,8 @@ class StatisticalModel:
 
         :param poi_name: name of the parameter of interest
         :type poi_name: str
-        :param parameter_interval_bounds:
-            range in which to search for the confidence interval edges
-            May be specified as:
+        :param parameter_interval_bounds: Range in which to search for the confidence
+            interval edges. May be specified as:
                 - setting the property "parameter_interval_bounds" for the parameter
                 - passing a list here
         :type parameter_interval_bounds: Tuple[float, float]

@@ -15,6 +15,7 @@ class GaussianModel(StatisticalModel):
     :param parameter_definition: definition of the parameters of the model
     :type parameter_definition: dict or list
     """
+
     def __init__(
             self,
             parameter_definition: Optional[dict or list] = None,

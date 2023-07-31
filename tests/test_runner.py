@@ -19,10 +19,12 @@ class TestRunner(TestCase):
 
     def set_new_runner(self):
         """Set a new BlueiceExtendedModel instance"""
+        # TODO: interpret the config file after submitter class is implemented
+        parameter_zvc = self.runner_config['computation']['discovery_power']
         self.runner = Runner(
             statistical_model = self.runner_config['statistical_model'],
             poi = self.runner_config['poi'],
-            hypotheses = self.runner_config['computation']['discovery_power']['parameters_in_common']['hypotheses'],
+            hypotheses = parameter_zvc['parameters_in_common']['hypotheses'],
             n_mc = 10,
             generate_values = {'wimp_rate_multiplier': 1.0},
             parameter_definition = self.model_config['parameter_definition'],
@@ -37,4 +39,3 @@ class TestRunner(TestCase):
         self.runner.run()
         remove('simple_data.h5')
         remove('test_toymc.h5')
-

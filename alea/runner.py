@@ -19,7 +19,6 @@ class Runner:
         - save toy data if needed
         - fit parameters
         - write output file
-    
     One toyfile can contain multiple toydata, but all of them are from the same generate_values
 
     Attributes:
@@ -49,7 +48,8 @@ class Runner:
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
         confidence_interval_threshold (Callable[[float], float], optional (default=None)):
             confidence interval threshold of likelihood ratio
-        common_hypothesis (dict, optional (default=None)): common hypothesis, the values are copied to each hypothesis
+        common_hypothesis (dict, optional (default=None)):
+            common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
         toydata_mode (str, optional (default='generate_and_write')):
@@ -103,17 +103,17 @@ class Runner:
 
         self.poi = poi
         self.hypotheses = hypotheses if hypotheses else []
-        self.n_mc = n_mc
+        self._n_mc = n_mc
         self.common_hypothesis = common_hypothesis if common_hypothesis else {}
         self.generate_values = generate_values if generate_values else {}
-        self.toydata_file = toydata_file
-        self.toydata_mode = toydata_mode
-        self.metadata = metadata if metadata else {}
-        self.output_file = output_file
+        self._toydata_file = toydata_file
+        self._toydata_mode = toydata_mode
+        self._output_file = output_file
+        self._metadata = metadata if metadata else {}
 
-        self.result_names, self.result_dtype = self._get_parameter_list()
+        self._result_names, self._result_dtype = self._get_parameter_list()
 
-        self.hypotheses_values = self._get_hypotheses()
+        self._hypotheses_values = self._get_hypotheses()
 
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model"""
@@ -152,9 +152,9 @@ class Runner:
 
     def write_output(self, results):
         """Write output file with metadata"""
-        metadata = deepcopy(self.metadata)
+        metadata = deepcopy(self._metadata)
 
-        result_names = [f'{i:d}' for i in range(len(self.hypotheses_values))]
+        result_names = [f'{i:d}' for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
             if ea in ['null', 'free', 'true']:
                 result_names[i] = ea
@@ -164,20 +164,20 @@ class Runner:
         metadata['common_hypothesis'] = self.common_hypothesis
         metadata['generate_values'] = self.generate_values
 
-        array_metadatas = [{'hypotheses_values': ea} for ea in self.hypotheses_values]
+        array_metadatas = [{'hypotheses_values': ea} for ea in self._hypotheses_values]
 
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
 
-        print(f'Saving {self.output_file}')
+        print(f'Saving {self._output_file}')
         numpy_to_toyfile(
-            self.output_file,
+            self._output_file,
             numpy_arrays_and_names=numpy_arrays_and_names,
             metadata=metadata,
             array_metadatas=array_metadatas)
 
     def read_toydata(self):
         """Read toydata from file"""
-        toydata, toydata_names = toydata_from_file(self.toydata_file)
+        toydata, toydata_names = toydata_from_file(self._toydata_file)
         return toydata, toydata_names
 
     def toy_simulation(self):
@@ -185,24 +185,24 @@ class Runner:
         Run toy simulation a specified different toydata mode
         and loop over generate values
         """
-        if self.toydata_mode not in {
+        if self._toydata_mode not in {
             'read', 'generate', 'generate_and_write', 'no_toydata',
         }:
-            raise ValueError(f'Unknown toydata mode: {self.toydata_mode}')
+            raise ValueError(f'Unknown toydata mode: {self._toydata_mode}')
 
         toydata = []
         toydata_names = None
-        if self.toydata_mode == 'read':
+        if self._toydata_mode == 'read':
             toydata, toydata_names = self.read_toydata()
 
-        results = [np.zeros(self.n_mc, dtype=self.result_dtype) for _ in self.hypotheses_values]
-        for i_mc in tqdm(range(self.n_mc)):
-            if self.toydata_mode == 'generate' or self.toydata_mode == 'generate_and_write':
+        results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
+        for i_mc in tqdm(range(self._n_mc)):
+            if self._toydata_mode == 'generate' or self._toydata_mode == 'generate_and_write':
                 self.statistical_model.data = self.statistical_model.generate_data(
                     **self.generate_values)
             fit_results = []
-            for hypothesis_values in self.hypotheses_values:
-                if self.toydata_mode == 'read':
+            for hypothesis_values in self._hypotheses_values:
+                if self._toydata_mode == 'read':
                     self.statistical_model.data = toydata[i_mc]
 
                 fit_result, max_llh = self.statistical_model.fit(**hypothesis_values)
@@ -215,10 +215,10 @@ class Runner:
             toydata.append(self.statistical_model.data)
             # assign fitting results
             for fit_result, result_array in zip(fit_results, results):
-                result_array[i_mc] = tuple(fit_result[pn] for pn in self.result_names)
+                result_array[i_mc] = tuple(fit_result[pn] for pn in self._result_names)
 
-        if self.toydata_mode == 'generate_and_write':
-            self.statistical_model.store_data(self.toydata_file, toydata, toydata_names)
+        if self._toydata_mode == 'generate_and_write':
+            self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
 
         return results
 

@@ -13,7 +13,8 @@ class GaussianModel(StatisticalModel):
     to the init sigma is fixed in this example.
 
     Args:
-        parameter_definition (dict or list): definition of the parameters of the model
+        parameter_definition (dict or list, optional (default=None)):
+            definition of the parameters of the model
     """
 
     def __init__(
@@ -31,8 +32,10 @@ class GaussianModel(StatisticalModel):
         Log-likelihood of the model.
 
         Args:
-            mu (float): mean of the gaussian
-            sigma (float): standard deviation of the gaussian
+            mu (float, optional (default=None)): mean of the gaussian,
+                if None, the nominal value is used
+            sigma (float, optional (default=None)): standard deviation of the gaussian,
+                if None, the nominal value is used
         """
         hat_mu = self.data[0]['hat_mu'][0]
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
@@ -42,8 +45,10 @@ class GaussianModel(StatisticalModel):
         Generate data from the model.
 
         Args:
-            mu (float): mean of the gaussian
-            sigma (float): standard deviation of the gaussian
+            mu (float, optional (default=None)): mean of the gaussian,
+                if None, the nominal value is used
+            sigma (float, optional (default=None)): standard deviation of the gaussian,
+                if None, the nominal value is used
 
         Returns:
             list: data generated from the model

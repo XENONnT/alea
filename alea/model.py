@@ -47,10 +47,14 @@ class StatisticalModel:
 
     Args:
         data: pre-set data of the model
-        parameter_definition (dict or list): definition of the parameters of the model
-        confidence_level (float): confidence level for confidence intervals
-        confidence_interval_kind (str): kind of confidence interval to compute
-        confidence_interval_threshold (Callable[[float], float]): threshold for confidence interval
+        parameter_definition (dict or list, optional (default=None)):
+            definition of the parameters of the model
+        confidence_level (float, optional (default=0.9)):
+            confidence level for confidence intervals
+        confidence_interval_kind (str, optional (default=central)):
+            kind of confidence interval to compute
+        confidence_interval_threshold (Callable[[float], float], optional (default=None)):
+            threshold for confidence interval
 
     Raise:
         RuntimeError: if you try to instantiate the StatisticalModel class directly
@@ -183,8 +187,10 @@ class StatisticalModel:
         Args:
             file_name (str): name of the file to store the data in
             data_list (list): list of datasets
-            data_name_list (list): list of names of the datasets
-            metadata (dict): metadata to store with the data
+            data_name_list (list, optional (default=None)): list of names of the datasets.
+                If None, it will be read from self.get_likelihood_term_names
+            metadata (dict, optional (default=None)): metadata to store with the data.
+                If None, no metadata is stored.
         """
         if data_name_list is None:
             if hasattr(self, "likelihood_names"):
@@ -238,7 +244,7 @@ class StatisticalModel:
         Make a function that can be passed to Minuit
 
         Args:
-            minus (bool): if True, the function is multiplied by -1
+            minus (bool, optional (default=True)): if True, the function is multiplied by -1
 
         Returns:
             Callable: function that can be passed to Minuit
@@ -384,14 +390,17 @@ class StatisticalModel:
 
         Args:
             poi_name (str): name of the parameter of interest
-            parameter_interval_bounds (Tuple[float, float]): range in which to search for the
-                confidence interval edges. May be specified as:
+            parameter_interval_bounds (Tuple[float, float], optional (default=None)): range
+                in which to search for the confidence interval edges. May be specified as:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
                     - passing None here, in which case the parameter_interval_bounds property of the parameter is used
-            confidence_level (float): confidence level for confidence intervals. If None,
-                the default confidence level of the model is used.
-            confidence_interval_kind (str): kind of confidence interval to compute
+            confidence_level (float, optional (default=None)):
+                confidence level for confidence intervals.
+                If None, the default confidence level of the model is used.
+            confidence_interval_kind (str, optional (default=None)):
+                kind of confidence interval to compute.
+                If None, the default kind of the model is used.
 
         Keyword Args:
             kwargs: the parameters for get_expectation_values and fit

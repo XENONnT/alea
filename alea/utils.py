@@ -112,7 +112,8 @@ def get_file_path(fname, folder_list=None):
 
     Args:
         fname (str): file name
-        folder_list (list): list of possible base folders. Ordered by priority.
+        folder_list (list, optional (default=None)):
+            list of possible base folders. Ordered by priority.
 
     Returns:
         str: full path to the resource file

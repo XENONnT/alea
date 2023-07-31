@@ -7,18 +7,20 @@ class Parameter:
 
     Attributes:
         name (str): The name of the parameter.
-        nominal_value (float): The nominal value of the parameter.
-        fittable (bool): Indicates if the parameter is fittable or always fixed.
-        ptype (str): The ptype of the parameter.
-        uncertainty (float or str): The uncertainty of the parameter.
+        nominal_value (float, optional (default=None)): The nominal value of the parameter.
+        fittable (bool, optional (default=None)):
+            Indicates if the parameter is fittable or always fixed.
+        ptype (str, optional (default=None)): The ptype of the parameter.
+        uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.
-        relative_uncertainty (bool): Indicates if the uncertainty is relative to the nominal_value.
-        blueice_anchors (list): Anchors for blueice template morphing.
-        fit_limits (tuple): The limits for fitting the parameter.
-        parameter_interval_bounds (tuple): Limits for computing confidence intervals
-        fit_guess (float): The initial guess for fitting the parameter.
-        description (str): A description of the parameter.
+        relative_uncertainty (bool, optional (default=None)):
+            Indicates if the uncertainty is relative to the nominal_value.
+        blueice_anchors (list, optional (default=None)): Anchors for blueice template morphing.
+        fit_limits (tuple, optional (default=None)): The limits for fitting the parameter.
+        parameter_interval_bounds (tuple, optional (default=None)): Limits for computing confidence intervals
+        fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
+        description (str, optional (default=None)): A description of the parameter.
     """
 
     def __init__(
@@ -259,7 +261,8 @@ class Parameters:
         to return only fittable parameters.
 
         Args:
-            return_fittable (bool): Indicates if only fittable parameters should be returned.
+            return_fittable (bool, optional (default=False)):
+                Indicates if only fittable parameters should be returned.
 
         Keyword Args:
             kwargs (dict): Additional keyword arguments to override parameter values.

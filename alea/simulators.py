@@ -88,12 +88,12 @@ class BlueiceDataGenerator:
         """simulate toys for each source
 
         Args:
-            filter_kwargs (bool, optional): If True,
+            filter_kwargs (bool, optional (default=True)): If True,
                 only parameters of the ll object are accepted as kwargs. Defaults to True.
-            n_toys (int, optional): If not None,
+            n_toys (int, optional (default=None)): If not None,
                 a fixed number n_toys of toys is generated for each source component.
                 Defaults to None.
-            sample_n_toys (bool, optional): If True,
+            sample_n_toys (bool, optional (default=False)): If True,
                 the number of toys is sampled from a Poisson distribution with mean n_toys.
                 Defaults to False. Only works if n_toys is not None.
 

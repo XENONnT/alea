@@ -1,3 +1,4 @@
+from os import remove
 import pytest
 from unittest import TestCase
 
@@ -40,9 +41,11 @@ class TestBlueiceExtendedModel(TestCase):
     def test_generate_data(self):
         """Test of the generate_data method"""
         data = self.model.generate_data()
+        toydata_file = 'simple_data.hdf5'
         self.model.store_data(
-            'simple_data.hdf5',
+            toydata_file,
             [data for k in self.model.likelihood_names])
+        remove(toydata_file)
         self.assertEqual(
             len(data), self.n_likelihood_terms + 2)
         if not (('ancillary_likelihood' in data) and ('generate_values' in data)):

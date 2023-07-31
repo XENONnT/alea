@@ -15,7 +15,7 @@ class TemplateSource(HistogramPdfSource):
     """
     A source that constructs a from a template histogram.
     The parameters are set in self.config.
-    'templatename', 'histname', 'analysis_space' must be in self.config
+    "templatename", "histname", "analysis_space" must be in self.config
 
     :ivar config: The configuration of the source.
     :vartype config: dict
@@ -47,17 +47,65 @@ class TemplateSource(HistogramPdfSource):
         If True, bin edges on this axis in the hdf5 file are log10() of the actual bin edges.
     """
 
+    def _check_binning(self, h, histogram_info):
+        """
+        Check if the histogram"s bin edges are the same to analysis_space.
+
+        :param h: The histogram to check.
+        :type h: multihist.MultiHistBase
+        :param histogram_info: Information of the histogram.
+        :type histogram_info: str
+        """
+        # Deal with people who have log10"d their bins
+        for axis_i in self.config.get("log10_bins", []):
+            h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
+
+        # Check if the histogram bin edges are correct
+        analysis_space = self.config["analysis_space"]
+        for axis_i, (_, expected_bin_edges) in enumerate(analysis_space):
+            expected_bin_edges = np.array(expected_bin_edges)
+            seen_bin_edges = h.bin_edges[axis_i]
+            # If 1D, hist1d returns bin_edges straight, not as list
+            if len(analysis_space) == 1:
+                seen_bin_edges = h.bin_edges
+            logging.debug("axis_i: " + str(axis_i))
+            logging.debug("expected_bin_edges: " + str(expected_bin_edges))
+            logging.debug("seen_bin_edges: " + str(seen_bin_edges))
+            logging.debug("h.bin_edges type" + str(h.bin_edges))
+            if len(seen_bin_edges) != len(expected_bin_edges):
+                raise ValueError(
+                    f"Axis {axis_i:d} of histogram {histogram_info} "
+                    f"has {len(seen_bin_edges)} bin edges, but expected {expected_bin_edges}.")
+            try:
+                np.testing.assert_almost_equal(
+                    seen_bin_edges,
+                    expected_bin_edges,
+                    decimal=2)
+            except AssertionError:
+                warnings.warn(
+                    f"Axis {axis_i:d} of histogram {histogram_info} "
+                    f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
+                    "Since length matches, setting it expected values...")
+                h.bin_edges[axis_i] = expected_bin_edges
+
+    @property
+    def format_named_parameters(self):
+        """Get the named parameters in the config to dictionary format."""
+        format_named_parameters = {
+            k: self.config[k] for k in self.config.get("named_parameters", [])}
+        return format_named_parameters
+
     def build_histogram(self):
-        templatename = self.config['templatename'].format(**self.format_named_parameters)
-        histname = self.config['histname'].format(**self.format_named_parameters)
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+        histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
         if np.min(h.histogram) < 0:
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries.")
 
-        if self.config.get('normalise_template', False):
+        if self.config.get("normalise_template", False):
             h /= h.n
-        if not self.config.get('in_events_per_bin', True):
+        if not self.config.get("in_events_per_bin", True):
             h.histogram *= h.bin_volumes()
 
         h = self.apply_slice_args(h)
@@ -68,13 +116,6 @@ class TemplateSource(HistogramPdfSource):
 
         self.set_dtype()
         self.set_pdf_histogram(h)
-
-    @property
-    def format_named_parameters(self):
-        """Get the named parameters in the config to dictionary format."""
-        format_named_parameters = {
-            k: self.config[k] for k in self.config.get('named_parameters', [])}
-        return format_named_parameters
 
     def apply_slice_args(self, h, slice_args=None):
         """
@@ -94,8 +135,8 @@ class TemplateSource(HistogramPdfSource):
             slice_axis = sa.get("slice_axis", None)
             # Decide if you wish to sum the histogram into lower dimensions or
             sum_axis = sa.get("sum_axis", False)
-            collapse_axis = sa.get('collapse_axis', None)
-            collapse_slices = sa.get('collapse_slices', None)
+            collapse_axis = sa.get("collapse_axis", None)
+            collapse_slices = sa.get("collapse_slices", None)
             if slice_axis is not None:
                 slice_axis_number = h.get_axis_number(slice_axis)
                 bes = h.bin_edges[slice_axis_number]
@@ -129,61 +170,20 @@ class TemplateSource(HistogramPdfSource):
                 h = h.collapse_bins(collapse_slices, axis=collapse_axis)
         return h
 
-    def _check_binning(self, h, histogram_info):
-        """
-        Check if the histogram's bin edges are the same to analysis_space.
-
-        :param h: The histogram to check.
-        :type h: multihist.MultiHistBase
-        :param histogram_info: Information of the histogram.
-        :type histogram_info: str
-        """
-        # Deal with people who have log10'd their bins
-        for axis_i in self.config.get('log10_bins', []):
-            h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
-
-        # Check if the histogram bin edges are correct
-        analysis_space = self.config['analysis_space']
-        for axis_i, (_, expected_bin_edges) in enumerate(analysis_space):
-            expected_bin_edges = np.array(expected_bin_edges)
-            seen_bin_edges = h.bin_edges[axis_i]
-            # If 1D, hist1d returns bin_edges straight, not as list
-            if len(analysis_space) == 1:
-                seen_bin_edges = h.bin_edges
-            logging.debug("axis_i: " + str(axis_i))
-            logging.debug("expected_bin_edges: " + str(expected_bin_edges))
-            logging.debug("seen_bin_edges: " + str(seen_bin_edges))
-            logging.debug("h.bin_edges type" + str(h.bin_edges))
-            if len(seen_bin_edges) != len(expected_bin_edges):
-                raise ValueError(
-                    f"Axis {axis_i:d} of histogram {histogram_info} "
-                    f"has {len(seen_bin_edges)} bin edges, but expected {expected_bin_edges}.")
-            try:
-                np.testing.assert_almost_equal(
-                    seen_bin_edges,
-                    expected_bin_edges,
-                    decimal=2)
-            except AssertionError:
-                warnings.warn(
-                    f"Axis {axis_i:d} of histogram {histogram_info} "
-                    f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
-                    "Since length matches, setting it expected values...")
-                h.bin_edges[axis_i] = expected_bin_edges
-
     def set_dtype(self):
         """Set the data type of the source."""
         self.dtype = []
-        for n, _ in self.config['analysis_space']:
+        for n, _ in self.config["analysis_space"]:
             self.dtype.append((n, float))
-        self.dtype.append(('source', int))
+        self.dtype.append(("source", int))
 
     def set_pdf_histogram(self, h):
         """Set the histogram of the probability density function of the source."""
         self._bin_volumes = h.bin_volumes()  # TODO: make alias
-        # Shouldn't be in HistogramSource... anyway
+        # Should not be in HistogramSource... anyway
         self._n_events_histogram = h.similar_blank_histogram()
 
-        histogram_scale_factor = self.config.get('histogram_scale_factor', 1)
+        histogram_scale_factor = self.config.get("histogram_scale_factor", 1)
         h *= histogram_scale_factor
         logging.debug(
             f"Multiplying histogram with histogram_scale_factor {histogram_scale_factor}. "
@@ -193,7 +193,7 @@ class TemplateSource(HistogramPdfSource):
         logging.debug(f"events_per_day: " + str(self.events_per_day))
 
         # Convert h to density...
-        if self.config.get('in_events_per_bin', True):
+        if self.config.get("in_events_per_bin", True):
             h.histogram /= self._bin_volumes
 
         # ... and finally to probability density
@@ -202,7 +202,7 @@ class TemplateSource(HistogramPdfSource):
         else:
             raise ValueError("Sum of histogram is zero.")
 
-        if self.config.get('convert_to_uniform', False):
+        if self.config.get("convert_to_uniform", False):
             h.histogram = 1. / self._bin_volumes
 
         self._pdf_histogram = h
@@ -221,7 +221,7 @@ class TemplateSource(HistogramPdfSource):
         # t = self._pdf_histogram.get_random(n_events)
         h = self._pdf_histogram * self._bin_volumes
         t = h.get_random(n_events)
-        for i, (n, _) in enumerate(self.config['analysis_space']):
+        for i, (n, _) in enumerate(self.config["analysis_space"]):
             ret[n] = t[:, i]
         return ret
 
@@ -239,7 +239,7 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
     """
 
     def build_histogram(self):
-        if not self.config.get('in_events_per_bin', True):
+        if not self.config.get("in_events_per_bin", True):
             raise ValueError(
                 "CombinedSource does not support in_events_per_bin=False")
         if "weight_names" not in self.config:
@@ -247,13 +247,12 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
         weights = [
             self.config.get(weight_name, 0) for weight_name in self.config["weight_names"]
         ]
-        histograms = []
-        histnames = self.config['histnames']
-        templatenames = self.config['templatenames']
+        histnames = self.config["histnames"]
+        templatenames = self.config["templatenames"]
         if len(histnames) != len(templatenames):
             raise ValueError(
                 "histnames and templatenames must be the same length")
-        if len(weights) + 1 != len(histograms):
+        if len(weights) + 1 != len(templatenames):
             raise ValueError(
                 "weights must be 1 shorter than histnames, templatenames")
 
@@ -267,6 +266,7 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
             # Recognize as a list of slice_args for each histogram
             slice_argss = slice_args
 
+        histograms = []
         slice_fractions = []
         for histname, templatename, slice_args in zip(
                 histnames, templatenames, slice_argss):
@@ -315,9 +315,11 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries.")
 
-        logging.info("Normalising combined template, the absolute rate is defined in histogram_multiplier")
+        logging.info(
+            "Normalising combined template, "
+            "the absolute rate is defined in histogram_multiplier")
         h = h / h.n
-        h *= self.config.get('histogram_multiplier', 1)
+        h *= self.config.get("histogram_multiplier", 1)
         logging.info("Applying slice fraction to combined template")
         h *= slice_fractions[0]
 
@@ -357,8 +359,8 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
         return ret
 
     def build_histogram(self):
-        templatename = self.config['templatename'].format(**self.format_named_parameters)
-        histname = self.config['histname'].format(**self.format_named_parameters)
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+        histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
 
         spectrum = self.config["spectrum"]
@@ -376,9 +378,9 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries.")
 
-        if self.config.get('normalise_template', False):
+        if self.config.get("normalise_template", False):
             h /= h.n
-        if not self.config.get('in_events_per_bin', True):
+        if not self.config.get("in_events_per_bin", True):
             h.histogram *= h.bin_volumes()
 
         h = self.apply_slice_args(h)

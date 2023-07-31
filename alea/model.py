@@ -58,6 +58,7 @@ class StatisticalModel:
             confidence_level: float = 0.9,
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
+            **kwargs,
         ):
         """Initialize a statistical model"""
         if type(self) == StatisticalModel:
@@ -159,23 +160,36 @@ class StatisticalModel:
         self.is_data_set = True
 
     def store_data(
-            self, file_name, data_list, data_name_list=None, metadata = None):
+            self, file_name, data_list, data_name_list=None, metadata=None):
         """
-        Store a list of datasets (each on the form of a list of one or more structured arrays)
+        Store a list of datasets.
+        (each on the form of a list of one or more structured arrays or dicts)
         Using inference_interface, but included here to allow over-writing.
         structure would be: [[datasets1], [datasets2], ..., [datasetsn]]
         where each of datasets is a list of structured arrays
         if you specify, it is set, if not it will read from self.get_likelihood_term_names
         if not defined, it will be ["0", "1", ..., "n-1"]
         """
+        if all([isinstance(d, dict) for d in data_list]):
+            _data_list = [list(d.values()) for d in data_list]
+        elif all([isinstance(d, list) for d in data_list]):
+            _data_list = data_list
+        else:
+            raise ValueError(
+                'Unsupported mixed toydata format! '
+                'toydata should be a list of dict or a list of list',)
+
         if data_name_list is None:
             if hasattr(self, "likelihood_names"):
                 data_name_list = self.likelihood_names
             else:
-                data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
+                data_name_list = ["{:d}".format(i) for i in range(len(_data_list[0]))]
 
         kw = {'metadata': metadata} if metadata is not None else dict()
-        toydata_to_file(file_name, data_list, data_name_list, **kw)
+        if len(_data_list[0]) != len(data_name_list):
+            raise ValueError(
+                "The number of data sets and data names must be the same")
+        toydata_to_file(file_name, _data_list, data_name_list, **kw)
 
     def get_expectation_values(self, **parameter_values):
         return NotImplementedError("get_expectation_values is optional to implement")
@@ -195,7 +209,7 @@ class StatisticalModel:
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
-            return {n:i for i,n in enumerate(likelihood_names)}[likelihood_name]
+            return {n:i for i, n in enumerate(likelihood_names)}[likelihood_name]
         else:
             raise NotImplementedError("The attribute likelihood_names is not defined.")
 

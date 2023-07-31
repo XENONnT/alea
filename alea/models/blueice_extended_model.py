@@ -65,14 +65,23 @@ class BlueiceExtendedModel(StatisticalModel):
         return super().data
 
     @data.setter
-    def data(self, data: dict):
+    def data(self, data: dict or list):
         """
         Overrides default setter. Will also set the data of the blueice ll.
         Data-sets are expected to be in the form of a list of one
         or more structured arrays-- representing the data-sets of one or more likelihood terms.
+
+        Args:
+            data (dict or list): Data of the statistical model.
+                If data is a list, it must be a list of length len(self.likelihood_names) + 1.
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
+        if isinstance(data, list):
+            if len(data) != len(self.likelihood_names) + 1:
+                raise ValueError(
+                    f"Data must be a list of length {len(self.likelihood_names) + 1}")
+            data = dict(zip(self.likelihood_names + ["generate_values"], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self._likelihood.likelihood_list[i]
@@ -210,12 +219,23 @@ class BlueiceExtendedModel(StatisticalModel):
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
 
+    def store_data(self, file_name, data_list, data_name_list=None, metadata=None):
+        """
+        Store data in a file.
+        Append the generate_values to the data_name_list.
+        """
+        if data_name_list is None:
+            data_name_list = self.likelihood_names + ["generate_values"]
+        super().store_data(file_name, data_list, data_name_list, metadata)
+
     def _generate_science_data(self, **generate_values) -> dict:
-        science_data = [gen.simulate(**generate_values)
-                        for gen in self.data_generators]
-        return dict(zip(self.likelihood_names, science_data))
+        """Generate the science data for all likelihood terms except the ancillary likelihood."""
+        science_data = [
+            gen.simulate(**generate_values) for gen in self.data_generators]
+        return dict(zip(self.likelihood_names[:-1], science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
+        """Generate the ancillary measurements."""
         ancillary_measurements = {}
         anc_ll = self._likelihood.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)

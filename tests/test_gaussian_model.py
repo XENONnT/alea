@@ -7,30 +7,32 @@ import inference_interface
 from alea.examples import GaussianModel
 
 
+gaussian_model_parameter_definition = {
+    'mu': {
+        'fit_guess': 0.,
+        'fittable': True,
+        'nominal_value': 0.,
+    },
+    'sigma': {
+        'fit_guess': 1.,
+        'fit_limits': [
+            0.,
+            None,
+        ],
+        'fittable': True,
+        'nominal_value': 1.,
+    },
+}
+
+
 class TestGaussianModel(TestCase):
     """Test of the GaussianModel class"""
 
     @classmethod
     def setUp(cls):
         """Initialise the GaussianModel instance"""
-        parameter_definition = {
-            'mu': {
-                'fit_guess': 0.,
-                'fittable': True,
-                'nominal_value': 0.,
-            },
-            'sigma': {
-                'fit_guess': 1.,
-                'fit_limits': [
-                    0.,
-                    None,
-                ],
-                'fittable': True,
-                'nominal_value': 1.,
-            },
-        }
         cls.model = GaussianModel(
-            parameter_definition=parameter_definition)
+            parameter_definition=gaussian_model_parameter_definition)
 
     def test_data_generation(self):
         """Test generation of data"""

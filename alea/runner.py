@@ -19,7 +19,7 @@ class Runner:
         - save toy data if needed
         - fit parameters
         - write output file
-    One toyfile can contain multiple toydata, but all of them are from the same generate_values
+    One toyfile can contain multiple toydata, but all of them are from the same generate_values.
 
     Attributes:
         statistical_model: statistical model
@@ -41,7 +41,7 @@ class Runner:
         poi (str): parameter of interest
         hypotheses (list): list of hypotheses
         _n_mc (int): number of Monte Carlo
-        statistical_model_args (dict, optional (default=None)): arguments for statistical model
+        statistical_model_args (dict, optional (default={})): arguments for statistical model
         parameter_definition (dict or list, optional (default=None)): parameter definition
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
@@ -70,7 +70,7 @@ class Runner:
             n_mc: int,
             common_hypothesis: dict = None,
             generate_values: dict = None,
-            statistical_model_args: dict = None,
+            statistical_model_args: dict = {},
             parameter_definition: Optional[dict or list] = None,
             likelihood_config: dict = None,
             confidence_level: float = 0.9,
@@ -92,9 +92,11 @@ class Runner:
             raise ValueError(f'{statistical_model_class} is not a class!')
         if not issubclass(statistical_model_class, StatisticalModel):
             raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
+
+        # likelihood_config is keyword argument, because not all statistical model needs it
+        statistical_model_args['likelihood_config'] = likelihood_config
         self.statistical_model = statistical_model_class(
             parameter_definition=parameter_definition,
-            likelihood_config=likelihood_config,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
             confidence_interval_threshold=confidence_interval_threshold,
@@ -156,7 +158,7 @@ class Runner:
 
         result_names = [f'{i:d}' for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if ea in ['null', 'free', 'true']:
+            if ea in ['free', 'null', 'true']:
                 result_names[i] = ea
 
         metadata['date'] = datetime.now().strftime('%Y%m%d_%H:%M:%S')
@@ -165,7 +167,6 @@ class Runner:
         metadata['generate_values'] = self.generate_values
 
         array_metadatas = [{'hypotheses_values': ea} for ea in self._hypotheses_values]
-
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
 
         print(f'Saving {self._output_file}')
@@ -180,10 +181,18 @@ class Runner:
         toydata, toydata_names = toydata_from_file(self._toydata_file)
         return toydata, toydata_names
 
+    def write_toydata(self, toydata, toydata_names):
+        """
+        Write toydata to file.
+        If toydata is a list of dict, convert it to a list of list.
+        """
+        self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
+
     def toy_simulation(self):
         """
-        Run toy simulation a specified different toydata mode
-        and loop over generate values
+        For each Monte Carlo:
+            - run toy simulation a specified toydata mode and generate values.
+            - loop over hypotheses.
         """
         if self._toydata_mode not in {
             'read', 'generate', 'generate_and_write', 'no_toydata',
@@ -218,12 +227,12 @@ class Runner:
                 result_array[i_mc] = tuple(fit_result[pn] for pn in self._result_names)
 
         if self._toydata_mode == 'generate_and_write':
-            self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
+            self.write_toydata(toydata, toydata_names)
 
-        return results
+        return toydata, results
 
     def run(self):
         """Run toy simulation"""
-        results = self.toy_simulation()
+        toydata, results = self.toy_simulation()
 
         self.write_output(results)

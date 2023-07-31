@@ -17,44 +17,40 @@ class TemplateSource(HistogramPdfSource):
     The parameters are set in self.config.
     "templatename", "histname", "analysis_space" must be in self.config
 
-    :ivar config: The configuration of the source.
-    :vartype config: dict
-    :ivar dtype: The data type of the source.
-    :vartype dtype: list
-    :ivar _bin_volumes: The bin volumes of the source.
-    :vartype _bin_volumes: numpy.ndarray
-    :ivar _n_events_histogram: The histogram of the number of events of the source.
-    :vartype _n_events_histogram: multihist.MultiHistBase
-    :ivar events_per_day: The number of events per day of the source.
-    :vartype events_per_day: float
-    :ivar _pdf_histogram: The histogram of the probability density function of the source.
-    :vartype _pdf_histogram: multihist.MultiHistBase
+    Attributes:
+        config (dict): The configuration of the source.
+        dtype (list): The data type of the source.
+        _bin_volumes (numpy.ndarray): The bin volumes of the source.
+        _n_events_histogram (multihist.MultiHistBase):
+            The histogram of the number of events of the source.
+        events_per_day (float): The number of events per day of the source.
+        _pdf_histogram (multihist.MultiHistBase):
+            The histogram of the probability density function of the source.
 
-    :param templatename: Hdf5 file to open.
-    :param histname: Histogram name.
-    :param named_parameters:
-        List of config setting names to pass to .format on histname and filename.
-    :type named_parameters: list
-    :param normalise_template: Normalise the template histogram.
-    :type normalise_template: bool
-    :param in_events_per_bin:
-        If True, histogram is in events per day / bin.
-        If False or absent, histogram is already pdf.
-    :param histogram_scale_factor: Multiply histogram by this number
-    :param convert_to_uniform: Convert the histogram to a uniform per bin distribution.
-    :param log10_bins:
-        List of axis numbers.
-        If True, bin edges on this axis in the hdf5 file are log10() of the actual bin edges.
+    Args:
+        config (dict): The configuration of the source.
+        templatename: Hdf5 file to open.
+        histname: Histogram name.
+        named_parameters (list):
+            List of config setting names to pass to .format on histname and filename.
+        normalise_template (bool): Normalise the template histogram.
+        in_events_per_bin (bool):
+            If True, histogram is in events per day / bin.
+            If False or absent, histogram is already pdf.
+        histogram_scale_factor (float): Multiply histogram by this number
+        convert_to_uniform (bool): Convert the histogram to a uniform per bin distribution.
+        log10_bins (list):
+            List of axis numbers.
+            If True, bin edges on this axis in the hdf5 file are log10() of the actual bin edges.
     """
 
     def _check_binning(self, h, histogram_info):
         """
         Check if the histogram"s bin edges are the same to analysis_space.
 
-        :param h: The histogram to check.
-        :type h: multihist.MultiHistBase
-        :param histogram_info: Information of the histogram.
-        :type histogram_info: str
+        Args:
+            h (multihist.MultiHistBase): The histogram to check.
+            histogram_info (str): Information of the histogram.
         """
         # Deal with people who have log10"d their bins
         for axis_i in self.config.get("log10_bins", []):
@@ -123,10 +119,9 @@ class TemplateSource(HistogramPdfSource):
         """
         Apply slice arguments to the histogram.
 
-        :param h: The histogram to apply the slice arguments to.
-        :type h: multihist.MultiHistBase
-        :param slice_args: The slice arguments to apply.
-        :type slice_args: dict
+        Args:
+            h (multihist.MultiHistBase): The histogram to apply the slice arguments to.
+            slice_args (dict): The slice arguments to apply.
         """
         if slice_args is None:
             slice_args = self.config.get("slice_args", {})
@@ -214,10 +209,11 @@ class TemplateSource(HistogramPdfSource):
         """
         Simulate events from the source.
 
-        :param n_events: The number of events to simulate.
-        :type n_events: int
-        :return: The simulated events.
-        :rtype: numpy.ndarray
+        Args:
+            n_events (int): The number of events to simulate.
+
+        Returns:
+            numpy.ndarray: The simulated events.
         """
         ret = np.zeros(n_events, dtype=self.dtype)
         # t = self._pdf_histogram.get_random(n_events)
@@ -236,10 +232,11 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
     Currently the weights are hardcoded in the config, can not be changed in the fit.
     In other words, the weight can not be shape parameter.
 
-    :param weights: Weights of the 2nd to the last histograms.
-    :param histnames: List of filenames containing the histograms.
-    :param templatenames: List of names of histograms within the hdf5 files.
-    :param histogram_multiplier: Absolute rate of the combined template before multihist slicing.
+    Args:
+        weights: Weights of the 2nd to the last histograms.
+        histnames: List of filenames containing the histograms.
+        templatenames: List of names of histograms within the hdf5 files.
+        histogram_multiplier: Absolute rate of the combined template before multihist slicing.
     """
 
     def build_histogram(self):
@@ -338,9 +335,10 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
     Reweighted template source by energy spectrum.
     The first axis of the template is assumed to be energy.
 
-    :param spectrum_name:
-        Name of bbf json-like spectrum _OR_ function that can be called
-        templatename #3D histogram (Etrue, S1, S2) to open
+    Args:
+        spectrum_name:
+            Name of bbf json-like spectrum _OR_ function that can be called
+            templatename #3D histogram (Etrue, S1, S2) to open
     """
 
     @staticmethod
@@ -349,8 +347,8 @@ class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
         Translates bbf-style JSON files to spectra.
         units are keV and /kev*day*kg
 
-        :param filename: Name of the JSON file.
-        :type filename: str
+        Args:
+            filename (str): Name of the JSON file.
         """
         with open(filename, "r") as f:
             contents = json.load(f)

@@ -13,10 +13,12 @@ version = alea.__version__
 # -- General configuration
 
 extensions = [
+    'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
-    'nbsphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
 ]
 
 intersphinx_mapping = {
@@ -27,12 +29,23 @@ intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
 
+# -- Options for NAPOLEON output
+
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = True
+napoleon_include_special_with_doc = True
+
 # -- Options for HTML output
 
 html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
+
 epub_show_urls = 'footnote'
+
+# -- Options for TODO output
+
+todo_include_todos = True
 
 def setup(app):
     # Hack to import something from this dir. Apparently we're in a weird

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 from scipy import stats
@@ -12,13 +12,13 @@ class GaussianModel(StatisticalModel):
     For illustration, we show how required nominal parameters can be added
     to the init sigma is fixed in this example.
 
-    :param parameter_definition: definition of the parameters of the model
-    :type parameter_definition: dict or list
+    Args:
+        parameter_definition (dict or list): definition of the parameters of the model
     """
 
     def __init__(
             self,
-            parameter_definition: Optional[dict or list] = None,
+            parameter_definition: Optional[Dict or List] = None,
             **kwargs,
         ):
         """Initialise a gaussian model."""
@@ -30,10 +30,9 @@ class GaussianModel(StatisticalModel):
         """
         Log-likelihood of the model.
 
-        :param mu: mean of the gaussian
-        :type mu: float
-        :param sigma: standard deviation of the gaussian
-        :type sigma: float
+        Args:
+            mu (float): mean of the gaussian
+            sigma (float): standard deviation of the gaussian
         """
         hat_mu = self.data[0]['hat_mu'][0]
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
@@ -42,12 +41,12 @@ class GaussianModel(StatisticalModel):
         """
         Generate data from the model.
 
-        :param mu: mean of the gaussian
-        :type mu: float
-        :param sigma: standard deviation of the gaussian
-        :type sigma: float
-        :return: data generated from the model
-        :rtype: list
+        Args:
+            mu (float): mean of the gaussian
+            sigma (float): standard deviation of the gaussian
+
+        Returns:
+            list: data generated from the model
         """
         hat_mu = stats.norm(loc=mu, scale=sigma).rvs()
         data = [np.array([(hat_mu,)], dtype=[('hat_mu', float)])]

@@ -289,7 +289,7 @@ class StatisticalModel:
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
 
-    def _ci_checks(
+    def _confidence_interval_checks(
             self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float],
             confidence_level: float,
@@ -385,7 +385,7 @@ class StatisticalModel:
         :type confidence_interval_kind: str
         """
 
-        ci_objects = self._ci_checks(
+        ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,
             confidence_level,

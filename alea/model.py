@@ -389,8 +389,8 @@ class StatisticalModel:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
                     - passing None here, in which case the parameter_interval_bounds property of the parameter is used
-            confidence_level (float): confidence level for confidence intervals.
-                If None, the default confidence level of the model is used.
+            confidence_level (float): confidence level for confidence intervals. If None,
+                the default confidence level of the model is used.
             confidence_interval_kind (str): kind of confidence interval to compute
 
         Keyword Args:

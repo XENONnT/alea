@@ -239,8 +239,7 @@ class StatisticalModel:
         """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
-    def make_objective(
-            self, minus: Optional[bool] = True, **kwargs):
+    def make_objective(self, minus: Optional[bool] = True, **kwargs):
         """
         Make a function that can be passed to Minuit
 

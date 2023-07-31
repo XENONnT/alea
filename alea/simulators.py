@@ -15,28 +15,22 @@ class BlueiceDataGenerator:
     """
     A class for generating data from a blueice likelihood term.
 
-    :ivar ll: The blueice likelihood term.
-    :ivar binned: True if the likelihood term is binned.
-    :ivar bincs: The bin centers of the likelihood term.
-    :vartype bincs: list
-    :ivar direction_names: The names of the directions of the likelihood term.
-    :vartype direction_names: list
-    :ivar source_histograms: The histograms of the sources of the likelihood term.
-    :vartype source_histograms: list
-    :ivar data_lengths: The number of bins of each component of the likelihood term.
-    :vartype data_lengths: list
-    :ivar dtype: The data type of the likelihood term.
-    :vartype dtype: list
-    :ivar last_kwargs: The last kwargs used to generate data.
-    :vartype last_kwargs: dict
-    :ivar mus: The expected number of events of each source of the likelihood term.
-    :ivar parameters: The parameters of the likelihood term.
-    :vartype parameters: list
-    :param ll_term: A blueice likelihood term.
-    :type ll_term: blueice.likelihood.BinnedLogLikelihood or blueice.likelihood.UnbinnedLogLikelihood
+    Attributes:
+        ll: The blueice likelihood term.
+        binned (bool): True if the likelihood term is binned.
+        bincs (list): The bin centers of the likelihood term.
+        direction_names (list): The names of the directions of the likelihood term.
+        source_histograms (list): The histograms of the sources of the likelihood term.
+        data_lengths (list): The number of bins of each component of the likelihood term.
+        dtype (list): The data type of the likelihood term.
+        last_kwargs (dict): The last kwargs used to generate data.
+        mus: The expected number of events of each source of the likelihood term.
+        parameters (list): The parameters of the likelihood term.
+        ll_term (BinnedLogLikelihood or UnbinnedLogLikelihood): A blueice likelihood term.
     """
 
     def __init__(self, ll_term):
+        """Initialize the BlueiceDataGenerator"""
         if isinstance(ll_term, BinnedLogLikelihood):
             self.binned = True
         elif isinstance(ll_term, UnbinnedLogLikelihood):
@@ -94,24 +88,23 @@ class BlueiceDataGenerator:
             **kwargs):
         """simulate toys for each source
 
-        :param filter_kwargs:
-            If True, only parameters of the ll object are accepted as kwargs.
-            Defaults to True.
-        :type filter_kwargs: bool, optional
-        :param n_toys:
-            If not None, a fixed number n_toys of toys is generated for each source component.
-            Defaults to None.
-        :type n_toys: int, optional
-        :param sample_n_toys:
-            If True, the number of toys is sampled from a Poisson distribution with mean n_toys.
-            Defaults to False. Only works if n_toys is not None.
-        :type sample_n_toys: bool, optional
-        :param kwargs: The parameters pasted to the likelihood function.
-        :return:
-            Array of simulated data for all sources in the given analysis space.
+        Args:
+            filter_kwargs (bool, optional): If True,
+                only parameters of the ll object are accepted as kwargs. Defaults to True.
+            n_toys (int, optional): If not None,
+                a fixed number n_toys of toys is generated for each source component.
+                Defaults to None.
+            sample_n_toys (bool, optional): If True,
+                the number of toys is sampled from a Poisson distribution with mean n_toys.
+                Defaults to False. Only works if n_toys is not None.
+
+        Keyword Args:
+            kwargs: The parameters pasted to the likelihood function.    
+
+        Returns:
+            numpy.array: Array of simulated data for all sources in the given analysis space.
             The index "source" indicates the corresponding source of an entry.
             The dtype follows self.dtype.
-        :rtype: numpy.ndarray
         """
         if filter_kwargs:
             kwargs = {k: v for k, v in kwargs.items() if k in self.parameters}

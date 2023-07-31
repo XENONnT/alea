@@ -8,7 +8,7 @@ from tqdm import tqdm
 import numpy as np
 
 from inference_interface import toydata_from_file, numpy_to_toyfile
-from alea.statistical_model import StatisticalModel
+from alea.model import StatisticalModel
 
 
 class Runner:
@@ -56,7 +56,7 @@ class Runner:
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
         metadata (dict, optional (default=None)): metadata
-        output_file (str, optional (default='test_toymc.hdf5')): output filename
+        output_file (str, optional (default='test_toymc.h5')): output filename
 
     Todo:
         Implement confidence interval calculation
@@ -68,17 +68,18 @@ class Runner:
             poi: str,
             hypotheses: list,
             n_mc: int,
+            common_hypothesis: dict = None,
             generate_values: dict = None,
             statistical_model_args: dict = None,
             parameter_definition: Optional[dict or list] = None,
+            likelihood_config: dict = None,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = 'central',
             confidence_interval_threshold: Callable[[float], float] = None,
-            common_hypothesis: dict = None,
             toydata_mode: str = 'generate_and_write',
             toydata_file: str = None,
             metadata: dict = None,
-            output_file: str = 'test_toymc.hdf5',
+            output_file: str = 'test_toymc.h5',
         ):
         """
         Initialize statistical model,
@@ -93,6 +94,7 @@ class Runner:
             raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
         self.statistical_model = statistical_model_class(
             parameter_definition=parameter_definition,
+            likelihood_config=likelihood_config,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
             confidence_interval_threshold=confidence_interval_threshold,
@@ -101,9 +103,9 @@ class Runner:
 
         self.poi = poi
         self.hypotheses = hypotheses if hypotheses else []
-        self.common_hypothesis = common_hypothesis
-        self.generate_values = generate_values
         self.n_mc = n_mc
+        self.common_hypothesis = common_hypothesis if common_hypothesis else {}
+        self.generate_values = generate_values if generate_values else {}
         self.toydata_file = toydata_file
         self.toydata_mode = toydata_mode
         self.metadata = metadata if metadata else {}

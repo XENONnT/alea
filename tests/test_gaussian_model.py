@@ -38,7 +38,7 @@ class TestGaussianModel(TestCase):
 
     def test_data_storage(self):
         """Test storage of data to file and retrieval of data from file"""
-        toydata_file = 'simple_data.hdf5'
+        toydata_file = 'simple_data.h5'
         self.model.data = self.model.generate_data(mu=0, sigma=2)
         self.model.store_data(toydata_file, [self.model.data])
         stored_data = inference_interface.toydata_from_file(toydata_file)

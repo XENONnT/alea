@@ -392,7 +392,6 @@ class StatisticalModel:
             confidence_level (float): confidence level for confidence intervals
             confidence_interval_kind (str): kind of confidence interval to compute
         """
-
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,

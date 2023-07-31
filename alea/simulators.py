@@ -99,7 +99,7 @@ class BlueiceDataGenerator:
                 Defaults to False. Only works if n_toys is not None.
 
         Keyword Args:
-            kwargs: The parameters pasted to the likelihood function.    
+            kwargs: The parameters pasted to the likelihood function.
 
         Returns:
             numpy.array: Array of simulated data for all sources in the given analysis space.

@@ -18,7 +18,8 @@ class Parameter:
             Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional (default=None)): Anchors for blueice template morphing.
         fit_limits (tuple, optional (default=None)): The limits for fitting the parameter.
-        parameter_interval_bounds (tuple, optional (default=None)): Limits for computing confidence intervals
+        parameter_interval_bounds (tuple, optional (default=None)):
+            Limits for computing confidence intervals
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
         description (str, optional (default=None)): A description of the parameter.
     """

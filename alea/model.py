@@ -239,7 +239,8 @@ class StatisticalModel:
         """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
-    def make_objective(self, minus=True, **kwargs):
+    def make_objective(
+            self, minus: Optional[bool] = True, **kwargs):
         """
         Make a function that can be passed to Minuit
 
@@ -378,8 +379,8 @@ class StatisticalModel:
     def confidence_interval(
             self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float] = None,
-            confidence_level: float = None,
-            confidence_interval_kind: str = None,
+            confidence_level: Tuple[float] = None,
+            confidence_interval_kind: Tuple[str] = None,
             **kwargs) -> Tuple[float, float]:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter.
@@ -395,10 +396,10 @@ class StatisticalModel:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
                     - passing None here, in which case the parameter_interval_bounds property of the parameter is used
-            confidence_level (float, optional (default=None)):
+            confidence_level (Tuple[float], optional (default=None)):
                 confidence level for confidence intervals.
                 If None, the default confidence level of the model is used.
-            confidence_interval_kind (str, optional (default=None)):
+            confidence_interval_kind (Tuple[str], optional (default=None)):
                 kind of confidence interval to compute.
                 If None, the default kind of the model is used.
 

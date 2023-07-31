@@ -169,7 +169,8 @@ class StatisticalModel:
     def store_data(
             self,
             file_name, data_list,
-            data_name_list: Optional[List]=None, metadata: Optional[Dict]=None):
+            data_name_list: Optional[List] = None,
+            metadata: Optional[Dict] = None):
         """
         Store a list of datasets (each on the form of a list of one or more structured arrays)
         Using inference_interface, but included here to allow over-writing.
@@ -220,7 +221,7 @@ class StatisticalModel:
             likelihood_name (str): name of the likelihood term
 
         Returns:
-            dict: index of the likelihood term
+            Dict: index of the likelihood term
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
@@ -314,8 +315,8 @@ class StatisticalModel:
             confidence_interval_kind (str): kind of confidence interval to compute
 
         Returns:
-            Tuple[str, Callable[[float], float], Tuple[float, float]]: confidence interval kind,
-            confidence interval threshold, parameter interval bounds
+            Tuple[str, Callable[[float], float], Tuple[float, float]]:
+                confidence interval kind, confidence interval threshold, parameter interval bounds
         """
         if confidence_level is None:
             confidence_level = self._confidence_level
@@ -387,8 +388,7 @@ class StatisticalModel:
                 confidence interval edges. May be specified as:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
-                    - passing None here, in which case the parameter_interval_bounds property
-                        of the parameter is used
+                    - passing None here, in which case the parameter_interval_bounds property of the parameter is used
             confidence_level (float): confidence level for confidence intervals
             confidence_interval_kind (str): kind of confidence interval to compute
         """

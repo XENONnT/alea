@@ -21,20 +21,21 @@ class BlueiceExtendedModel(StatisticalModel):
     This class extends the `StatisticalModel` class and provides methods
     for generating data and computing likelihoods based on blueice.
 
-    :ivar _likelihood: A blueice LogLikelihoodSum instance.
-    :vartype _likelihood: blueice.likelihood.LogLikelihoodSum
-    :ivar likelihood_names: List of likelihood names.
-    :vartype likelihood_names: list
-    :ivar data_generators: List of data generators for each likelihood term.
-    :vartype data_generators: list
+    Attributes:
+        parameters (Parameters): Parameters object containing the parameters of the model.
+        data (dict): Data of the statistical model.
+        is_data_set (bool): Whether data is set.
+        _likelihood (LogLikelihoodSum): A blueice LogLikelihoodSum instance.
+        likelihood_names (list): List of likelihood names.
+        data_generators (list): List of data generators for each likelihood term.
 
-    :param parameter_definition: A dictionary defining the model parameters.
-    :type parameter_definition: dict
-    :param likelihood_config: A dictionary defining the likelihood.
-    :type likelihood_config: dict
+    Args:
+        parameter_definition (dict): A dictionary defining the model parameters.
+        likelihood_config (dict): A dictionary defining the likelihood.
 
-    TODO: analysis_space could be inferred from the data
-    (assert that all sources have the same analysis space)
+    Todo:
+        analysis_space could be inferred from the data
+        (assert that all sources have the same analysis space)
     """
 
     def __init__(self, parameter_definition: dict, likelihood_config: dict):
@@ -49,11 +50,11 @@ class BlueiceExtendedModel(StatisticalModel):
     def from_config(cls, config_file_path: str) -> "BlueiceExtendedModel":
         """Initializes the statistical model from a yaml config file.
 
-        :param config_file_path: Path to the yaml config file.
-        :type config_file_path: str
+        Args:
+            config_file_path (str): Path to the yaml config file.
 
-        :return: Statistical model.
-        :rtype: BlueiceExtendedModel
+        Returns:
+            BlueiceExtendedModel: Statistical model.
         """
         with open(config_file_path, "r") as f:
             config = yaml.safe_load(f)
@@ -88,11 +89,24 @@ class BlueiceExtendedModel(StatisticalModel):
         Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
 
-        TODO: Current implementation is not elegant.
-        It copied the llh and sets the data to the copied llh,
-        because the call of llh needs data to be set.
-        But data is not needed for the expectation values.
-        We should update this function in the future after we stop using blueice.
+        Args:
+            kwargs: Named parameters
+
+        Returns:
+            dict: Dictionary of expectation values
+
+        Caution:
+            The function silently drops parameters it can't handle!
+
+        Todo:
+            Current implementation is not elegant.
+            It copied the llh and sets the data to the copied llh,
+            because the call of llh needs data to be set.
+            But data is not needed for the expectation values.
+            We should update this function in the future after we stop using blueice.
+
+            Make a self.likelihood_temrs dict with the likelihood names as keys and
+            the corresponding likelihood terms as values.
         """
         generate_values = self.parameters(**kwargs)  # kwarg or nominal value
         ret = dict()
@@ -101,7 +115,6 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy = deepcopy(self)
         self_copy.data = self_copy.generate_data()
 
-        # TODO: Make a self.likelihood_temrs dict with the likelihood names as keys and the corresponding likelihood terms as values.
         # ancillary likelihood does not contribute
         for ll_term, parameter_names in zip(
                 self_copy._likelihood.likelihood_list[:-1],
@@ -118,10 +131,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Iterate through all likelihood terms and build blueice likelihood instances.
 
-        :param likelihood_config: A dictionary defining the likelihood.
-        :type likelihood_config: dict
-        :return: A blueice LogLikelihoodSum instance.
-        :rtype: blueice.likelihood.LogLikelihoodSum
+        Args:
+            likelihood_config (dict): A dictionary defining the likelihood.
+
+        Returns:
+            LogLikelihoodSum: A blueice LogLikelihoodSum instance.
         """
         lls = []
 
@@ -156,7 +170,7 @@ class BlueiceExtendedModel(StatisticalModel):
             ll = likelihood_object(blueice_config)
 
             for source in config["sources"]:
-                # Set rate parameters
+                # set rate parameters
                 rate_parameters = [
                     p for p in source["parameters"] if self.parameters[p].ptype == "rate"]
                 if len(rate_parameters) != 1:
@@ -171,11 +185,11 @@ class BlueiceExtendedModel(StatisticalModel):
                         "Only rate multipliers that end on _rate_multiplier"
                         " are currently supported.")
 
-                # Set efficiency parameters
+                # set efficiency parameters
                 if source.get("apply_efficiency", False):
                     self._set_efficiency(source, ll)
 
-                # Set shape parameters
+                # set shape parameters
                 shape_parameters = [
                     p for p in source["parameters"] if self.parameters[p].ptype == "shape"]
                 for p in shape_parameters:
@@ -187,7 +201,7 @@ class BlueiceExtendedModel(StatisticalModel):
             ll.prepare()
             lls.append(ll)
 
-        # Ancillary likelihood
+        # ancillary likelihood
         ll = CustomAncillaryLikelihood(self.parameters.with_uncertainty)
         lls.append(ll)
 
@@ -195,8 +209,16 @@ class BlueiceExtendedModel(StatisticalModel):
         return LogLikelihoodSum(lls, likelihood_weights=likelihood_weights)
 
     def _build_data_generators(self) -> list:
+        """
+        Build data generators for all likelihood terms.
+
+        Returns:
+            list: List of data generators for each likelihood term.
+
+        Todo:
+            Also implement data generator for ancillary ll term.
+        """
         # last one is AncillaryLikelihood
-        # TODO: Also implement data generator for ancillary ll term.
         return [
             BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
 
@@ -207,12 +229,12 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Generate data for all likelihood terms and ancillary likelihood.
 
-        :param generate_values: A dictionary of parameter values.
-        :type generate_values: dict
-        :return:
-            A dictionary of data-sets, with key of the likelihood term name,
+        Args:
+            generate_values (dict): A dictionary of parameter values.
+
+        Returns:
+            dict: A dictionary of data-sets, with key of the likelihood term name,
             "ancillary_likelihood" and "generate_values".
-        :rtype: dict
         """
         # generate_values are already filtered and filled by the nominal values
         data = self._generate_science_data(**generate_values)
@@ -234,8 +256,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Generate data for the ancillary likelihood.
 
-        :return: A numpy structured array of ancillary measurements.
-        :rtype: numpy.array
+        Keyword Args:
+            generate_values (dict): A dictionary of parameter values.
+
+        Returns:
+            numpy.array: A numpy structured array of ancillary measurements.
         """
         ancillary_measurements = {}
         anc_ll = self._likelihood.likelihood_list[-1]
@@ -257,9 +282,12 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         Set the efficiency of a source in the blueice ll.
 
-        :param source: A dictionary defining the source.
-        :type source: dict
-        :param ll: A blueice LogLikelihood instance.
+        Args:
+            source (dict): A dictionary defining the source.
+            ll (LogLikelihood): A blueice LogLikelihood instance.
+
+        Raises:
+            ValueError: If the efficiency_name is not specified in the source.
         """
         if "efficiency_name" not in source:
             raise ValueError(f"Unspecified efficiency_name for source {source['name']:s}")
@@ -291,10 +319,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     Custom ancillary likelihood that can be used to add constraint terms
     for parameters of the likelihood.
 
-    :ivar parameters: Parameters object containing the parameters to be constrained.
-    :ivar constraint_functions: Dict of constraint functions for all ancillary parameters.
-
-    :param parameters: Parameters object containing the parameters to be constrained.
+    Attributes:
+        parameters (Parameters): Parameters object containing the parameters to be constrained.
+        constraint_functions (dict): Dict of constraint functions for all ancillary parameters.
     """
 
     def __init__(self, parameters: Parameters):
@@ -319,8 +346,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         Dict of all constraint terms (logpdf of constraint functions)
         of the ancillary likelihood.
 
-        :return: Dict of all constraint terms function.
-        :rtype: dict
+        Returns:
+            dict: Dict of all constraint terms function.
         """
         return {name: func.logpdf for name, func in self.constraint_functions.items()}
 
@@ -328,8 +355,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         """
         Set the data of the ancillary likelihood (ancillary measurements).
 
-        :param d: Data of ancillary measurements, stored as numpy array.
-        :type d: numpy.array
+        Args:
+            d (numpy.array): Data of ancillary measurements, stored as numpy array.
         """
         # This results in shifted constraint terms.
         d_dict = structured_array_to_dict(d)
@@ -341,10 +368,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
         """Return the sum of all constraint terms.
 
-        :param evaluate_at: Values of the ancillary measurements.
-        :type evaluate_at: dict
-        :return: Sum of all constraint terms.
-        :rtype: float
+        Args:
+            evaluate_at (dict): Values of the ancillary measurements.
+
+        Returns:
+            float: Sum of all constraint terms.
         """
         evaluated_constraint_terms = [
             term(evaluate_at[name]) for name, term in self.constraint_terms.items()
@@ -355,10 +383,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         """
         Get callable constraint functions for all ancillary parameters.
 
-        :param generate_values: A dictionary of parameter values.
-        :type generate_values: dict
-        :return: Dict of constraint functions.
-        :rtype: dict
+        Keyword Args:
+            generate_values (dict): A dictionary of parameter values.
+
+        Returns:
+            dict: Dict of constraint functions for all ancillary parameters.
         """
         central_values = self.parameters(**generate_values)
         constraint_functions = {}

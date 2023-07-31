@@ -17,7 +17,7 @@ class Parameter:
         blueice_anchors (list): Anchors for blueice template morphing.
         fit_limits (tuple): The limits for fitting the parameter.
         parameter_interval_bounds (tuple): Limits for computing confidence intervals
-        _fit_guess (float): The initial guess for fitting the parameter.
+        fit_guess (float): The initial guess for fitting the parameter.
         description (str): A description of the parameter.
     """
 

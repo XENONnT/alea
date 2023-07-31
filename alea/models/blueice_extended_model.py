@@ -35,7 +35,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     Todo:
         analysis_space could be inferred from the data
-        (assert that all sources have the same analysis space)
+        (assert that all sources have the same analysis_space)
     """
 
     def __init__(self, parameter_definition: dict, likelihood_config: dict):
@@ -73,7 +73,7 @@ class BlueiceExtendedModel(StatisticalModel):
         or more structured arrays representing the data-sets of one or more likelihood terms.
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
-        # except the last entry in data, which are the generate_values
+        # except the generate_values
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self._likelihood.likelihood_list[i]
@@ -246,7 +246,7 @@ class BlueiceExtendedModel(StatisticalModel):
         return data
 
     def _generate_science_data(self, **generate_values) -> dict:
-        """Generate data for all likelihood terms."""
+        """Generate data for all science data terms terms."""
         science_data = [
             gen.simulate(**generate_values)
             for gen in self.data_generators]

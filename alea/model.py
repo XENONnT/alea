@@ -34,6 +34,7 @@ class StatisticalModel:
         - store_data
         - fit
         - get_parameter_list
+        - confidence_interval
 
     Attributes:
         data: data of the model
@@ -196,7 +197,7 @@ class StatisticalModel:
 
     def get_expectation_values(self, **parameter_values):
         """
-        Get the expectation values for the of the measurement.
+        Get the expectation values of the measurement.
 
         Args:
             parameter_values: values of the parameters
@@ -210,10 +211,9 @@ class StatisticalModel:
 
         For this to work, you must implement `get_expectation_values`.
         """
-        # no kwargs for nominal
-        return self.get_expectation_values()
+        return self.get_expectation_values()  # no kwargs for nominal
 
-    def get_likelihood_term_from_name(self, likelihood_name: str) -> Dict:
+    def get_likelihood_term_from_name(self, likelihood_name: str) -> int:
         """
         Return the index of a likelihood term if the likelihood has several names
 
@@ -221,7 +221,7 @@ class StatisticalModel:
             likelihood_name (str): name of the likelihood term
 
         Returns:
-            Dict: index of the likelihood term
+            int: index of the likelihood term
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
@@ -389,8 +389,12 @@ class StatisticalModel:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
                     - passing None here, in which case the parameter_interval_bounds property of the parameter is used
-            confidence_level (float): confidence level for confidence intervals
+            confidence_level (float): confidence level for confidence intervals.
+                If None, the default confidence level of the model is used.
             confidence_interval_kind (str): kind of confidence interval to compute
+
+        Keyword Args:
+            kwargs: the parameters for get_expectation_values and fit
         """
         ci_objects = self._confidence_interval_checks(
             poi_name,
@@ -446,7 +450,7 @@ class MinuitWrap:
     Attributes:
         func: function wrapped
         s_args (list): parameter names of the model
-        _parameters (dict): parameters of the model
+        _parameters (dict): parameters and limits of the model
 
     Args:
         f (Callable): function to be wrapped

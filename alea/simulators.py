@@ -4,7 +4,6 @@ import logging
 
 import numpy as np
 import scipy.stats as sps
-import blueice
 import multihist as mh
 from blueice.likelihood import BinnedLogLikelihood, UnbinnedLogLikelihood
 

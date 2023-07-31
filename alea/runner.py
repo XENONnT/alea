@@ -34,13 +34,13 @@ class Runner:
         output_file (str): output filename
         result_names (list): list of result names
         result_dtype (list): list of result dtypes
-        hypotheses_values (list): list of values for hypotheses
+        _hypotheses_values (list): list of values for hypotheses
 
     Args:
         statistical_model (str): statistical model class name
         poi (str): parameter of interest
         hypotheses (list): list of hypotheses
-        n_mc (int): number of Monte Carlo
+        _n_mc (int): number of Monte Carlo
         statistical_model_args (dict, optional (default=None)): arguments for statistical model
         parameter_definition (dict or list, optional (default=None)): parameter definition
         confidence_level (float, optional (default=0.9)): confidence level
@@ -52,11 +52,11 @@ class Runner:
             common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
-        toydata_mode (str, optional (default='generate_and_write')):
+        _toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
-        toydata_file (str, optional (default=None)): toydata filename
-        metadata (dict, optional (default=None)): metadata
-        output_file (str, optional (default='test_toymc.h5')): output filename
+        _toydata_file (str, optional (default=None)): toydata filename
+        _metadata (dict, optional (default=None)): metadata
+        _output_file (str, optional (default='test_toymc.h5')): output filename
 
     Todo:
         Implement confidence interval calculation
@@ -103,9 +103,9 @@ class Runner:
 
         self.poi = poi
         self.hypotheses = hypotheses if hypotheses else []
-        self._n_mc = n_mc
         self.common_hypothesis = common_hypothesis if common_hypothesis else {}
         self.generate_values = generate_values if generate_values else {}
+        self._n_mc = n_mc
         self._toydata_file = toydata_file
         self._toydata_mode = toydata_mode
         self._output_file = output_file

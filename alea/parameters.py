@@ -69,7 +69,7 @@ class Parameter:
     @property
     def uncertainty(self) -> float or Any:
         """
-        Returns the uncertainty of the parameter.
+        Return the uncertainty of the parameter.
         If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
         """
         if isinstance(self._uncertainty, str):
@@ -89,7 +89,7 @@ class Parameter:
 
     @property
     def fit_guess(self) -> float:
-        """Returns the initial guess for fitting the parameter."""
+        """Return the initial guess for fitting the parameter."""
         # make sure to only return fit_guess if fittable
         if self._fit_guess is not None and not self.fittable:
             raise ValueError(
@@ -102,14 +102,14 @@ class Parameter:
         self._fit_guess = value
 
     def __eq__(self, other: object) -> bool:
-        """Returns True if all attributes are equal"""
+        """Return True if all attributes are equal"""
         if isinstance(other, Parameter):
             return all(getattr(self, k) == getattr(other, k) for k in self.__dict__)
         else:
             return False
 
     def value_in_fit_limits(self, value: float) -> bool:
-        """Returns True if value is within fit_limits"""
+        """Return True if value is within fit_limits"""
         if self.fit_limits is None:
             return True
         elif self.fit_limits[0] is None:
@@ -132,7 +132,7 @@ class Parameters:
         self.parameters: Dict[str, Parameter] = {}
 
     def __iter__(self) -> iter:
-        """Returns an iterator over the parameters. Each iteration returns a Parameter object."""
+        """Return an iterator over the parameters. Each iteration Return a Parameter object."""
         return iter(self.parameters.values())
 
     @classmethod
@@ -274,7 +274,7 @@ class Parameters:
             self, return_fittable: Optional[bool] = False,
             **kwargs: Any) -> Dict[str, float]:
         """
-        Returns a dictionary of parameter values, optionally filtered
+        Return a dictionary of parameter values, optionally filtered
         to return only fittable parameters.
 
         :param return_fittable: Indicates if only fittable parameters should be returned.
@@ -332,7 +332,7 @@ class Parameters:
             raise KeyError(f"Key '{name}' not found.")
 
     def __eq__(self, other: object) -> bool:
-        """Returns True if all parameters are equal"""
+        """Return True if all parameters are equal"""
         if isinstance(other, Parameters):
             names = set(self.names + other.names)
             return all(getattr(self, n) == getattr(other, n) for n in names)
@@ -341,7 +341,7 @@ class Parameters:
 
     def values_in_fit_limits(self, **kwargs: Any) -> bool:
         """
-        Returns True if all values are within the fit limits.
+        Return True if all values are within the fit limits.
 
         :param kwargs: The parameter values to check.
         :return: True if all values are within the fit limits.

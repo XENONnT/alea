@@ -20,10 +20,10 @@ class StatisticalModel:
         - a likelihood function
             ll(self, parameter_1, parameter_2... parameter_n):
             A function of a set of named parameters which
-            returns a float expressing the loglikelihood for observed data given these parameters.
+            Return a float expressing the loglikelihood for observed data given these parameters.
         - a data generation function
             generate_data(self, parameter_1, parameter_2... parameter_n)
-            A function of the same set of named parameters returns a full data set.
+            A function of the same set of named parameters Return a full data set.
     - Methods that you must implement:
         - _ll
         - _generate_data
@@ -104,7 +104,7 @@ class StatisticalModel:
                 "ll and generate_data must have the same signature (parameters)")
 
     def _ll(self, **kwargs) -> float:
-        """Likelihood function, returns the loglikelihood for the given parameters."""
+        """Likelihood function, Return the loglikelihood for the given parameters."""
         raise NotImplementedError(
             "You must write a likelihood function (_ll) for your statistical model"
             " or use a subclass where it is written for you")
@@ -118,7 +118,7 @@ class StatisticalModel:
     @_needs_data
     def ll(self, **kwargs) -> float:
         """
-        Likelihod function, returns the loglikelihood for the given parameters.
+        Likelihod function, Return the loglikelihood for the given parameters.
         The parameters are passed as keyword arguments, positional arguments are not possible.
         If a parameter is not given, the default value is used.
 
@@ -209,7 +209,7 @@ class StatisticalModel:
 
     def get_likelihood_term_from_name(self, likelihood_name: str):
         """
-        Returns the index of a likelihood term if the likelihood has several names
+        Return the index of a likelihood term if the likelihood has several names
 
         :param likelihood_name: name of the likelihood term
         :type likelihood_name: str
@@ -223,7 +223,7 @@ class StatisticalModel:
             raise NotImplementedError("The attribute likelihood_names is not defined.")
 
     def get_parameter_list(self):
-        """Returns a set of all parameters that the generate_data and likelihood accepts"""
+        """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
     def make_objective(self, minus=True, **kwargs):
@@ -296,7 +296,7 @@ class StatisticalModel:
             confidence_interval_kind: str,
             **kwargs):
         """
-        Helper function for confidence_interval that does the input checks and returns bounds
+        Helper function for confidence_interval that does the input checks and Return bounds
 
         :param poi_name: name of the parameter of interest
         :type poi_name: str

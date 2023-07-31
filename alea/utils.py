@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_analysis_space(analysis_space: dict) -> list:
+    """Convert analysis_space to a list of tuples with evaluated values."""
     eval_analysis_space = []
 
     for element in analysis_space:
@@ -22,9 +23,7 @@ def get_analysis_space(analysis_space: dict) -> list:
             elif isinstance(value, str):
                 eval_element = (
                     key,
-                    np.fromstring(value,
-                                  dtype=float,
-                                  sep=" "))
+                    np.fromstring(value, dtype=float, sep=" "))
             elif isinstance(value, list):
                 eval_element = (key, np.array(value))
             else:
@@ -40,13 +39,12 @@ def adapt_likelihood_config_for_blueice(
     """
     Adapt likelihood config to be compatible with blueice.
 
-    Args:
-        likelihood_config (dict): likelihood config dict
-        template_folder_list (list): list of possible base folders.
-            Ordered by priority.
-
-    Returns:
-        dict: adapted likelihood config
+    :param likelihood_config: likelihood config dict
+    :type likelihood_config: dict
+    :param template_folder_list: list of possible base folders. Ordered by priority.
+    :type template_folder_list: list
+    :return: adapted likelihood config
+    :rtype: dict
     """
 
     likelihood_config_copy = deepcopy(likelihood_config)
@@ -89,6 +87,11 @@ def formatted_to_asterisked(formatted):
     Convert formatted string to asterisk
     Sometimes a parameter(usually shape parameter) is not specified in formatted string,
     this function replace the parameter with asterisk.
+
+    :param formatted: formatted string
+    :type formatted: str
+    :return: asterisked string
+    :rtype: str
     """
     asterisked = formatted
     for found in re.findall("\{(.*?)\}", formatted):
@@ -105,6 +108,11 @@ def get_file_path(fname, folder_list=None):
     #. can get file from _get_abspath, return alea internal file path
     #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
     #. can be downloaded from MongoDB, download and return cached path
+
+    :param fname: file name
+    :type fname: str
+    :param folder_list: list of possible base folders. Ordered by priority.
+    :type folder_list: list
     """
     if folder_list is None:
         folder_list = []

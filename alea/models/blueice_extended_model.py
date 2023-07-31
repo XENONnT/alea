@@ -61,7 +61,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     @property
     def data(self) -> dict:
-        """Returns the data of the statistical model."""
+        """Return the data of the statistical model."""
         return super().data
 
     @data.setter

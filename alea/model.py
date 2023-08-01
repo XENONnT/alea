@@ -1,5 +1,6 @@
 import inspect
 import warnings
+from copy import deepcopy
 from typing import Tuple, Callable, Optional
 
 import numpy as np
@@ -11,6 +12,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
+from alea.utils import within_limits
 
 
 class StatisticalModel:
@@ -302,6 +304,7 @@ class StatisticalModel:
                 else:
                     source_name = poi_name
                 mu_parameter = self.get_expectation_values(**kwargs)[source_name]
+                # update parameter_interval_bounds because poi is rate_multiplier
                 parameter_interval_bounds = (
                     parameter_interval_bounds[0] / mu_parameter,
                     parameter_interval_bounds[1] / mu_parameter)
@@ -330,7 +333,9 @@ class StatisticalModel:
             parameter_interval_bounds: Tuple[float, float] = None,
             confidence_level: float = None,
             confidence_interval_kind: str = None,
-            **kwargs) -> Tuple[float, float]:
+            best_fit_args: dict = None,
+            confidence_interval_args: dict = None,
+        ) -> Tuple[float, float]:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter
 
@@ -344,35 +349,42 @@ class StatisticalModel:
         (so that the range in the fit is parameter_interval_bounds/mus)
         otherwise the bound is taken as-is.
         """
-
+        if best_fit_args is None:
+            best_fit_args = {}
+        if confidence_interval_args is None:
+            confidence_interval_args = {}
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
-            **kwargs)
+            **confidence_interval_args)
         confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds = ci_objects
 
         # find best-fit:
-        best_result, best_ll = self.fit(**kwargs)
+        best_result, best_ll = self.fit(**best_fit_args)
         best_parameter = best_result[poi_name]
-        mask = (parameter_interval_bounds[0] < best_parameter)
-        mask &= (best_parameter < parameter_interval_bounds[1])
-        assert mask, ("the best-fit is outside your confidence interval"
-            " search limits in parameter_interval_bounds")
+        mask = within_limits(best_parameter, parameter_interval_bounds)
+        if not mask:
+            raise ValueError(
+                f"The best-fit {best_parameter} is outside your confidence interval "
+                f"search limits in parameter_interval_bounds {parameter_interval_bounds}.")
         # log-likelihood - critical value:
 
         # define intersection between likelihood ratio curve and the critical curve:
-        def t(hypothesis):
+        def t(hypothesis_value):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
-            kwargs[poi_name] = hypothesis
-            _, ll = self.fit(**kwargs)  # ll is + log-likelihood here
+            _confidence_interval_args = deepcopy(confidence_interval_args)
+            _confidence_interval_args[poi_name] = hypothesis_value
+            _, ll = self.fit(**_confidence_interval_args)  # ll is + log-likelihood here
             ret = 2. * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded
-            return ret - confidence_interval_threshold(hypothesis)
+            return ret - confidence_interval_threshold(hypothesis_value)
 
-        if confidence_interval_kind in {"upper", "central"}:
+        t_best_parameter = t(best_parameter)
+
+        if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
                 ul = brentq(t, best_parameter, parameter_interval_bounds[1])
             else:
@@ -380,7 +392,7 @@ class StatisticalModel:
         else:
             ul = np.nan
 
-        if confidence_interval_kind in {"lower", "central"}:
+        if confidence_interval_kind in {"lower", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[0]) > 0:
                 dl = brentq(t, parameter_interval_bounds[0], best_parameter)
             else:

@@ -12,6 +12,9 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 
 
+MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
+
+
 def get_analysis_space(analysis_space: dict) -> list:
     eval_analysis_space = []
 
@@ -147,3 +150,15 @@ def get_template_folder_list(likelihood_config):
         raise ValueError(
             "template_folder must be either a string or a list of strings.")
     return template_folder_list
+
+
+def within_limits(value, limits):
+    """Returns True if value is within limits"""
+    if limits is None:
+        return True
+    elif limits[0] is None:
+        return value <= limits[1]
+    elif limits[1] is None:
+        return value >= limits[0]
+    else:
+        return limits[0] <= value <= limits[1]

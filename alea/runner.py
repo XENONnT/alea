@@ -27,13 +27,14 @@ class Runner:
         hypotheses (list): list of hypotheses
         common_hypothesis (dict): common hypothesis, the values are copied to each hypothesis
         generate_values (dict): generate values for toydata
-        n_mc (int): number of Monte Carlo
-        toydata_file (str): toydata filename
-        toydata_mode (str): toydata mode, 'read', 'generate', 'generate_and_write', 'no_toydata'
-        metadata (dict): metadata, if None, it is set to {}
-        output_file (str): output filename
-        result_names (list): list of result names
-        result_dtype (list): list of result dtypes
+        _compute_confidence_interval (bool): whether compute confidence interval
+        _n_mc (int): number of Monte Carlo
+        _toydata_file (str): toydata filename
+        _toydata_mode (str): toydata mode, 'read', 'generate', 'generate_and_write', 'no_toydata'
+        _metadata (dict): metadata, if None, it is set to {}
+        _output_file (str): output filename
+        _result_names (list): list of result names
+        _result_dtype (list): list of result dtypes
         _hypotheses_values (list): list of values for hypotheses
 
     Args:
@@ -43,6 +44,9 @@ class Runner:
         _n_mc (int): number of Monte Carlo
         statistical_model_args (dict, optional (default={})): arguments for statistical model
         parameter_definition (dict or list, optional (default=None)): parameter definition
+        likelihood_config (dict, optional (default=None)): likelihood configuration
+        compute_confidence_interval (bool, optional (default=False)):
+            whether compute confidence interval
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
@@ -52,11 +56,11 @@ class Runner:
             common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
-        _toydata_mode (str, optional (default='generate_and_write')):
+        toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
-        _toydata_file (str, optional (default=None)): toydata filename
-        _metadata (dict, optional (default=None)): metadata
-        _output_file (str, optional (default='test_toymc.h5')): output filename
+        toydata_file (str, optional (default=None)): toydata filename
+        metadata (dict, optional (default=None)): metadata
+        output_file (str, optional (default='test_toymc.h5')): output filename
 
     Todo:
         Implement confidence interval calculation
@@ -73,6 +77,7 @@ class Runner:
             statistical_model_args: dict = None,
             parameter_definition: Optional[dict or list] = None,
             likelihood_config: dict = None,
+            compute_confidence_interval: bool = False,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = 'central',
             confidence_interval_threshold: Callable[[float], float] = None,
@@ -109,6 +114,7 @@ class Runner:
         self.hypotheses = hypotheses if hypotheses else []
         self.common_hypothesis = common_hypothesis if common_hypothesis else {}
         self.generate_values = generate_values if generate_values else {}
+        self._compute_confidence_interval = compute_confidence_interval
         self._n_mc = n_mc
         self._toydata_file = toydata_file
         self._toydata_mode = toydata_mode
@@ -132,6 +138,10 @@ class Runner:
         """Get generate values list from hypotheses"""
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
+        if 'free' not in hypotheses and self._compute_confidence_interval:
+            raise ValueError('free hypothesis is needed for confidence interval calculation!')
+        if 'free' in hypotheses and hypotheses.index('free') != 0:
+            raise ValueError('free hypothesis should be the first hypothesis!')
 
         for hypothesis in hypotheses:
             if hypothesis == 'null':
@@ -218,8 +228,15 @@ class Runner:
 
                 fit_result, max_llh = self.statistical_model.fit(**hypothesis_values)
                 fit_result['ll'] = max_llh
-                fit_result['dl'] = -1.
-                fit_result['ul'] = -1.
+                if self._compute_confidence_interval and (self.poi not in hypothesis_values):
+                    dl, ul = self.statistical_model.confidence_interval(
+                        poi_name=self.poi,
+                        best_fit_args=self._hypotheses_values[0],
+                        confidence_interval_args=hypothesis_values)
+                else:
+                    dl, ul = np.nan, np.nan
+                fit_result['dl'] = dl
+                fit_result['ul'] = ul
 
                 fit_results.append(fit_result)
             # appemd toydata

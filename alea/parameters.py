@@ -3,6 +3,9 @@ from typing import Any, Dict, List, Optional, Tuple
 # These imports are needed to evaluate the uncertainty string
 import numpy
 import scipy
+import numpy as np
+
+from alea.utils import MAX_FLOAT, within_limits
 
 
 class Parameter:
@@ -94,6 +97,26 @@ class Parameter:
     def fit_guess(self, value: float) -> None:
         self._fit_guess = value
 
+    @property
+    def parameter_interval_bounds(self) -> float:
+        # make sure to only return parameter_interval_bounds if fittable
+        if self._parameter_interval_bounds is not None and not self.fittable:
+            raise ValueError(
+                f"Parameter {self.name} is not fittable, but has a parameter_interval_bounds.")
+        else:
+            return self._parameter_interval_bounds
+
+    @parameter_interval_bounds.setter
+    def parameter_interval_bounds(self, value: Optional[List]) -> None:
+        if value is None:
+            value = [-MAX_FLOAT, MAX_FLOAT]
+        else:
+            if value[0] is None:
+                value[0] = -MAX_FLOAT
+            if value[1] is None:
+                value[1] = MAX_FLOAT
+        self._parameter_interval_bounds = value
+
     def __eq__(self, other: object) -> bool:
         """Returns True if all attributes are equal"""
         if isinstance(other, Parameter):
@@ -103,14 +126,7 @@ class Parameter:
 
     def value_in_fit_limits(self, value: float) -> bool:
         """Returns True if value is within fit_limits"""
-        if self.fit_limits is None:
-            return True
-        elif self.fit_limits[0] is None:
-            return value <= self.fit_limits[1]
-        elif self.fit_limits[1] is None:
-            return value >= self.fit_limits[0]
-        else:
-            return self.fit_limits[0] <= value <= self.fit_limits[1]
+        return within_limits(value, self.fit_limits)
 
 
 class Parameters:

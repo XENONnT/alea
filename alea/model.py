@@ -287,8 +287,7 @@ class StatisticalModel:
         cost = self.make_objective()
 
         # Make the Minuit object
-        m = Minuit(MinuitWrap(cost, parameters=self.parameters),
-                   **defaults)
+        m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
         m.errordef = Minuit.LIKELIHOOD
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable

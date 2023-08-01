@@ -224,7 +224,7 @@ class TemplateSource(HistogramPdfSource):
         return ret
 
 
-class CombinedSource(TemplateSource, HistogramPdfSource):
+class CombinedSource(TemplateSource):
     """
     Source that inherits structure from TH2DSource by Jelle,
     but takes in lists of histogram names.
@@ -334,7 +334,7 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
         self.set_pdf_histogram(h)
 
 
-class SpectrumTemplateSource(TemplateSource, HistogramPdfSource):
+class SpectrumTemplateSource(TemplateSource):
     """
     Reweighted template source by energy spectrum.
     The first axis of the template is assumed to be energy.

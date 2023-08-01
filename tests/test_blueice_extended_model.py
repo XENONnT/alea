@@ -41,7 +41,7 @@ class TestBlueiceExtendedModel(TestCase):
     def test_generate_data(self):
         """Test of the generate_data method"""
         data = self.model.generate_data()
-        toydata_file = 'simple_data.hdf5'
+        toydata_file = 'simple_data.h5'
         self.model.store_data(
             toydata_file,
             [data for k in self.model.likelihood_names])

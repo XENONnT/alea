@@ -9,19 +9,21 @@ class Parameter:
 
     Attributes:
         name (str): The name of the parameter.
-        nominal_value (float, optional): The nominal value of the parameter.
-        fittable (bool, optional): Indicates if the parameter is fittable or always fixed.
-        ptype (str, optional): The ptype of the parameter.
-        uncertainty (float or str, optional):
-            The uncertainty of the parameter. If a string,
-            it can be evaluated as a numpy or scipy function to define non-gaussian constraints.
-        relative_uncertainty (bool, optional):
-        Indicates if the uncertainty is relative to the nominal_value.
-        blueice_anchors (list, optional): Anchors for blueice template morphing.
-        fit_limits (tuple, optional): The limits for fitting the parameter.
-        parameter_interval_bounds (tupe, optional): limits for computing confidence intervals
-        fit_guess (float, optional): The initial guess for fitting the parameter.
-        description (str, optional): A description of the parameter.
+        nominal_value (float, optional (default=None)): The nominal value of the parameter.
+        fittable (bool, optional (default=None)):
+            Indicates if the parameter is fittable or always fixed.
+        ptype (str, optional (default=None)): The ptype of the parameter.
+        uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
+            If a string, it can be evaluated as a numpy or
+            scipy function to define non-gaussian constraints.
+        relative_uncertainty (bool, optional (default=None)):
+            Indicates if the uncertainty is relative to the nominal_value.
+        blueice_anchors (list, optional (default=None)): Anchors for blueice template morphing.
+        fit_limits (tuple, optional (default=None)): The limits for fitting the parameter.
+        parameter_interval_bounds (tuple, optional (default=None)):
+            Limits for computing confidence intervals
+        fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
+        description (str, optional (default=None)): A description of the parameter.
     """
 
     def __init__(
@@ -38,6 +40,7 @@ class Parameter:
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
+        """Initialise a parameter."""
         self.name = name
         self.nominal_value = nominal_value
         self.fittable = fittable
@@ -61,7 +64,7 @@ class Parameter:
     @property
     def uncertainty(self) -> float or Any:
         """
-        Returns the uncertainty of the parameter.
+        Return the uncertainty of the parameter.
         If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
         """
         if isinstance(self._uncertainty, str):
@@ -81,6 +84,7 @@ class Parameter:
 
     @property
     def fit_guess(self) -> float:
+        """Return the initial guess for fitting the parameter."""
         # make sure to only return fit_guess if fittable
         if self._fit_guess is not None and not self.fittable:
             raise ValueError(
@@ -93,14 +97,14 @@ class Parameter:
         self._fit_guess = value
 
     def __eq__(self, other: object) -> bool:
-        """Returns True if all attributes are equal"""
+        """Return True if all attributes are equal"""
         if isinstance(other, Parameter):
             return all(getattr(self, k) == getattr(other, k) for k in self.__dict__)
         else:
             return False
 
     def value_in_fit_limits(self, value: float) -> bool:
-        """Returns True if value is within fit_limits"""
+        """Return True if value is within fit_limits"""
         if self.fit_limits is None:
             return True
         elif self.fit_limits[0] is None:
@@ -116,14 +120,25 @@ class Parameters:
     Represents a collection of parameters.
 
     Attributes:
-        parameters (dict): A dictionary to store the parameters, with parameter name as key.
+        names (List[str]): A list of parameter names.
+        fit_guesses (Dict[str, float]): A dictionary of fit guesses.
+        fit_limits (Dict[str, float]): A dictionary of fit limits.
+        fittable (List[str]): A list of parameter names which are fittable.
+        not_fittable (List[str]): A list of parameter names which are not fittable.
+        uncertainties (Dict[str, float or Any]): A dictionary of parameter uncertainties.
+        with_uncertainty (Parameters): A Parameters object with parameters with
+            a not-NaN uncertainty.
+        nominal_values (Dict[str, float]): A dictionary of parameter nominal values.
+        parameters (Dict[str, Parameter]): A dictionary to store the parameters,
+            with parameter name as key.
     """
 
     def __init__(self):
+        """Initialise a collection of parameters."""
         self.parameters: Dict[str, Parameter] = {}
 
     def __iter__(self) -> iter:
-        """Returns an iterator over the parameters. Each iteration returns a Parameter object."""
+        """Return an iterator over the parameters. Each iteration return a Parameter object."""
         return iter(self.parameters.values())
 
     @classmethod
@@ -132,7 +147,7 @@ class Parameters:
         Creates a Parameters object from a configuration dictionary.
 
         Args:
-            config (dict): The configuration dictionary.
+            config (dict): A dictionary of parameter configurations.
 
         Returns:
             Parameters: The created Parameters object.
@@ -150,7 +165,7 @@ class Parameters:
         Everything else is set to default values.
 
         Args:
-            names (list): List of parameter names.
+            names (List[str]): List of parameter names.
 
         Returns:
             Parameters: The created Parameters object.
@@ -173,6 +188,9 @@ class Parameters:
 
         Args:
             parameter (Parameter): The Parameter object to add.
+
+        Raises:
+            ValueError: If the parameter name already exists.
         """
         if parameter.name in self.names:
             raise ValueError(f"Parameter {parameter.name} already exists.")
@@ -180,16 +198,12 @@ class Parameters:
 
     @property
     def names(self) -> List[str]:
-        """
-        Returns a list of parameter names.
-        """
+        """A list of parameter names."""
         return list(self.parameters.keys())
 
     @property
     def fit_guesses(self) -> Dict[str, float]:
-        """
-        Returns a dictionary of fit guesses.
-        """
+        """A dictionary of fit guesses."""
         return {
             name: param.fit_guess
             for name, param in self.parameters.items()
@@ -197,9 +211,7 @@ class Parameters:
 
     @property
     def fit_limits(self) -> Dict[str, float]:
-        """
-        Returns a dictionary of fit limits.
-        """
+        """A dictionary of fit limits."""
         return {
             name: param.fit_limits
             for name, param in self.parameters.items()
@@ -207,22 +219,20 @@ class Parameters:
 
     @property
     def fittable(self) -> List[str]:
-        """
-        Returns a list of parameter names which are fittable.
-        """
+        """A list of parameter names which are fittable."""
         return [name for name, param in self.parameters.items() if param.fittable]
 
     @property
     def not_fittable(self) -> List[str]:
-        """
-        Returns a list of parameter names which are not fittable.
-        """
+        """A list of parameter names which are not fittable."""
         return [name for name, param in self.parameters.items() if not param.fittable]
 
     @property
     def uncertainties(self) -> dict:
         """
-        return a dict of name:uncertainty for all parameters with a not-NaN uncertainty.
+        A dict of uncertainties for all parameters with a not-NaN uncertainty.
+
+        Caution: this is not the same as the parameter.uncertainty property.
         """
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
@@ -240,25 +250,28 @@ class Parameters:
 
     @property
     def nominal_values(self) -> dict:
-        """
-        return a dict of name:nominal value for all applicable parameters
-        """
+        """A dict of nominal values for all parameters with a nominal value."""
         return {
             k: i.nominal_value
             for k, i in self.parameters.items()
             if i.nominal_value is not None}
 
     def __call__(
-            self, return_fittable: bool = False,
-            **kwargs: Any) -> Dict[str, float]:
+            self, return_fittable: Optional[bool] = False,
+            **kwargs: Optional[Dict]) -> Dict[str, float]:
         """
-        Returns a dictionary of parameter values, optionally filtered
+        Return a dictionary of parameter values, optionally filtered
         to return only fittable parameters.
 
         Args:
-            return_fittable (bool, optional):
+            return_fittable (bool, optional (default=False)):
                 Indicates if only fittable parameters should be returned.
-            **kwargs: Additional keyword arguments to override parameter values.
+
+        Keyword Args:
+            kwargs (dict): Additional keyword arguments to override parameter values.
+
+        Raises:
+            ValueError: If a parameter name is not found.
 
         Returns:
             dict: A dictionary of parameter values.
@@ -288,11 +301,11 @@ class Parameters:
         Args:
             name (str): The name of the parameter.
 
-        Returns:
-            Parameter: The retrieved Parameter object.
-
         Raises:
             AttributeError: If the attribute is not found.
+
+        Returns:
+            Parameter: The retrieved Parameter object.
         """
         try:
             return super().__getattribute__('parameters')[name]
@@ -306,11 +319,11 @@ class Parameters:
         Args:
             name (str): The name of the parameter.
 
-        Returns:
-            Parameter: The retrieved Parameter object.
-
         Raises:
             KeyError: If the key is not found.
+
+        Returns:
+            Parameter: The retrieved Parameter object.
         """
         if name in self.parameters:
             return self.parameters[name]
@@ -318,16 +331,22 @@ class Parameters:
             raise KeyError(f"Key '{name}' not found.")
 
     def __eq__(self, other: object) -> bool:
-        """Returns True if all parameters are equal"""
+        """Return True if all parameters are equal"""
         if isinstance(other, Parameters):
             names = set(self.names + other.names)
             return all(getattr(self, n) == getattr(other, n) for n in names)
         else:
             return False
 
-    def values_in_fit_limits(self, **kwargs: Any) -> bool:
+    def values_in_fit_limits(self, **kwargs: Dict) -> bool:
         """
-        Returns True if all values are within the fit limits.
+        Return True if all values are within the fit limits.
+
+        Keyword Args:
+            kwargs (dict): The parameter values to check.
+
+        Returns:
+            bool: True if all values are within the fit limits.
         """
         return all(
             self.parameters[name].value_in_fit_limits(value)

@@ -127,7 +127,7 @@ class StatisticalModel:
     @_needs_data
     def ll(self, **kwargs) -> float:
         """
-        Likelihod function, return the loglikelihood for the given parameters.
+        Likelihod function, returns the loglikelihood for the given parameters.
         The parameters are passed as keyword arguments, positional arguments are not possible.
         If a parameter is not given, the default value is used.
 
@@ -144,7 +144,7 @@ class StatisticalModel:
         """
         Generate data for the given parameters.
         The parameters are passed as keyword arguments, positional arguments are not possible.
-        If a parameter is not given, the default values are used.
+        If a parameter is not given, the default value is used.
 
         Raises:
             ValueError: If the parameters are not within the fit limits
@@ -245,24 +245,19 @@ class StatisticalModel:
         """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
-    def make_objective(self, minus: Optional[bool] = True):
+    def make_objective(self):
         """
         Make a function that can be passed to Minuit
-
-        Args:
-            minus (bool, optional (default=True)): if True, the function is multiplied by -1
 
         Returns:
             Callable: function that can be passed to Minuit
         """
-        sign = -1 if minus else 1
-
         def cost(args):
             # Get the arguments from args
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
-            return self.ll(**call_kwargs) * sign
+            return self.ll(**call_kwargs) * -1
 
         return cost
 

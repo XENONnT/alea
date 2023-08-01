@@ -114,6 +114,8 @@ def get_file_path(fname, folder_list=None):
         fname (str): file name
         folder_list (list, optional (default=None)):
             list of possible base folders. Ordered by priority.
+            The function will search for file from the first folder in the list,
+            and return the first found file immediately without searching the rest folders.
 
     Returns:
         str: full path to the resource file

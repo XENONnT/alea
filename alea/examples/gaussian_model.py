@@ -15,6 +15,10 @@ class GaussianModel(StatisticalModel):
     Args:
         parameter_definition (dict or list, optional (default=None)):
             definition of the parameters of the model
+
+    Caution:
+        You must define the nominal values of the parameters (mu, sigma)
+        in the parameters definition.
     """
 
     def __init__(

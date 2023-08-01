@@ -36,6 +36,9 @@ class StatisticalModel:
         - get_parameter_list
         - confidence_interval
 
+    The public methods generate_data and ll, as the names suggested,
+    depend on private methods _generate_data, and _ll respectively.
+
     Attributes:
         data: data of the model
         _data: data of the model
@@ -148,6 +151,9 @@ class StatisticalModel:
 
         Returns:
             dict or list: generated data
+
+        Caution:
+            This implementation won't allow you to call generate_data by positional arguments.
         """
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
@@ -257,7 +263,6 @@ class StatisticalModel:
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
-            # call_kwargs.update(kwargs)
             return self.ll(**call_kwargs) * sign
 
         return cost

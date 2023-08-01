@@ -244,10 +244,15 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
         if not self.config.get("in_events_per_bin", True):
             raise ValueError(
                 "CombinedSource does not support in_events_per_bin=False")
+        # check if all the necessary parameters, like weights are specified
         if "weight_names" not in self.config:
             raise ValueError("weight_names must be specified")
+        find_weight = [weight_name in self.config for weight_name in self.config["weight_names"]]
+        if not all(find_weight):
+            missing_weight = self.config["weight_names"][find_weight]
+            raise ValueError(f"All weight_names must be specified, but {missing_weight} are not. ")
         weights = [
-            self.config.get(weight_name, 0) for weight_name in self.config["weight_names"]
+            self.config[weight_name] for weight_name in self.config["weight_names"]
         ]
         histnames = self.config["histnames"]
         templatenames = self.config["templatenames"]

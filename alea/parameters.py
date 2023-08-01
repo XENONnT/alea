@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
+import scipy
+
 
 class Parameter:
     """

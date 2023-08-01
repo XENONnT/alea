@@ -29,6 +29,14 @@ alea.parameters module
    :undoc-members:
    :show-inheritance:
 
+alea.runner module
+------------------
+
+.. automodule:: alea.runner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 alea.simulators module
 ----------------------
 

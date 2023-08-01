@@ -61,9 +61,6 @@ class Runner:
         toydata_file (str, optional (default=None)): toydata filename
         metadata (dict, optional (default=None)): metadata
         output_file (str, optional (default='test_toymc.h5')): output filename
-
-    Todo:
-        Implement confidence interval calculation
     """
 
     def __init__(

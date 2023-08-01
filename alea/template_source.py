@@ -358,7 +358,7 @@ class CombinedSource(blueice.HistogramPdfSource):
 class SpectrumTemplateSource(blueice.HistogramPdfSource):
     """
     :param spectrum_name: name of bbf json-like spectrum _OR_ function that can be called
-    templatename #3D histogram (Etrue,S1,S2) to open
+    templatename #3D histogram (Etrue, S1, S2) to open
     :param histname: histogram name
     :param named_parameters: list of config settings to pass to .format on histname and filename
     """

@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_analysis_space(analysis_space: dict) -> list:
+    """Convert analysis_space to a list of tuples with evaluated values."""
     eval_analysis_space = []
 
     for element in analysis_space:
@@ -22,9 +23,7 @@ def get_analysis_space(analysis_space: dict) -> list:
             elif isinstance(value, str):
                 eval_element = (
                     key,
-                    np.fromstring(value,
-                                  dtype=float,
-                                  sep=" "))
+                    np.fromstring(value, dtype=float, sep=" "))
             elif isinstance(value, list):
                 eval_element = (key, np.array(value))
             else:
@@ -42,8 +41,7 @@ def adapt_likelihood_config_for_blueice(
 
     Args:
         likelihood_config (dict): likelihood config dict
-        template_folder_list (list): list of possible base folders.
-            Ordered by priority.
+        template_folder_list (list): list of possible base folders. Ordered by priority.
 
     Returns:
         dict: adapted likelihood config
@@ -89,6 +87,12 @@ def formatted_to_asterisked(formatted):
     Convert formatted string to asterisk
     Sometimes a parameter(usually shape parameter) is not specified in formatted string,
     this function replace the parameter with asterisk.
+
+    Args:
+        formatted (str): formatted string
+
+    Returns:
+        str: asterisked string
     """
     asterisked = formatted
     for found in re.findall("\{(.*?)\}", formatted):
@@ -105,6 +109,16 @@ def get_file_path(fname, folder_list=None):
     #. can get file from _get_abspath, return alea internal file path
     #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
     #. can be downloaded from MongoDB, download and return cached path
+
+    Args:
+        fname (str): file name
+        folder_list (list, optional (default=None)):
+            list of possible base folders. Ordered by priority.
+            The function will search for file from the first folder in the list,
+            and return the first found file immediately without searching the rest folders.
+
+    Returns:
+        str: full path to the resource file
     """
     if folder_list is None:
         folder_list = []

@@ -229,8 +229,7 @@ class CombinedSource(TemplateSource, HistogramPdfSource):
     Source that inherits structure from TH2DSource by Jelle,
     but takes in lists of histogram names.
     The first histogram is the base histogram, and the rest are added to it with weights.
-    Currently the weights are hardcoded in the config, can not be changed in the fit.
-    In other words, the weight can not be shape parameter.
+    The weights can be set as shape parameters in the config.
 
     Args:
         weights: Weights of the 2nd to the last histograms.

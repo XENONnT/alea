@@ -51,7 +51,7 @@ class StatisticalModel:
             definition of the parameters of the model
         confidence_level (float, optional (default=0.9)):
             confidence level for confidence intervals
-        confidence_interval_kind (str, optional (default=central)):
+        confidence_interval_kind (str, optional (default="central")):
             kind of confidence interval to compute
         confidence_interval_threshold (Callable[[float], float], optional (default=None)):
             threshold for confidence interval
@@ -378,8 +378,8 @@ class StatisticalModel:
     def confidence_interval(
             self, poi_name: str,
             parameter_interval_bounds: Tuple[float, float] = None,
-            confidence_level: Tuple[float] = None,
-            confidence_interval_kind: Tuple[str] = None,
+            confidence_level: float = None,
+            confidence_interval_kind: str = None,
             **kwargs) -> Tuple[float, float]:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter.
@@ -395,10 +395,10 @@ class StatisticalModel:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
                     - passing None here, in which case the parameter_interval_bounds property of the parameter is used
-            confidence_level (Tuple[float], optional (default=None)):
+            confidence_level (float, optional (default=None)):
                 confidence level for confidence intervals.
                 If None, the default confidence level of the model is used.
-            confidence_interval_kind (Tuple[str], optional (default=None)):
+            confidence_interval_kind (str, optional (default=None)):
                 kind of confidence interval to compute.
                 If None, the default kind of the model is used.
 

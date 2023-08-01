@@ -1,5 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 
+# These imports are needed to evaluate the uncertainty string
+import numpy
+import scipy
+
 
 class Parameter:
     """
@@ -40,12 +44,12 @@ class Parameter:
         self.nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
-        self._uncertainty = uncertainty
+        self.uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds
-        self._fit_guess = fit_guess
+        self.fit_guess = fit_guess
         self.description = description
 
     def __repr__(self) -> str:
@@ -63,7 +67,7 @@ class Parameter:
         If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
         """
         if isinstance(self._uncertainty, str):
-            # Evaluate the uncertainty if it's a string
+            # Evaluate the uncertainty if it's a string starting with "scipy." or "numpy."
             if self._uncertainty.startswith("scipy.") or self._uncertainty.startswith("numpy."):
                 return eval(self._uncertainty)
             else:
@@ -275,8 +279,8 @@ class Parameters:
         if any(i is None for k, i in values.items()):
             emptypars = ", ".join([k for k, i in values.items() if i is None])
             raise AssertionError(
-                "All parameters must be set explicitly, or have a nominal value,"
-                " encountered for: " + emptypars)
+                "All parameters must be set explicitly, or have a nominal value, "
+                "not satisfied for: " + emptypars)
         return values
 
     def __getattr__(self, name: str) -> Parameter:

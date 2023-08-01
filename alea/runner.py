@@ -14,11 +14,11 @@ from alea.model import StatisticalModel
 class Runner:
     """
     Runner manipulates statistical model and toydata.
-        - initialize statistical model
-        - generate or read toy data
+        - initialize the statistical model
+        - generate or reads toy data
         - save toy data if needed
-        - fit parameters
-        - write output file
+        - fit fittable parameters
+        - write the output file
     One toyfile can contain multiple toydata, but all of them are from the same generate_values.
 
     Attributes:

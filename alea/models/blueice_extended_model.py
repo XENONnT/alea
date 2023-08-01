@@ -170,6 +170,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 rate_parameter = rate_parameters[0]
                 if rate_parameter.endswith("_rate_multiplier"):
                     rate_parameter = rate_parameter.replace("_rate_multiplier", "")
+                    # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_rate_parameter(rate_parameter, log_prior=None)
                 else:
                     raise NotImplementedError(
@@ -187,6 +188,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     anchors = self.parameters[p].blueice_anchors
                     if anchors is None:
                         raise ValueError(f"Shape parameter {p} does not have any anchors.")
+                    # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
             ll.prepare()

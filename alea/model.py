@@ -245,7 +245,7 @@ class StatisticalModel:
         """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
-    def make_objective(self, minus: Optional[bool] = True, **kwargs):
+    def make_objective(self, minus: Optional[bool] = True):
         """
         Make a function that can be passed to Minuit
 
@@ -258,8 +258,7 @@ class StatisticalModel:
         sign = -1 if minus else 1
 
         def cost(args):
-            # Get the arguments from args,
-            # then fill in the ones already fixed in outer kwargs
+            # Get the arguments from args
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
@@ -290,7 +289,7 @@ class StatisticalModel:
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
-        cost = self.make_objective(minus=True, **kwargs)
+        cost = self.make_objective(minus=True)
 
         # Make the Minuit object
         m = Minuit(MinuitWrap(cost, parameters=self.parameters),

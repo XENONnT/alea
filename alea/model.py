@@ -284,7 +284,7 @@ class StatisticalModel:
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
-        cost = self.make_objective(minus=True)
+        cost = self.make_objective()
 
         # Make the Minuit object
         m = Minuit(MinuitWrap(cost, parameters=self.parameters),

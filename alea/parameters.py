@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, Tuple
 # These imports are needed to evaluate the uncertainty string
 import numpy
 import scipy
-import numpy as np
 
 from alea.utils import MAX_FLOAT, within_limits
 

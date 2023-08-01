@@ -9,18 +9,18 @@ from alea.examples import GaussianModel
 
 gaussian_model_parameter_definition = {
     'mu': {
-        'fit_guess': 0.0,
+        'fit_guess': 0.,
         'fittable': True,
-        'nominal_value': 0.0,
+        'nominal_value': 0.,
         'parameter_interval_bounds': [
             -10,
-            10
+            10,
         ],
     },
     'sigma': {
         'fittable': False,
-        'nominal_value': 1.0,
-    }
+        'nominal_value': 1.,
+    },
 }
 
 

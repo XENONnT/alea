@@ -199,30 +199,40 @@ class Runner:
         self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
 
     def data_generator(self):
-        """Generate or read toydata, and store them to attribute if needed"""
+        """Generate, save or read toydata"""
+        # check toydata mode
+        if self._toydata_mode not in {
+            'read', 'generate', 'generate_and_write', 'no_toydata',
+        }:
+            raise ValueError(f'Unknown toydata mode: {self._toydata_mode}')
+        # check toydata file size
         if self._toydata_mode == 'read':
-            self.toydata, self.toydata_names = self.read_toydata()
-            if len(self.toydata) < self._n_mc:
+            toydata, toydata_names = self.read_toydata()
+            if len(toydata) < self._n_mc:
                 raise ValueError(
-                    f'Number of stored toydata {len(self.toydata)} is '
+                    f'Number of stored toydata {len(toydata)} is '
                     f'less than number of Monte Carlo {self._n_mc}!')
-            elif len(self.toydata) > self._n_mc:
+            elif len(toydata) > self._n_mc:
                 warnings.warn(
-                    f'Number of stored toydata {len(self.toydata)} is '
+                    f'Number of stored toydata {len(toydata)} is '
                     f'larger than number of Monte Carlo {self._n_mc}.')
         else:
-            self.toydata = []
-            self.toydata_names = None
-        for i_mc in tqdm(range(self._n_mc)):
+            toydata = []
+            toydata_names = None
+        # generate toydata
+        for i_mc in range(self._n_mc):
             if self._toydata_mode == 'generate' or self._toydata_mode == 'generate_and_write':
                 data = self.statistical_model.generate_data(
                     **self.generate_values)
                 if self._toydata_mode == 'generate_and_write':
                     # append toydata
-                    self.toydata.append(data)
+                    toydata.append(data)
             if self._toydata_mode == 'read':
-                data = self.toydata[i_mc]
+                data = toydata[i_mc]
             yield data
+        # save toydata
+        if self._toydata_mode == 'generate_and_write':
+            self.write_toydata(toydata, toydata_names)
 
     def toy_simulation(self):
         """
@@ -230,13 +240,8 @@ class Runner:
             - run toy simulation a specified toydata mode and generate values.
             - loop over hypotheses.
         """
-        if self._toydata_mode not in {
-            'read', 'generate', 'generate_and_write', 'no_toydata',
-        }:
-            raise ValueError(f'Unknown toydata mode: {self._toydata_mode}')
-
         results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
-        for i_mc, data in enumerate(self.data_generator()):
+        for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):
             self.statistical_model.data = data
             fit_results = []
             for hypothesis_values in self._hypotheses_values:
@@ -256,10 +261,6 @@ class Runner:
             # assign fitting results
             for fit_result, result_array in zip(fit_results, results):
                 result_array[i_mc] = tuple(fit_result[pn] for pn in self._result_names)
-
-        if self._toydata_mode == 'generate_and_write':
-            self.write_toydata(self.toydata, self.toydata_names)
-
         return results
 
     def run(self):

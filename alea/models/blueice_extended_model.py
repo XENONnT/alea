@@ -38,17 +38,14 @@ class BlueiceExtendedModel(StatisticalModel):
         (assert that all sources have the same analysis_space)
     """
 
-    def __init__(
-            self,
-            parameter_definition: dict, likelihood_config: dict,
-            *args, **kwargs):
+    def __init__(self, parameter_definition: dict, likelihood_config: dict, **kwargs):
         """Initializes the statistical model.
 
         Args:
             parameter_definition (dict): A dictionary defining the model parameters.
             likelihood_config (dict): A dictionary defining the likelihood.
         """
-        super().__init__(parameter_definition=parameter_definition, *args, **kwargs)
+        super().__init__(parameter_definition=parameter_definition, **kwargs)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")

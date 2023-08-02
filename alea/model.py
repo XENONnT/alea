@@ -457,6 +457,9 @@ class StatisticalModel:
 
         t_best_parameter = t(best_parameter)
 
+        if t_best_parameter < 0:
+            warnings.warn(f"CL calculation failed, given fixed parameters {confidence_interval_args}.")
+
         if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
                 ul = brentq(t, best_parameter, parameter_interval_bounds[1])

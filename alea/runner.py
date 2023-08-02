@@ -218,11 +218,13 @@ class Runner:
             if self._toydata_mode == 'generate' or self._toydata_mode == 'generate_and_write':
                 self.statistical_model.data = self.statistical_model.generate_data(
                     **self.generate_values)
+                if self._toydata_mode == 'generate_and_write':
+                    # append toydata
+                    toydata.append(self.statistical_model.data)
+            if self._toydata_mode == 'read':
+                self.statistical_model.data = toydata[i_mc]
             fit_results = []
             for hypothesis_values in self._hypotheses_values:
-                if self._toydata_mode == 'read':
-                    self.statistical_model.data = toydata[i_mc]
-
                 fit_result, max_llh = self.statistical_model.fit(**hypothesis_values)
                 fit_result['ll'] = max_llh
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):
@@ -236,8 +238,6 @@ class Runner:
                 fit_result['ul'] = ul
 
                 fit_results.append(fit_result)
-            # appemd toydata
-            toydata.append(self.statistical_model.data)
             # assign fitting results
             for fit_result, result_array in zip(fit_results, results):
                 result_array[i_mc] = tuple(fit_result[pn] for pn in self._result_names)

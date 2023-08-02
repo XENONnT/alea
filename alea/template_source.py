@@ -353,10 +353,16 @@ class SpectrumTemplateSource(TemplateSource):
 
         Args:
             filename (str): Name of the JSON file.
+
+        Todo:
+            Define the format of the JSON file clearly.
         """
         with open(filename, "r") as f:
             contents = json.load(f)
-        logging.debug(contents["description"])
+        if "description" in contents:
+            logging.debug(contents["description"])
+        if "coordinate_system" not in contents:
+            raise ValueError("Coordinate system not in JSON file.")
         esyst = contents["coordinate_system"][0][1]
         ret = interp1d(
             np.linspace(*esyst), contents["map"],
@@ -369,9 +375,11 @@ class SpectrumTemplateSource(TemplateSource):
         histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
 
-        spectrum = self.config["spectrum"]
+        if "spectrum_name" not in self.config:
+            raise ValueError("spectrum_name not in config")
+        spectrum_name = self.config["spectrum_name"]
         if isinstance(spectrum, str):
-            spectrum = self._get_json_spectrum(spectrum.format(**self.format_named_parameters))
+            spectrum = self._get_json_spectrum(spectrum_name.format(**self.format_named_parameters))
 
         # Perform E-scaling, assume first axis is energy
         ecenters = h.bin_centers[0]

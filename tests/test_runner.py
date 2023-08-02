@@ -58,7 +58,7 @@ class TestRunner(TestCase):
 
     def test_runners(self):
         """Test of the toy_simulation and write_output method"""
-        set_runners = [self.set_blueice_runner, self.set_gaussian_runner]
+        set_runners = [self.set_gaussian_runner, self.set_blueice_runner]
         for set_runner in set_runners:
             # test toydata_mode generate_and_write
             set_runner()

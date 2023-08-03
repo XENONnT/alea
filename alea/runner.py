@@ -227,8 +227,10 @@ class Runner:
                 if self._toydata_mode == 'generate_and_write':
                     # append toydata
                     toydata.append(data)
-            if self._toydata_mode == 'read':
+            elif self._toydata_mode == 'read':
                 data = toydata[i_mc]
+            elif self._toydata_mode == 'no_toydata':
+                data = None
             yield data
         # save toydata
         if self._toydata_mode == 'generate_and_write':

@@ -421,7 +421,10 @@ class StatisticalModel:
                 If None, the default kind of the model is used.
 
         Keyword Args:
-            kwargs: the parameters for get_expectation_values and fit
+            best_fit_args: the parameters to **only** get the global best-fit likelihood
+            confidence_interval_args: the parameters to get the profile-likelihood,
+                also the best-fit parameters of profile-likelihood,
+                parameter_interval_bounds, and confidence interval
         """
         if best_fit_args is None:
             best_fit_args = {}

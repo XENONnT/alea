@@ -241,6 +241,9 @@ class Runner:
         For each Monte Carlo:
             - run toy simulation a specified toydata mode and generate values.
             - loop over hypotheses.
+
+        Todo:
+            Implement per-hypothesis switching on whether to compute confidence intervals
         """
         results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):

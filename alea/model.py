@@ -1,5 +1,6 @@
 import inspect
 import warnings
+from copy import deepcopy
 from typing import Dict, List, Tuple, Callable, Optional
 
 import numpy as np
@@ -10,6 +11,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
+from alea.utils import within_limits, clip_limits
 
 
 class StatisticalModel:
@@ -71,6 +73,7 @@ class StatisticalModel:
             confidence_level: float = 0.9,
             confidence_interval_kind: str = "central",  # one of central, upper, lower
             confidence_interval_threshold: Callable[[float], float] = None,
+            **kwargs,
         ):
         """Initialize a statistical model"""
         if type(self) == StatisticalModel:
@@ -183,7 +186,8 @@ class StatisticalModel:
             data_name_list: Optional[List] = None,
             metadata: Optional[Dict] = None):
         """
-        Store a list of datasets (each on the form of a list of one or more structured arrays)
+        Store a list of datasets.
+        (each on the form of a list of one or more structured arrays or dicts)
         Using inference_interface, but included here to allow over-writing.
         The structure would be: [[datasets1], [datasets2], ..., [datasetsn]],
         where each of datasets is a list of structured arrays.
@@ -198,14 +202,26 @@ class StatisticalModel:
             metadata (dict, optional (default=None)): metadata to store with the data.
                 If None, no metadata is stored.
         """
+        if all([isinstance(d, dict) for d in data_list]):
+            _data_list = [list(d.values()) for d in data_list]
+        elif all([isinstance(d, list) for d in data_list]):
+            _data_list = data_list
+        else:
+            raise ValueError(
+                'Unsupported mixed toydata format! '
+                'toydata should be a list of dict or a list of list',)
+
         if data_name_list is None:
             if hasattr(self, "likelihood_names"):
                 data_name_list = self.likelihood_names
             else:
-                data_name_list = ["{:d}".format(i) for i in range(len(data_list[0]))]
+                data_name_list = ["{:d}".format(i) for i in range(len(_data_list[0]))]
 
         kw = {'metadata': metadata} if metadata is not None else dict()
-        toydata_to_file(file_name, data_list, data_name_list, **kw)
+        if len(_data_list[0]) != len(data_name_list):
+            raise ValueError(
+                "The number of data sets and data names must be the same")
+        toydata_to_file(file_name, _data_list, data_name_list, **kw)
 
     def get_expectation_values(self, **parameter_values):
         """
@@ -257,6 +273,7 @@ class StatisticalModel:
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
+            # for optimization, we want to minimize the negative log-likelihood
             return self.ll(**call_kwargs) * -1
 
         return cost
@@ -338,10 +355,10 @@ class StatisticalModel:
 
         if parameter_interval_bounds is None:
             parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
-            if parameter_interval_bounds is None:
-                raise ValueError(
-                    "You must set parameter_interval_bounds in the parameter config"
-                    " or when calling confidence_interval")
+        else:
+            value = parameter_interval_bounds
+            parameter_of_interest._check_parameter_interval_bounds(value)
+            parameter_interval_bounds = clip_limits(value)
 
         if parameter_of_interest.ptype == "rate":
             try:
@@ -350,6 +367,7 @@ class StatisticalModel:
                 else:
                     source_name = poi_name
                 mu_parameter = self.get_expectation_values(**kwargs)[source_name]
+                # update parameter_interval_bounds because poi is rate_multiplier
                 parameter_interval_bounds = (
                     parameter_interval_bounds[0] / mu_parameter,
                     parameter_interval_bounds[1] / mu_parameter)
@@ -378,7 +396,9 @@ class StatisticalModel:
             parameter_interval_bounds: Tuple[float, float] = None,
             confidence_level: float = None,
             confidence_interval_kind: str = None,
-            **kwargs) -> Tuple[float, float]:
+            best_fit_args: dict = None,
+            confidence_interval_args: dict = None,
+        ) -> Tuple[float, float]:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter.
         If the parameter is a rate parameter, and the model has expectation values implemented,
@@ -401,36 +421,52 @@ class StatisticalModel:
                 If None, the default kind of the model is used.
 
         Keyword Args:
-            kwargs: the parameters for get_expectation_values and fit
+            best_fit_args: the parameters to **only** get the global best-fit likelihood
+            confidence_interval_args: the parameters to get the profile-likelihood,
+                also the best-fit parameters of profile-likelihood,
+                parameter_interval_bounds, and confidence interval
         """
+        if best_fit_args is None:
+            best_fit_args = {}
+        if confidence_interval_args is None:
+            confidence_interval_args = {}
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
-            **kwargs)
+            **confidence_interval_args)
         confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds = ci_objects
 
-        # find best-fit:
-        best_result, best_ll = self.fit(**kwargs)
+        # best_fit_args only provides the best-fit likelihood
+        _, best_ll = self.fit(**best_fit_args)
+        # the optimization of profile-likelihood under
+        # confidence_interval_args provides the best_parameter
+        best_result, _ = self.fit(**confidence_interval_args)
         best_parameter = best_result[poi_name]
-        mask = (parameter_interval_bounds[0] < best_parameter)
-        mask &= (best_parameter < parameter_interval_bounds[1])
-        assert mask, ("the best-fit is outside your confidence interval"
-            " search limits in parameter_interval_bounds")
-        # log-likelihood - critical value:
+        mask = within_limits(best_parameter, parameter_interval_bounds)
+        if not mask:
+            raise ValueError(
+                f"The best-fit {best_parameter} is outside your confidence interval "
+                f"search limits in parameter_interval_bounds {parameter_interval_bounds}.")
 
         # define intersection between likelihood ratio curve and the critical curve:
-        def t(hypothesis):
+        def t(hypothesis_value):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
-            kwargs[poi_name] = hypothesis
-            _, ll = self.fit(**kwargs)  # ll is + log-likelihood here
+            _confidence_interval_args = deepcopy(confidence_interval_args)
+            _confidence_interval_args[poi_name] = hypothesis_value
+            _, ll = self.fit(**_confidence_interval_args)  # ll is + log-likelihood here
             ret = 2. * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded
-            return ret - confidence_interval_threshold(hypothesis)
+            return ret - confidence_interval_threshold(hypothesis_value)
 
-        if confidence_interval_kind in {"upper", "central"}:
+        t_best_parameter = t(best_parameter)
+
+        if t_best_parameter > 0:
+            warnings.warn(f"CL calculation failed, given fixed parameters {confidence_interval_args}.")
+
+        if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
                 ul = brentq(t, best_parameter, parameter_interval_bounds[1])
             else:
@@ -438,7 +474,7 @@ class StatisticalModel:
         else:
             ul = np.nan
 
-        if confidence_interval_kind in {"lower", "central"}:
+        if confidence_interval_kind in {"lower", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[0]) > 0:
                 dl = brentq(t, parameter_interval_bounds[0], best_parameter)
             else:

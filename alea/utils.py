@@ -1,7 +1,7 @@
 import os
 import re
 import yaml
-import pkg_resources
+import importlib_resources
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
@@ -10,6 +10,9 @@ import logging
 import numpy as np
 
 logging.basicConfig(level=logging.INFO)
+
+
+MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
 
 
 def get_analysis_space(analysis_space: dict) -> list:
@@ -87,7 +90,7 @@ def _get_abspath(file_name):
 
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder"""
-    return pkg_resources.resource_filename('alea', f'{sub_directory}')
+    return importlib_resources.files('alea') / sub_directory
 
 
 def formatted_to_asterisked(formatted):
@@ -169,3 +172,30 @@ def get_template_folder_list(likelihood_config):
         raise ValueError(
             "template_folder must be either a string or a list of strings.")
     return template_folder_list
+
+
+def within_limits(value, limits):
+    """Returns True if value is within limits"""
+    if limits is None:
+        return True
+    elif limits[0] is None:
+        return value <= limits[1]
+    elif limits[1] is None:
+        return value >= limits[0]
+    else:
+        return limits[0] <= value <= limits[1]
+
+
+def clip_limits(value):
+    """
+    Clip limits to be within [-MAX_FLOAT, MAX_FLOAT]
+    by converting None to -MAX_FLOAT and MAX_FLOAT.
+    """
+    if value is None:
+        value = [-MAX_FLOAT, MAX_FLOAT]
+    else:
+        if value[0] is None:
+            value[0] = -MAX_FLOAT
+        if value[1] is None:
+            value[1] = MAX_FLOAT
+    return value

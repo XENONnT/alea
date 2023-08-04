@@ -1,10 +1,11 @@
+import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 # These imports are needed to evaluate the uncertainty string
-import numpy
-import scipy
+import numpy  # noqa: F401
+import scipy  # noqa: F401
 
-from alea.utils import MAX_FLOAT, within_limits
+from alea.utils import within_limits, clip_limits
 
 
 class Parameter:
@@ -107,17 +108,13 @@ class Parameter:
             raise ValueError(
                 f"Parameter {self.name} is not fittable, but has a parameter_interval_bounds.")
         else:
-            return self._parameter_interval_bounds
+            # print warning when value contains None
+            value = self._parameter_interval_bounds
+            self._check_parameter_interval_bounds(value)
+            return clip_limits(value)
 
     @parameter_interval_bounds.setter
     def parameter_interval_bounds(self, value: Optional[List]) -> None:
-        if value is None:
-            value = [-MAX_FLOAT, MAX_FLOAT]
-        else:
-            if value[0] is None:
-                value[0] = -MAX_FLOAT
-            if value[1] is None:
-                value[1] = MAX_FLOAT
         self._parameter_interval_bounds = value
 
     def __eq__(self, other: object) -> bool:
@@ -130,6 +127,18 @@ class Parameter:
     def value_in_fit_limits(self, value: float) -> bool:
         """Returns True if value is within fit_limits"""
         return within_limits(value, self.fit_limits)
+
+    def _check_parameter_interval_bounds(self, value):
+        """Check if parameter_interval_bounds is within fit_limits and is not None."""
+        if (value is None) or (value[0] is None) or (value[1] is None):
+            warnings.warn(
+                f"parameter_interval_bounds not defined for parameter {self.name}. "
+                "This may cause numerical overflow when calculating confidential interval.")
+        value = clip_limits(value)
+        if not (self.value_in_fit_limits(value[0]) and self.value_in_fit_limits(value[1])):
+            raise ValueError(
+                f"parameter_interval_bounds {value} not within "
+                f"fit_limits {self.fit_limits} for parameter {self.name}.")
 
 
 class Parameters:

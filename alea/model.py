@@ -11,7 +11,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits
+from alea.utils import within_limits, clip_limits
 
 
 class StatisticalModel:
@@ -273,6 +273,7 @@ class StatisticalModel:
             call_kwargs = {}
             for i, k in enumerate(self.parameters.names):
                 call_kwargs[k] = args[i]
+            # for optimization, we want to minimize the negative log-likelihood
             return self.ll(**call_kwargs) * -1
 
         return cost
@@ -354,10 +355,10 @@ class StatisticalModel:
 
         if parameter_interval_bounds is None:
             parameter_interval_bounds = parameter_of_interest.parameter_interval_bounds
-            if parameter_interval_bounds is None:
-                raise ValueError(
-                    "You must set parameter_interval_bounds in the parameter config"
-                    " or when calling confidence_interval")
+        else:
+            value = parameter_interval_bounds
+            parameter_of_interest._check_parameter_interval_bounds(value)
+            parameter_interval_bounds = clip_limits(value)
 
         if parameter_of_interest.ptype == "rate":
             try:
@@ -434,15 +435,17 @@ class StatisticalModel:
             **confidence_interval_args)
         confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds = ci_objects
 
-        # find best-fit:
-        best_result, best_ll = self.fit(**best_fit_args)
+        # best_fit_args only provides the best-fit likelihood
+        _, best_ll = self.fit(**best_fit_args)
+        # the optimization of profile-likelihood under
+        # confidence_interval_args provides the best_parameter
+        best_result, _ = self.fit(**confidence_interval_args)
         best_parameter = best_result[poi_name]
         mask = within_limits(best_parameter, parameter_interval_bounds)
         if not mask:
             raise ValueError(
                 f"The best-fit {best_parameter} is outside your confidence interval "
                 f"search limits in parameter_interval_bounds {parameter_interval_bounds}.")
-        # log-likelihood - critical value:
 
         # define intersection between likelihood ratio curve and the critical curve:
         def t(hypothesis_value):
@@ -457,7 +460,7 @@ class StatisticalModel:
 
         t_best_parameter = t(best_parameter)
 
-        if t_best_parameter < 0:
+        if t_best_parameter > 0:
             warnings.warn(f"CL calculation failed, given fixed parameters {confidence_interval_args}.")
 
         if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:

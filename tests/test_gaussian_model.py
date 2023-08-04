@@ -7,30 +7,31 @@ import inference_interface
 from alea.examples import GaussianModel
 
 
+gaussian_model_parameter_definition = {
+    'mu': {
+        'fit_guess': 0.,
+        'fittable': True,
+        'nominal_value': 0.,
+        'parameter_interval_bounds': [
+            -10,
+            10,
+        ],
+    },
+    'sigma': {
+        'fittable': False,
+        'nominal_value': 1.,
+    },
+}
+
+
 class TestGaussianModel(TestCase):
     """Test of the GaussianModel class"""
 
     @classmethod
     def setUp(cls):
         """Initialise the GaussianModel instance"""
-        parameter_definition = {
-            'mu': {
-                'fit_guess': 0.,
-                'fittable': True,
-                'nominal_value': 0.,
-            },
-            'sigma': {
-                'fit_guess': 1.,
-                'fit_limits': [
-                    0.,
-                    None,
-                ],
-                'fittable': True,
-                'nominal_value': 1.,
-            },
-        }
         cls.model = GaussianModel(
-            parameter_definition=parameter_definition)
+            parameter_definition=gaussian_model_parameter_definition)
 
     def test_data_generation(self):
         """Test generation of data"""
@@ -38,7 +39,7 @@ class TestGaussianModel(TestCase):
 
     def test_data_storage(self):
         """Test storage of data to file and retrieval of data from file"""
-        toydata_file = 'simple_data.hdf5'
+        toydata_file = 'simple_data.h5'
         self.model.data = self.model.generate_data(mu=0, sigma=2)
         self.model.store_data(toydata_file, [self.model.data])
         stored_data = inference_interface.toydata_from_file(toydata_file)

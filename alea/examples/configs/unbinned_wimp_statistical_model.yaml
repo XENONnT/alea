@@ -21,6 +21,9 @@ parameter_definition:
     fit_limits:
       - 0
       - null
+    parameter_interval_bounds:
+      - 0
+      - null
 
   er_rate_multiplier:
     nominal_value: 1.0
@@ -48,7 +51,7 @@ parameter_definition:
   er_band_shift:
     nominal_value: 0
     ptype: shape
-    uncertainty: null  # scipy.stats.uniform(loc=-1, scale=2)
+    uncertainty: null  # 'scipy.stats.uniform(loc=-1, scale=2)'
     # relative_uncertainty: false
     fittable: true
     blueice_anchors:

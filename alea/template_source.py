@@ -169,10 +169,10 @@ class CombinedSource(blueice.HistogramPdfSource):
     but takes in lists of histogram names.
     :param weights: weights
     :param histnames: list of filenames containing the histograms
-    :param templatenames: list of names of histograms within the hdf5 files
+    :param templatenames: list of names of histograms within the h5 files
     :param named_parameters : list of names of weights to be applied to histograms.
     Must be 1 shorter than histnames, templatenames
-    :param histogram_parameters: names of parameters that should be put in the hdf5/histogram names,
+    :param histogram_parameters: names of parameters that should be put in the h5/histogram names,
     """
 
     def build_histogram(self):
@@ -305,7 +305,7 @@ class CombinedSource(blueice.HistogramPdfSource):
                 logging.debug("h.bin_edges type", type(h.bin_edges))
                 if len(seen_bin_edges) != len(expected_bin_edges):
                     raise ValueError(
-                        "Axis %d of histogram %s in hdf5 file %s has %d bin edges, but expected %d"
+                        "Axis %d of histogram %s in h5 file %s has %d bin edges, but expected %d"
                         % (
                             axis_i, histname, templatename, len(seen_bin_edges),
                             len(expected_bin_edges)))
@@ -315,7 +315,7 @@ class CombinedSource(blueice.HistogramPdfSource):
                         expected_bin_edges, decimal=4)
                 except AssertionError:
                     warnings.warn(
-                        "Axis %d of histogram %s in hdf5 file %s has bin edges %s, "
+                        "Axis %d of histogram %s in h5 file %s has bin edges %s, "
                         "but expected %s. Since length matches, setting it expected values..."
                         % (
                             axis_i, histname, templatename, seen_bin_edges,

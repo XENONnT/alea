@@ -38,9 +38,14 @@ class BlueiceExtendedModel(StatisticalModel):
         (assert that all sources have the same analysis_space)
     """
 
-    def __init__(self, parameter_definition: dict, likelihood_config: dict):
-        """Initializes the statistical model."""
-        super().__init__(parameter_definition=parameter_definition)
+    def __init__(self, parameter_definition: dict, likelihood_config: dict, **kwargs):
+        """Initializes the statistical model.
+
+        Args:
+            parameter_definition (dict): A dictionary defining the model parameters.
+            likelihood_config (dict): A dictionary defining the likelihood.
+        """
+        super().__init__(parameter_definition=parameter_definition, **kwargs)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")
@@ -66,14 +71,23 @@ class BlueiceExtendedModel(StatisticalModel):
         return super().data
 
     @data.setter
-    def data(self, data: dict):
+    def data(self, data: dict or list):
         """
         Overrides default setter. Will also set the data of the blueice ll.
         Data-sets are expected to be in the form of a list of one
         or more structured arrays representing the data-sets of one or more likelihood terms.
+
+        Args:
+            data (dict or list): Data of the statistical model.
+                If data is a list, it must be a list of length len(self.likelihood_names) + 1.
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
-        # except the generate_values
+        # last entry in data are the generate_values
+        if isinstance(data, list):
+            if len(data) != len(self.likelihood_names) + 1:
+                raise ValueError(
+                    f"Data must be a list of length {len(self.likelihood_names) + 1}")
+            data = dict(zip(self.likelihood_names + ["generate_values"], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self._likelihood.likelihood_list[i]
@@ -159,7 +173,7 @@ class BlueiceExtendedModel(StatisticalModel):
             for i, source in enumerate(config["sources"]):
                 parameters_to_ignore: List[str] = [
                     p.name for p in self.parameters if (
-                        p.ptype == "shape") & (p.name not in source["parameters"])]
+                        p.ptype == "shape") and (p.name not in source["parameters"])]
                 # no efficiency affects PDF:
                 parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])
@@ -179,6 +193,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 rate_parameter = rate_parameters[0]
                 if rate_parameter.endswith("_rate_multiplier"):
                     rate_parameter = rate_parameter.replace("_rate_multiplier", "")
+                    # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_rate_parameter(rate_parameter, log_prior=None)
                 else:
                     raise NotImplementedError(
@@ -196,6 +211,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     anchors = self.parameters[p].blueice_anchors
                     if anchors is None:
                         raise ValueError(f"Shape parameter {p} does not have any anchors.")
+                    # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
             ll.prepare()
@@ -245,12 +261,20 @@ class BlueiceExtendedModel(StatisticalModel):
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
 
+    def store_data(self, file_name, data_list, data_name_list=None, metadata=None):
+        """
+        Store data in a file.
+        Append the generate_values to the data_name_list.
+        """
+        if data_name_list is None:
+            data_name_list = self.likelihood_names + ["generate_values"]
+        super().store_data(file_name, data_list, data_name_list, metadata)
+
     def _generate_science_data(self, **generate_values) -> dict:
-        """Generate data for all science data terms terms."""
+        """Generate the science data for all likelihood terms except the ancillary likelihood."""
         science_data = [
-            gen.simulate(**generate_values)
-            for gen in self.data_generators]
-        return dict(zip(self.likelihood_names, science_data))
+            gen.simulate(**generate_values) for gen in self.data_generators]
+        return dict(zip(self.likelihood_names[:-1], science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:
         """

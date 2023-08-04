@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from blueice import HistogramPdfSource
 from inference_interface import template_to_multihist
 
-logging.basicConfig(level=logging.debug)
+logging.basicConfig(level=logging.INFO)
 can_check_binning = True
 
 
@@ -226,8 +226,7 @@ class TemplateSource(HistogramPdfSource):
 
 class CombinedSource(TemplateSource):
     """
-    Source that inherits structure from TH2DSource by Jelle,
-    but takes in lists of histogram names.
+    Source combines in lists of histogram names.
     The first histogram is the base histogram, and the rest are added to it with weights.
     The weights can be set as shape parameters in the config.
 

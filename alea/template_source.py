@@ -7,6 +7,8 @@ from scipy.interpolate import interp1d
 from blueice import HistogramPdfSource
 from inference_interface import template_to_multihist
 
+from alea.utils import get_file_path
+
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
 
@@ -122,6 +124,7 @@ class TemplateSource(HistogramPdfSource):
         Args:
             h (multihist.MultiHistBase): The histogram to apply the slice arguments to.
             slice_args (dict): The slice arguments to apply.
+                The sum_axis, slice_axis, and slice_axis_limits are supported.
         """
         if slice_args is None:
             slice_args = self.config.get("slice_args", {})
@@ -129,42 +132,36 @@ class TemplateSource(HistogramPdfSource):
                 slice_args = [slice_args]
 
         for sa in slice_args:
+            sum_axis = sa.get("sum_axis", None)
             slice_axis = sa.get("slice_axis", None)
-            # Decide if you wish to sum the histogram into lower dimensions or
-            sum_axis = sa.get("sum_axis", False)
-            collapse_axis = sa.get("collapse_axis", None)
-            collapse_slices = sa.get("collapse_slices", None)
             if slice_axis is not None:
-                slice_axis_number = h.get_axis_number(slice_axis)
-                bes = h.bin_edges[slice_axis_number]
+                # When slice_axis is None, slice_axis_limits is not used
+                bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
                 slice_axis_limits = sa.get(
-                    "slice_axis_limits", [bes[0], bes[-1]])
-                if sum_axis:
-                    logging.debug(
-                        f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} "
-                        f"to {slice_axis_limits[1]}")
-                    axis_names = h.axis_names_without(slice_axis)
-                    h = h.slicesum(
-                        axis=slice_axis,
-                        start=slice_axis_limits[0],
-                        stop=slice_axis_limits[1])
-                    h.axis_names = axis_names
-                else:
-                    logging.debug(f"Normalization before slicing: {h.n}.")
-                    logging.debug(
-                        f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
-                        f"to {slice_axis_limits[1]}")
-                    h = h.slice(
-                        axis=slice_axis,
-                        start=slice_axis_limits[0],
-                        stop=slice_axis_limits[1])
-                    logging.debug(f"Normalization after slicing: {h.n}.")
-
-            if collapse_axis is not None:
-                if collapse_slices is None:
-                    raise ValueError(
-                        "To collapse you must supply collapse_slices")
-                h = h.collapse_bins(collapse_slices, axis=collapse_axis)
+                    "slice_axis_limits", [bin_edges[0], bin_edges[-1]])
+            # sum and/or slice the histogram
+            if (sum_axis is not None) and (slice_axis is not None):
+                logging.debug(
+                    f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} "
+                    f"to {slice_axis_limits[1]}")
+                h = h.slicesum(
+                    start=slice_axis_limits[0],
+                    stop=slice_axis_limits[1],
+                    axis=slice_axis)
+            elif sum_axis is not None:
+                logging.debug(
+                    f"Sum over axis {sum_axis}")
+                h = h.sum(axis=sum_axis)
+            elif slice_axis is not None:
+                logging.debug(
+                    f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
+                    f"to {slice_axis_limits[1]}")
+                logging.debug(f"Normalization before slicing: {h.n}.")
+                h = h.slice(
+                    start=slice_axis_limits[0],
+                    stop=slice_axis_limits[1],
+                    axis=slice_axis)
+                logging.debug(f"Normalization after slicing: {h.n}.")
         return h
 
     def set_dtype(self):
@@ -176,7 +173,7 @@ class TemplateSource(HistogramPdfSource):
 
     def set_pdf_histogram(self, h):
         """Set the histogram of the probability density function of the source."""
-        self._bin_volumes = h.bin_volumes()  # TODO: make alias
+        self._bin_volumes = h.bin_volumes()
         # Should not be in HistogramSource... anyway
         self._n_events_histogram = h.similar_blank_histogram()
 
@@ -216,7 +213,6 @@ class TemplateSource(HistogramPdfSource):
             numpy.ndarray: The simulated events.
         """
         ret = np.zeros(n_events, dtype=self.dtype)
-        # t = self._pdf_histogram.get_random(n_events)
         h = self._pdf_histogram * self._bin_volumes
         t = h.get_random(n_events)
         for i, (n, _) in enumerate(self.config["analysis_space"]):
@@ -242,7 +238,7 @@ class CombinedSource(TemplateSource):
         if not self.config.get("in_events_per_bin", True):
             raise ValueError(
                 "CombinedSource does not support in_events_per_bin=False")
-        # check if all the necessary parameters, like weights are specified
+        # Check if all the necessary parameters, like weights are specified
         if "weight_names" not in self.config:
             raise ValueError("weight_names must be specified")
         find_weight = [weight_name in self.config for weight_name in self.config["weight_names"]]
@@ -301,8 +297,7 @@ class CombinedSource(TemplateSource):
                 hsliced = h_comp.get_axis_bin_index(bincs[0], j)
                 hsliceu = h_comp.get_axis_bin_index(bincs[-1], j) + 1
                 hslices.append(slice(hsliced, hsliceu, 1))
-            # TODO: check the normalization here.
-            h_comp[hslices] += h.histogram
+            h_comp[tuple(hslices)] += h.histogram
             histograms[0] += h_comp * weights[i]
         h = histograms[0]
 
@@ -335,20 +330,18 @@ class CombinedSource(TemplateSource):
 
 class SpectrumTemplateSource(TemplateSource):
     """
-    Reweighted template source by energy spectrum.
-    The first axis of the template is assumed to be energy.
+    Reweighted template source by 1D spectrum.
+    The first axis of the template is assumed to be reweighted.
 
     Args:
         spectrum_name:
-            Name of bbf json-like spectrum _OR_ function that can be called
-            templatename #3D histogram (Etrue, S1, S2) to open
+            Name of bbf json-like spectrum file
     """
 
     @staticmethod
     def _get_json_spectrum(filename):
         """
-        Translates bbf-style JSON files to spectra.
-        units are keV and /kev*day*kg
+        Translates bbf-style JSON files to spectra
 
         Args:
             filename (str): Name of the JSON file.
@@ -356,15 +349,16 @@ class SpectrumTemplateSource(TemplateSource):
         Todo:
             Define the format of the JSON file clearly.
         """
-        with open(filename, "r") as f:
+        with open(get_file_path(filename), "r") as f:
             contents = json.load(f)
         if "description" in contents:
             logging.debug(contents["description"])
         if "coordinate_system" not in contents:
             raise ValueError("Coordinate system not in JSON file.")
-        esyst = contents["coordinate_system"][0][1]
+        if "map" not in contents:
+            raise ValueError("Map not in JSON file.")
         ret = interp1d(
-            np.linspace(*esyst), contents["map"],
+            contents["coordinate_system"], contents["map"],
             bounds_error=False, fill_value=0.)
         return ret
 
@@ -376,16 +370,18 @@ class SpectrumTemplateSource(TemplateSource):
 
         if "spectrum_name" not in self.config:
             raise ValueError("spectrum_name not in config")
-        spectrum_name = self.config["spectrum_name"]
-        if isinstance(spectrum, str):
-            spectrum = self._get_json_spectrum(spectrum_name.format(**self.format_named_parameters))
+        spectrum = self._get_json_spectrum(
+            self.config["spectrum_name"].format(**self.format_named_parameters))
 
-        # Perform E-scaling, assume first axis is energy
-        ecenters = h.bin_centers[0]
-        ediffs = h.bin_volumes[0]
-        h.histogram = h.histogram * (spectrum(ecenters) * ediffs)[:, None, None]
-        h = h.sum(axis=0)  # Remove energy-axis
-        logging.debug("source", "mu ", h.n)
+        # Perform scaling, the first axis is assumed to be reweighted
+        # The spectrum is assumed to be probability density (in per the unit of first axis).
+        axis = 0
+        # h = h.normalize(axis=axis)
+        bin_edges = h.bin_edges[axis]
+        bin_centers = h.bin_centers(axis=axis)
+        slices = [None] * h.histogram.ndim
+        slices[axis] = slice(None)
+        h.histogram = h.histogram * (spectrum(bin_centers) * np.diff(bin_edges))[tuple(slices)]
 
         if np.min(h.histogram) < 0:
             raise AssertionError(

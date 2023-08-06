@@ -1,10 +1,6 @@
 import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
-# These imports are needed to evaluate the uncertainty string
-import numpy  # noqa: F401
-import scipy  # noqa: F401
-
 from alea.utils import within_limits, clip_limits
 
 
@@ -50,8 +46,8 @@ class Parameter:
         self.nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
-        self.uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
+        self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds
@@ -70,21 +66,22 @@ class Parameter:
     def uncertainty(self) -> float or Any:
         """
         Return the uncertainty of the parameter.
-        If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
         """
         if isinstance(self._uncertainty, str):
-            # Evaluate the uncertainty if it's a string starting with "scipy." or "numpy."
-            if self._uncertainty.startswith("scipy.") or self._uncertainty.startswith("numpy."):
-                return eval(self._uncertainty)
-            else:
-                raise ValueError(
-                    f"Uncertainty string '{self._uncertainty}'"
-                    " must start with 'scipy.' or 'numpy.'")
+            NotImplementedError(
+                "Only float uncertainties are supported at the moment.")
         else:
             return self._uncertainty
 
     @uncertainty.setter
     def uncertainty(self, value: float or str) -> None:
+        """
+        Uncertainty can be a float or a string, but can only be a float if relative_uncertainty
+        """
+        if self.relative_uncertainty and isinstance(value, str):
+            raise ValueError(
+                f"relative_uncertainty is not supported for "
+                f"string uncertainties of {self.name}.")
         self._uncertainty = value
 
     @property

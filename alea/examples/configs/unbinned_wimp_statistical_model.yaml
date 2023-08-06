@@ -17,7 +17,12 @@ parameter_definition:
   livetime_sr2:
     nominal_value: 0.5
     fittable: false
-    description: Livetime of SR1 in years
+    description: Livetime of SR2 in years
+
+  livetime_sr3:
+    nominal_value: 1.0
+    fittable: false
+    description: Livetime of SR3 in years
 
   wimp_rate_multiplier:
     nominal_value: 1.0
@@ -56,7 +61,7 @@ parameter_definition:
   er_band_shift:
     nominal_value: 0
     ptype: shape
-    uncertainty: null  # 'scipy.stats.uniform(loc=-1, scale=2)'
+    uncertainty: null  # scipy.stats.uniform(loc=0, scale=2)
     # relative_uncertainty: false
     fittable: true
     blueice_anchors:
@@ -79,8 +84,8 @@ likelihood_config:
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       analysis_space:
-        - "cs1": 'np.arange(0, 102, 2)'
-        - "cs2": 'np.geomspace(100, 100000, 51)'
+        - cs1: np.linspace(0, 100, 51)
+        - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
       livetime_parameter: livetime_sr0
       slice_args: {}
@@ -110,8 +115,8 @@ likelihood_config:
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       analysis_space:
-        - "cs1": 'np.arange(0, 102, 2)'
-        - "cs2": 'np.geomspace(100, 100000, 51)'
+        - cs1: np.linspace(0, 100, 51)
+        - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
       livetime_parameter: livetime_sr1
       slice_args: {}
@@ -141,8 +146,8 @@ likelihood_config:
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       analysis_space:
-        - "cs1": 'np.arange(0, 102, 2)'
-        - "cs2": 'np.geomspace(100, 100000, 51)'
+        - cs1: np.linspace(0, 100, 51)
+        - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
       livetime_parameter: livetime_sr2
       slice_args: {}
@@ -168,5 +173,37 @@ likelihood_config:
           - wimp_mass
           - signal_efficiency
         template_filename: wimp50gev_template.h5
+        apply_efficiency: True
+        efficiency_name: signal_efficiency
+
+    # SR3
+    - name: sr3
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      analysis_space:
+        - cs1: np.linspace(0, 100, 51)
+        - cs2: np.geomspace(100, 100000, 51)
+      in_events_per_bin: true
+      livetime_parameter: livetime_sr3
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.h5
+
+      - name: wimp
+        class: alea.template_source.SpectrumTemplateSource
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+          - signal_efficiency
+        template_filename: wimp50gev_template.h5
+        spectrum_name: cs1_spectrum.json
         apply_efficiency: True
         efficiency_name: signal_efficiency

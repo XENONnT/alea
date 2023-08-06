@@ -10,6 +10,7 @@ import numpy as np
 
 from inference_interface import toydata_from_file, numpy_to_toyfile
 from alea.model import StatisticalModel
+from alea.utils import load_yaml
 
 
 class Runner:
@@ -51,8 +52,6 @@ class Runner:
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
-        confidence_interval_threshold (Callable[[float], float], optional (default=None)):
-            confidence interval threshold of likelihood ratio
         common_hypothesis (dict, optional (default=None)):
             common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
@@ -66,19 +65,19 @@ class Runner:
 
     def __init__(
             self,
-            statistical_model: str,
-            poi: str,
-            hypotheses: list,
-            n_mc: int,
+            statistical_model: str = 'alea.examples.gaussian_model.GaussianModel',
+            poi: str = 'mu',
+            hypotheses: list = ['free'],
+            n_mc: int = 3,
             common_hypothesis: dict = None,
             generate_values: dict = None,
-            statistical_model_args: dict = None,
+            statistical_model_config: str = None,
             parameter_definition: Optional[dict or list] = None,
+            statistical_model_args: dict = None,
             likelihood_config: dict = None,
             compute_confidence_interval: bool = False,
             confidence_level: float = 0.9,
             confidence_interval_kind: str = 'central',
-            confidence_interval_threshold: Callable[[float], float] = None,
             toydata_mode: str = 'generate_and_write',
             toydata_file: str = None,
             metadata: dict = None,
@@ -96,6 +95,22 @@ class Runner:
         if not issubclass(statistical_model_class, StatisticalModel):
             raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
 
+        # if statistical_model_config is provided
+        # overwrite parameter_definition and likelihood_config
+        if statistical_model_config is not None:
+            model_config = load_yaml(statistical_model_config)
+            parameter_definition = model_config['parameter_definition']
+            likelihood_config = model_config['likelihood_config']
+        else:
+            if parameter_definition is not None:
+                warnings.warn(
+                    'parameter_definition is overwritten, '
+                    'becuase statistical_model_config is provided!')
+            if likelihood_config is not None:
+                warnings.warn(
+                    'likelihood_config is overwritten, '
+                    'becuase statistical_model_config is provided!')
+
         # likelihood_config is keyword argument, because not all statistical model needs it
         if statistical_model_args is None:
             statistical_model_args = {}
@@ -104,7 +119,6 @@ class Runner:
             parameter_definition=parameter_definition,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
-            confidence_interval_threshold=confidence_interval_threshold,
             **(statistical_model_args if statistical_model_args else {}),
         )
 
@@ -136,6 +150,8 @@ class Runner:
         """Get generate values list from hypotheses"""
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
+        if len(hypotheses) == 0:
+            raise ValueError('hypotheses should not be empty!')
         if 'free' not in hypotheses and self._compute_confidence_interval:
             raise ValueError('free hypothesis is needed for confidence interval calculation!')
         if 'free' in hypotheses and hypotheses.index('free') != 0:

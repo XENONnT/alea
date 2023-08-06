@@ -1,12 +1,14 @@
 from os import remove
+import inspect
 import pytest
 from unittest import TestCase
 
 import numpy as np
+from inference_interface import toyfiles_to_numpy
 
 from alea.utils import load_yaml
 from alea.runner import Runner
-from inference_interface import toyfiles_to_numpy
+
 from .test_gaussian_model import gaussian_model_parameter_definition
 
 
@@ -18,7 +20,6 @@ class TestRunner(TestCase):
     def setUp(cls):
         """Initialise the Runner instance"""
         cls.runner_config = load_yaml('unbinned_wimp_running.yaml')
-        cls.model_config = load_yaml(cls.runner_config['statistical_model_config'])
         cls.toydata_file = 'simple_data.h5'
         cls.output_file = 'test_toymc.h5'
         cls.n_mc = 3
@@ -48,8 +49,7 @@ class TestRunner(TestCase):
             hypotheses=parameter_zvc['parameters_in_common']['hypotheses'],
             n_mc=self.n_mc,
             generate_values={'wimp_rate_multiplier': 1.0},
-            parameter_definition=self.model_config['parameter_definition'],
-            likelihood_config=self.model_config['likelihood_config'],
+            statistical_model_config=self.runner_config['statistical_model_config'],
             compute_confidence_interval=True,
             toydata_mode=toydata_mode,
             toydata_file=self.toydata_file,
@@ -75,3 +75,10 @@ class TestRunner(TestCase):
             if np.any(np.isnan(results['free']['dl'])) or np.any(np.isnan(results['free']['ul'])):
                 raise ValueError('Confidence interval computation failed!')
             remove(self.output_file)
+
+    def test_init_signatures(self):
+        """Test the signatures of the Runner.__init__"""
+        args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations = inspect.getfullargspec(Runner.__init__)  # noqa
+        if (len(annotations) != len(args[1:])) or (len(defaults) == len(args[1:])):
+            raise ValueError(
+                'The number of annotations and defaults of Runner.__init__ must be the same!')

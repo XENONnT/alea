@@ -14,7 +14,7 @@ computation:
     parameters_in_common:
       {
         hypotheses: ["free", "null", "true"],
-        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
       }
@@ -26,7 +26,7 @@ computation:
     parameters_in_common:
       {
         hypotheses: ["free", "null", "true"],
-        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
       }
@@ -40,7 +40,7 @@ computation:
     parameters_in_common:
       {
         hypotheses: ["free", "null", "true"],
-        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         compute_confidence_interval: True,
@@ -49,6 +49,11 @@ computation:
     toydata_mode: "generate"
 
 midway_path: null
+midway_parameters:
+  hours: 1.5
+  mem_per_cpu: 8000
+  container: "xenonnt-development.simg"
+  partition: "xenon1t"
 OSG_path: null
 OSG_parameters:
   request_memory: "8000Mb"

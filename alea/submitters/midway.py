@@ -52,7 +52,7 @@ class SubmitterMidway(Submitter):
             partition=self.partition,
             qos=self.qos,
             bind=self.bind,
-            hours=self.hours / 60,
+            hours=self.hours,
             **kwargs)
 
     def submit(self, **kwargs):

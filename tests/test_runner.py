@@ -79,6 +79,6 @@ class TestRunner(TestCase):
     def test_init_signatures(self):
         """Test the signatures of the Runner.__init__"""
         args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations = inspect.getfullargspec(Runner.__init__)  # noqa
-        if (len(annotations) != len(args[1:])) or (len(defaults) == len(args[1:])):
+        if (len(annotations) != len(args[1:])) or (len(defaults) != len(args[1:])):
             raise ValueError(
                 'The number of annotations and defaults of Runner.__init__ must be the same!')

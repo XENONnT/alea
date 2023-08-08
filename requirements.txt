@@ -7,7 +7,7 @@ iminuit>=2.21.0
 matplotlib
 mergedeep
 multihist
-numpy<1.23.0
+numpy
 PyYAML
 scipy
 setuptools

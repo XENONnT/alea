@@ -50,6 +50,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]]
+        self.livetime_parameter_names += [None] # ancillary likelihood
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
@@ -134,11 +135,11 @@ class BlueiceExtendedModel(StatisticalModel):
         # ancillary likelihood does not contribute
         for ll_term, parameter_names, livetime_parameter in zip(
                 self_copy._likelihood.likelihood_list[:-1],
-                self_copy._likelihood.likelihood_parameters
-                self_copy._likelihood.livetime_parameter_names):
+                self_copy._likelihood.likelihood_parameters,
+                self_copy.livetime_parameter_names):
             # WARNING: This silently drops parameters it can't handle!
             call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
-            if likelihood_parameter_name is not None:
+            if livetime_parameter is not None:
                 call_args["livetime_days"] = generate_values[livetime_parameter]
 
             mus = ll_term(full_output=True, **call_args)[1]
@@ -244,7 +245,8 @@ class BlueiceExtendedModel(StatisticalModel):
             BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
 
     def _ll(self, **generate_values) -> float:
-        return self._likelihood(**generate_values)
+        livetime_days = [generate_values.get(ln,None) for ln in self.livetime_parameter_names]
+        return self._likelihood(livetime_days = livetime_days, **generate_values)
 
     def _generate_data(self, **generate_values) -> dict:
         """

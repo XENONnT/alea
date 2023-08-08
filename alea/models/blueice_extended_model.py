@@ -27,6 +27,7 @@ class BlueiceExtendedModel(StatisticalModel):
         is_data_set (bool): Whether data is set.
         _likelihood (LogLikelihoodSum): A blueice LogLikelihoodSum instance.
         likelihood_names (list): List of likelihood names.
+        livetime_parameter_names (list): List of the name of the livetime of each term, None if not specified
         data_generators (list): List of data generators for each likelihood term.
 
     Args:
@@ -48,6 +49,7 @@ class BlueiceExtendedModel(StatisticalModel):
         super().__init__(parameter_definition=parameter_definition, **kwargs)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
+        self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
@@ -130,11 +132,14 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names in zip(
+        for ll_term, parameter_names, livetime_parameter in zip(
                 self_copy._likelihood.likelihood_list[:-1],
-                self_copy._likelihood.likelihood_parameters):
+                self_copy._likelihood.likelihood_parameters
+                self_copy._likelihood.livetime_parameter_names):
             # WARNING: This silently drops parameters it can't handle!
             call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
+            if likelihood_parameter_name is not None:
+                call_args["livetime_days"] = generate_values[livetime_parameter]
 
             mus = ll_term(full_output=True, **call_args)[1]
             for n, mu in zip(ll_term.source_name_list, mus):

@@ -135,7 +135,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names, livetime_parameter in zip(
+        for ll_term, parameter_names, livetime_parameter in zip( # noqa WPS352
                 self_copy._likelihood.likelihood_list[:-1],
                 self_copy._likelihood.likelihood_parameters,
                 self_copy.livetime_parameter_names):

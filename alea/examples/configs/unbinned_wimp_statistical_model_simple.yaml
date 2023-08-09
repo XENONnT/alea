@@ -5,7 +5,7 @@ parameter_definition:
     description: WIMP mass in GeV/c^2
 
   livetime:
-    nominal_value: 0.2
+    nominal_value: 2.
     fittable: false
     description: Livetime in years
 

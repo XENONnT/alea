@@ -1,5 +1,6 @@
 import warnings
 from typing import Any, Dict, List, Optional, Tuple
+import pandas as pd
 
 # These imports are needed to evaluate the uncertainty string
 import numpy  # noqa: F401
@@ -207,6 +208,26 @@ class Parameters:
         _repr = f'{self.__class__.__module__}.{self.__class__.__qualname__}'
         _repr += f'({parameter_str})'
         return _repr
+
+    def __str__(self) -> str:
+        """Return an overview table of all parameters."""
+        par_list = []
+        for p in self:
+            par_dict = {}
+            for k, v in p.__dict__.items():
+                # replace hidden attributes with non-hidden properties
+                if k.startswith("_"):
+                    par_dict[k[1:]] = v
+                else:
+                    par_dict[k] = v
+            par_list.append(par_dict)
+
+        df = pd.DataFrame(par_list)
+        # make name column the index
+        df.set_index("name", inplace=True)
+        df.index.name = None
+
+        return df.to_string()
 
     def add_parameter(self, parameter: Parameter) -> None:
         """

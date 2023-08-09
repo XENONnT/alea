@@ -11,7 +11,9 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list
+from alea.utils import (adapt_likelihood_config_for_blueice,
+                        get_template_folder_list,
+                        get_file_path)
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -61,7 +63,8 @@ class BlueiceExtendedModel(StatisticalModel):
         Returns:
             BlueiceExtendedModel: Statistical model.
         """
-        with open(config_file_path, "r") as f:
+        file_path = get_file_path(config_file_path)
+        with open(file_path, "r") as f:
             config = yaml.safe_load(f)
         return cls(**config)
 
@@ -97,6 +100,21 @@ class BlueiceExtendedModel(StatisticalModel):
 
         self._data = data
         self.is_data_set = True
+
+    def get_source_name_list(self, likelihood_name: str) -> List:
+        """Return a list of source names for a given likelihood term.
+        The order is the same as used in the `source` column of the data,
+        so this can be used to map the indices provided in the data to a
+        source name.
+
+        Args:
+            likelihood_name (str): Name of the likelihood.
+
+        Returns:
+            list: List of source names.
+        """
+        ll_index = self.likelihood_names.index(likelihood_name)
+        return self._likelihood.likelihood_list[ll_index].source_name_list
 
     def get_expectation_values(self, **kwargs) -> dict:
         """

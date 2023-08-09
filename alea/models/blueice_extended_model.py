@@ -27,7 +27,8 @@ class BlueiceExtendedModel(StatisticalModel):
         is_data_set (bool): Whether data is set.
         _likelihood (LogLikelihoodSum): A blueice LogLikelihoodSum instance.
         likelihood_names (list): List of likelihood names.
-        livetime_parameter_names (list): List of the name of the livetime of each term, None if not specified
+        livetime_parameter_names (list): List of the name of the livetime of each term,
+            None if not specified
         data_generators (list): List of data generators for each likelihood term.
 
     Args:
@@ -49,8 +50,9 @@ class BlueiceExtendedModel(StatisticalModel):
         super().__init__(parameter_definition=parameter_definition, **kwargs)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
-        self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]]
-        self.livetime_parameter_names += [None] # ancillary likelihood
+        self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in
+                                         likelihood_config["likelihood_terms"]]
+        self.livetime_parameter_names += [None]  # ancillary likelihood
         self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
@@ -245,7 +247,7 @@ class BlueiceExtendedModel(StatisticalModel):
             BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
 
     def _ll(self, **generate_values) -> float:
-        livetime_days = [generate_values.get(ln,None) for ln in self.livetime_parameter_names]
+        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
         return self._likelihood(livetime_days = livetime_days, **generate_values)
 
     def _generate_data(self, **generate_values) -> dict:

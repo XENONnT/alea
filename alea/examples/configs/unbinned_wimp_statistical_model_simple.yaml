@@ -18,7 +18,7 @@ parameter_definition:
       - null
     parameter_interval_bounds:
       - 0
-      - null
+      - 50
 
   er_rate_multiplier:
     nominal_value: 1.0

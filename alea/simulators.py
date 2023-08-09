@@ -106,11 +106,12 @@ class BlueiceDataGenerator:
             The dtype follows self.dtype.
         """
         if filter_kwargs:
-            kwargs = {k: v for k, v in kwargs.items() if k in self.parameters}
+            kwargs = {k: v for k, v in kwargs.items() if k in self.parameters + ["livetime_days"]}
 
         unmatched_item = set(self.last_kwargs.items()) ^ set(kwargs.items())
         logging.debug("filtered kwargs in simulate: " + str(kwargs))
         logging.debug("unmatched_item in simulate: " + str(unmatched_item))
+        # check if the cached generator may be used:
         if ("FAKE_PARAMETER"
                 in self.last_kwargs.keys()) or (len(unmatched_item) != 0):
             ret = self.ll(full_output=True, **kwargs)  # result, mus, ps

@@ -279,8 +279,10 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _generate_science_data(self, **generate_values) -> dict:
         """Generate the science data for all likelihood terms except the ancillary likelihood."""
+        livetime_days = [generate_values.get(ln,None) for ln in self.livetime_parameter_names]
+        print(livetime_days)
         science_data = [
-            gen.simulate(**generate_values) for gen in self.data_generators]
+            gen.simulate(livetime_days = lt, **generate_values) for gen, lt in zip(self.data_generators, livetime_days)]
         return dict(zip(self.likelihood_names[:-1], science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:

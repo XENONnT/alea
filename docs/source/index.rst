@@ -38,7 +38,10 @@ Alea is a tool to perform toyMC-based inference constructions.
     :maxdepth: 1
     :caption: Example notebooks
 
-    notebooks/gaussian_model.ipynb
+    notebooks/0_introduction.ipynb
+    notebooks/1_rate_and_shape.ipynb
+    notebooks/2_fitting_and_ci.ipynb
+    notebooks/3_sensitivity.ipynb
 
 .. toctree::
     :maxdepth: 2

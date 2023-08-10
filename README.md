@@ -6,7 +6,7 @@
 [![Readthedocs Badge](https://readthedocs.org/projects/alea/badge/?version=latest)](https://alea.readthedocs.io/en/latest/?badge=latest)
 [![CodeFactor](https://www.codefactor.io/repository/github/xenonnt/alea/badge)](https://www.codefactor.io/repository/github/xenonnt/alea)
 
-alea is a flexible statistical inference framework. The Python package is designed for constructing, handling, and fitting statistical models, computing confidence intervals and conducting sensitivity studies. It is developed for the [XENONnT dark matter experiment](https://xenonexperiment.org/), but can be used for any statistical inference problem.
+alea is a flexible statistical inference framework. The Python package is designed for constructing, handling, and fitting statistical models, computing confidence intervals and conducting sensitivity studies. It is primarily developed for the [XENONnT dark matter experiment](https://xenonexperiment.org/), but can be used for any statistical inference problem.
 
 If you use alea in your research, please consider citing the software published on [zenodo](https://zenodo.org/badge/latestdoi/654100988).
 

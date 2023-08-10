@@ -163,8 +163,7 @@ likelihood_config:
         weight_names: [fixed_weight, er_band_shift]  # not meaningful, just an example
         histnames: [er_template, er_template, er_template]
         template_filenames: [er_template_0.h5, er_template_1.h5, er_template_-1.h5]
-        histogram_multiplier: 100  # absolute rate, /year
-        histogram_scale_factor: 2
+        histogram_scale_factor: 100  # absolute rate, /year
 
       - name: wimp
         histname: wimp_template

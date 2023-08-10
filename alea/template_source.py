@@ -230,7 +230,6 @@ class CombinedSource(TemplateSource):
         weights: Weights of the 2nd to the last histograms.
         histnames: List of filenames containing the histograms.
         templatenames: List of names of histograms within the hdf5 files.
-        histogram_multiplier: Absolute rate of the combined template before multihist slicing.
     """
 
     def build_histogram(self):
@@ -311,11 +310,7 @@ class CombinedSource(TemplateSource):
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries.")
 
-        logging.debug(
-            "Normalising combined template, "
-            "the absolute rate is defined in histogram_multiplier")
         h = h / h.n
-        h *= self.config.get("histogram_multiplier", 1)
         logging.debug("Applying slice fraction to combined template")
         h *= slice_fractions[0]
 

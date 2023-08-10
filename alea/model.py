@@ -422,11 +422,11 @@ class StatisticalModel:
 
         Keyword Args:
             confidence_interval_args (dict, optional (default=None)): Parameters that will be fixed
-             in the profile likelihood computation. If None, all fittable parameters will be profiled except the poi
+                in the profile likelihood computation. If None, all fittable parameters will be profiled except the poi
             best_fit_args (dict, optional (default=None)): If you require the "global" best-fit used to normalise the
-             profile likelihood ratio to fix fewer parameters than the profile likelihood-- mainly used for 1-D slices
-             of higher-dimensional confidence volumes, where the global best-fit may not be along the profile.
-             if None, will be set to confidence_interval_args
+                profile likelihood ratio to fix fewer parameters than the profile likelihood-- mainly used for 1-D slices
+                of higher-dimensional confidence volumes, where the global best-fit may not be along the profile.
+                if None, will be set to confidence_interval_args
         """
         if confidence_interval_args is None:
             confidence_interval_args = {}

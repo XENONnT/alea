@@ -135,7 +135,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names, livetime_parameter in zip( # noqa WPS352
+        for ll_term, parameter_names, livetime_parameter in zip(  # noqa WPS352
                 self_copy._likelihood.likelihood_list[:-1],
                 self_copy._likelihood.likelihood_parameters,
                 self_copy.livetime_parameter_names):
@@ -183,10 +183,13 @@ class BlueiceExtendedModel(StatisticalModel):
                     p.name for p in self.parameters if (
                         p.ptype == "shape") and (p.name not in source["parameters"])]
                 # no efficiency affects PDF:
-                parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+                parameters_to_ignore += [
+                    p.name for p in self.parameters if (
+                        p.ptype == "efficiency")]
                 parameters_to_ignore += source.get("extra_dont_hash_settings", [])
 
-                # ignore all shape parameters known to this model not named specifically in the source:
+                # ignore all shape parameters known to this model not named specifically
+                # in the source:
                 blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
 
             ll = likelihood_object(blueice_config)
@@ -248,7 +251,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
-        return self._likelihood(livetime_days = livetime_days, **generate_values)
+        return self._likelihood(livetime_days=livetime_days, **generate_values)
 
     def _generate_data(self, **generate_values) -> dict:
         """
@@ -279,11 +282,11 @@ class BlueiceExtendedModel(StatisticalModel):
             data_name_list = self.likelihood_names + ["generate_values"]
         super().store_data(file_name, data_list, data_name_list, metadata)
 
-    def _generate_science_data(self, **generate_values) -> dict:
+    def _generate_science_data(self,**generate_values)-> dict:
         """Generate the science data for all likelihood terms except the ancillary likelihood."""
-        livetime_days = [generate_values.get(ln,None) for ln in self.livetime_parameter_names]
-        science_data = [
-            gen.simulate(livetime_days = lt, **generate_values) for gen, lt in zip(self.data_generators, livetime_days)]
+        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
+        science_data = [gen.simulate(livetime_days=lt, **generate_values)
+                        for gen, lt in zip(self.data_generators, livetime_days)]
         return dict(zip(self.likelihood_names[:-1], science_data))
 
     def _generate_ancillary_measurements(self, **generate_values) -> dict:

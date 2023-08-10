@@ -50,10 +50,10 @@ class BlueiceExtendedModel(StatisticalModel):
         super().__init__(parameter_definition=parameter_definition, **kwargs)
         self._likelihood = self._build_ll_from_config(likelihood_config)
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
+        self.likelihood_names.append("ancillary_likelihood")
         self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in
                                          likelihood_config["likelihood_terms"]]
         self.livetime_parameter_names += [None]  # ancillary likelihood
-        self.likelihood_names.append("ancillary_likelihood")
         self.data_generators = self._build_data_generators()
 
     @classmethod

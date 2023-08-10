@@ -93,7 +93,7 @@ class BlueiceExtendedModel(StatisticalModel):
             data = dict(zip(self.likelihood_names + ["generate_values"], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
-                ll_term = self._likelihood.likelihood_list[i]
+                ll_term = self.likelihood_list[i]
                 if dataset_name != ll_term.pdf_base_config["name"]:
                     raise ValueError("Likelihood names do not match.")
                 ll_term.set_data(d)
@@ -114,7 +114,12 @@ class BlueiceExtendedModel(StatisticalModel):
             list: List of source names.
         """
         ll_index = self.likelihood_names.index(likelihood_name)
-        return self._likelihood.likelihood_list[ll_index].source_name_list
+        return self.likelihood_list[ll_index].source_name_list
+
+    @property
+    def likelihood_list(self) -> List:
+        """Return a list of likelihood terms."""
+        return self._likelihood.likelihood_list
 
     def get_expectation_values(self, **kwargs) -> dict:
         """
@@ -254,7 +259,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # last one is AncillaryLikelihood
         return [
-            BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
+            BlueiceDataGenerator(ll_term) for ll_term in self.likelihood_list[:-1]]
 
     def _ll(self, **generate_values) -> float:
         return self._likelihood(**generate_values)
@@ -305,7 +310,7 @@ class BlueiceExtendedModel(StatisticalModel):
             numpy.array: A numpy structured array of ancillary measurements.
         """
         ancillary_measurements = {}
-        anc_ll = self._likelihood.likelihood_list[-1]
+        anc_ll = self.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
             parameter_meas = gen.rvs()

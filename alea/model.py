@@ -396,8 +396,8 @@ class StatisticalModel:
             parameter_interval_bounds: Tuple[float, float] = None,
             confidence_level: float = None,
             confidence_interval_kind: str = None,
-            best_fit_args: dict = None,
             confidence_interval_args: dict = None,
+            best_fit_args: dict = None,
         ) -> Tuple[float, float]:
         """
         Uses self.fit to compute confidence intervals for a certain named parameter.
@@ -421,15 +421,17 @@ class StatisticalModel:
                 If None, the default kind of the model is used.
 
         Keyword Args:
-            best_fit_args: the parameters to **only** get the global best-fit likelihood
-            confidence_interval_args: the parameters to get the profile-likelihood,
-                also the best-fit parameters of profile-likelihood,
-                parameter_interval_bounds, and confidence interval
+            confidence_interval_args (dict, optional (default=None)): Parameters that will be fixed
+             in the profile likelihood computation. If None, all fittable parameters will be profiled except the poi
+            best_fit_args (dict, optional (default=None)): If you require the "global" best-fit used to normalise the
+             profile likelihood ratio to fix fewer parameters than the profile likelihood-- mainly used for 1-D slices
+             of higher-dimensional confidence volumes, where the global best-fit may not be along the profile.
+             if None, will be set to confidence_interval_args
         """
-        if best_fit_args is None:
-            best_fit_args = {}
         if confidence_interval_args is None:
             confidence_interval_args = {}
+        if best_fit_args is None:
+            best_fit_args = confidence_interval_args
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,

@@ -34,15 +34,13 @@ class SubmitterMidway(Submitter):
 
     def __init__(self, *args, **kwargs):
         """Initialize the SubmitterMidway class."""
-        super().__init__(*args, **kwargs)
-
         self.name = self.__class__.__name__
-        self.log_dir = self.outputfolder
-
         self.midway_configurations = kwargs.get('midway_configurations', {})
         self.inputfolder = self.midway_configurations.pop('template_path', None)
         self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.midway_configurations}
         self._check_batchq_arguments()
+        super().__init__(*args, **kwargs)
+        self.log_dir = self.outputfolder
 
     def _submit(self, job, **kwargs):
         """

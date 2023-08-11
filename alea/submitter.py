@@ -78,6 +78,13 @@ class Submitter():
         self.computation = computation_options[computation]
         self.debug = debug
 
+        statistical_model_class = StatisticalModel.get_model_from_name(self.statistical_model)
+        self.model = statistical_model_class.from_config(
+            self.statistical_model_config, inputfolder=self.inputfolder)
+        self.parameters_fittable = self.model.parameters.fittable
+        self.parameters_not_fittable = self.model.parameters.not_fittable
+        self.parameters_with_uncertainty = self.model.parameters.with_uncertainty
+
     @property
     def outputfolder(self) -> str:
         return self._outputfolder
@@ -195,9 +202,6 @@ class Submitter():
         Todo:
             Add support for inputfolder
         """
-        statistical_model_class = StatisticalModel.get_model_from_name(self.statistical_model)
-        self.model = statistical_model_class.from_config(
-            self.statistical_model_config, inputfolder=self.inputfolder)
 
         to_zip = self.computation.get('to_zip', {})
         to_vary = self.computation.get('to_vary', {})
@@ -245,7 +249,7 @@ class Submitter():
 
             # check if all arguments are supported
             intended_args = set(function_args.keys()) - {'n_batch'}
-            acceptable_args = set(args[1:])
+            acceptable_args = set(args[1:] + self.parameters_not_fittable + ['poi_expectation'])
             if not acceptable_args.issuperset(intended_args):
                 logging.warning(
                     f'Not all arguments are supported, '
@@ -264,13 +268,28 @@ class Submitter():
                 function_args['limit_threshold'] = os.path.join(
                     self.outputfolder, function_args['limit_threshold'])
 
+            # update generate_values and nominal_values for runner
+            self.update_runner_args(function_args)
+            # update poi according to poi_expectation
+            self.update_poi(function_args)
+
+            allowed_keys = list(annotations.keys()) + ['poi_expectation', 'n_batch']
+            if set(function_args.keys()) - set(allowed_keys):
+                raise ValueError(
+                    f'Keys in function_args should a subset of {allowed_keys}, '
+                    'unknown computation options: {}'.format(
+                        set(function_args.keys()) - set(allowed_keys)))
+
             n_batch = function_args['n_batch']
             for i_batch in range(n_batch):
                 function_args['i_batch'] = i_batch
 
                 for name in ['output_file', 'toydata_file', 'limit_threshold']:
                     if function_args.get(name, None) is not None:
-                        function_args[name] = function_args[name].format(**function_args)
+                        function_args[name] = function_args[name].format(
+                            **{**function_args['generate_values'],
+                               **function_args['nominal_values'],
+                               **function_args})
 
                 script_array = []
                 for arg, annotation in annotations.items():
@@ -281,6 +300,73 @@ class Submitter():
                 script = f'alea-run_toymc ' + ' '.join(map(shlex.quote, script.split(' ')))
 
                 yield script, function_args['output_file']
+
+    def update_poi(self, function_args):
+        """
+        Update the poi according to poi_expectation.
+        First, it will check if poi_expectation is provided, if not so, it will do nothing.
+        Second, it will check if poi is provided, if so, it will raise error.
+        Third, it will check if poi ends with _rate_multiplier, if not so, it will raise error.
+        Finally, it will update poi to the correct value according to poi_expectation.
+
+        Args:
+            function_args (dict): the arguments of Runner
+
+        Caution:
+            The expectation is evaluated under nominal_values in each batch.
+        """
+        if 'poi_expectation' not in function_args:
+            return
+        if function_args['poi'] in function_args:
+            raise ValueError(
+                f'You can not specify both {function_args["poi"]} '
+                'along with poi_expectation, '
+                'because it will be updated according to poi_expectation.')
+        if not function_args['poi'].endswith('_rate_multiplier'):
+            raise ValueError(
+                f'poi {function_args["poi"]} should end with _rate_multiplier, '
+                'if poi_expectation is provided, because you want to update '
+                'the generate_values according to the expectations.')
+        expectation_values = self.model.get_expectation_values(
+            **{**function_args['generate_values'], **function_args['nominal_values']})
+        component = function_args['poi'].replace('_rate_multiplier', '')
+        poi_expectation = function_args['poi_expectation']
+        nominal_expectation = expectation_values[component]
+        ratio = poi_expectation / nominal_expectation
+        # update poi to the correct value
+        function_args['generate_values'][function_args['poi']] = ratio
+
+    def update_runner_args(self, function_args):
+        """
+        Update the runner argumentsgenerate_values and nominal_values.
+        If the argument is fittable, it will be added to generate_values,
+        otherwise it will be added to nominal_values.
+
+        Args:
+            function_args (dict): the arguments of Runner
+        """
+        if function_args['nominal_values'] is None:
+            function_args['generate_values'] = {}
+        if function_args['nominal_values'] is not None:
+            raise ValueError(
+                'nominal_values should not be provided directly, '
+                'it will be automatically deduced from the statistical model.')
+        function_args['nominal_values'] = {}
+        kw_to_pop = []
+        for k, v in function_args.items():
+            if k in self.parameters_fittable:
+                function_args['generate_values'][k] = v
+                kw_to_pop.append(k)
+            elif k in self.parameters_not_fittable:
+                function_args['nominal_values'][k] = v
+                kw_to_pop.append(k)
+        for k in kw_to_pop:
+            function_args.pop(k)
+        if set(function_args['generate_values'].keys()) - set(self.parameters_fittable):
+            raise ValueError(
+                f'The generate_values {function_args["generate_values"]} '
+                f'should be a subset of the fittable parameters '
+                f'{self.parameters_fittable} in the statistical model.')
 
     def submit(self):
         """Submit the jobs to the destinations."""

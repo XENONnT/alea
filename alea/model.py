@@ -96,7 +96,7 @@ class StatisticalModel:
         self._define_parameters(parameter_definition)
 
         self._check_ll_and_generate_data_signature()
-        self._set_nominal_values(**kwargs.get("nominal_values", {}))
+        self.set_nominal_values(**kwargs.get("nominal_values", {}))
 
     def _define_parameters(self, parameter_definition):
         """Initialize the parameters of the model"""
@@ -227,7 +227,7 @@ class StatisticalModel:
                 "The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
 
-    def _set_nominal_values(self, **nominal_values):
+    def set_nominal_values(self, **nominal_values):
         """
         Set the nominal values for parameters.
 

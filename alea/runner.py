@@ -22,8 +22,8 @@ class Runner:
     One toyfile can contain multiple toydata, but all of them are from the same generate_values.
 
     Attributes:
-        statistical_model: statistical model
-        poi: parameter of interest
+        model (StatisticalModel): statistical model instance
+        poi (str): parameter of interest
         hypotheses (list): list of hypotheses
         common_hypothesis (dict): common hypothesis, the values are copied to each hypothesis
         generate_values (dict): generate values for toydata
@@ -94,16 +94,16 @@ class Runner:
         # overwrite parameter_definition and likelihood_config
         if statistical_model_config is not None:
             model_config = load_yaml(statistical_model_config)
-            parameter_definition = model_config['parameter_definition']
-            likelihood_config = model_config['likelihood_config']
             if parameter_definition is not None:
                 warnings.warn(
                     'parameter_definition is overwritten, '
-                    'becuase statistical_model_config is provided!')
+                    'because statistical_model_config is provided!')
             if likelihood_config is not None:
                 warnings.warn(
                     'likelihood_config is overwritten, '
-                    'becuase statistical_model_config is provided!')
+                    'because statistical_model_config is provided!')
+            parameter_definition = model_config['parameter_definition']
+            likelihood_config = model_config['likelihood_config']
 
         # update nominal_values into statistical_model_args
         if statistical_model_args is None:
@@ -113,7 +113,7 @@ class Runner:
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args['likelihood_config'] = likelihood_config
         # initialize statistical model
-        self.statistical_model = statistical_model_class(
+        self.model = statistical_model_class(
             parameter_definition=parameter_definition,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
@@ -137,7 +137,7 @@ class Runner:
 
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model"""
-        parameter_list = sorted(self.statistical_model.get_parameter_list())
+        parameter_list = sorted(self.model.get_parameter_list())
         # add likelihood, lower limit, and upper limit
         result_names = parameter_list + ['ll', 'dl', 'ul']
         result_dtype = [(n, float) for n in parameter_list]
@@ -210,7 +210,7 @@ class Runner:
         Write toydata to file.
         If toydata is a list of dict, convert it to a list of list.
         """
-        self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
+        self.model.store_data(self._toydata_file, toydata, toydata_names)
 
     def data_generator(self):
         """Generate, save or read toydata"""
@@ -236,7 +236,7 @@ class Runner:
         # generate toydata
         for i_mc in range(self._n_mc):
             if self._toydata_mode == 'generate' or self._toydata_mode == 'generate_and_write':
-                data = self.statistical_model.generate_data(
+                data = self.model.generate_data(
                     **self.generate_values)
                 if self._toydata_mode == 'generate_and_write':
                     # append toydata
@@ -261,18 +261,19 @@ class Runner:
         """
         results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):
-            self.statistical_model.data = data
+            self.model.data = data
             fit_results = []
             for hypothesis_values in self._hypotheses_values:
                 # hypothesis_values should only be a fittable subset of parameters
-                if set(hypothesis_values.keys()) - set(self.statistical_model.parameters.fittable):
+                if set(hypothesis_values.keys()) - set(self.model.parameters.fittable):
                     raise ValueError(
-                        f'Invalid hypothesis values: {hypothesis_values} '
-                        f'for fittable parameters: {self.parameters.fittable}')
-                fit_result, max_llh = self.statistical_model.fit(**hypothesis_values)
+                        f'The hypothesis {hypothesis_values} '
+                        f'should be a subset of the fittable parameters '
+                        f'{self.model.parameters.fittable} in the statistical model.')
+                fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result['ll'] = max_llh
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):
-                    dl, ul = self.statistical_model.confidence_interval(
+                    dl, ul = self.model.confidence_interval(
                         poi_name=self.poi,
                         best_fit_args=self._hypotheses_values[0],
                         confidence_interval_args=hypothesis_values)

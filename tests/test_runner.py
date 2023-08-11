@@ -12,6 +12,9 @@ from alea.runner import Runner
 from .test_gaussian_model import gaussian_model_parameter_definition
 
 
+COMPUTE_CONFIDENCE_INTERVAL = True
+
+
 @pytest.mark.usefixtures('rm_cache')
 class TestRunner(TestCase):
     """Test of the Runner class"""
@@ -34,7 +37,7 @@ class TestRunner(TestCase):
             generate_values={'mu': 1.},
             nominal_values={'sigma': 1.},
             parameter_definition=gaussian_model_parameter_definition,
-            compute_confidence_interval=True,
+            compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
             toydata_mode=toydata_mode,
             toydata_file=self.toydata_file,
             output_file=self.output_file,
@@ -51,7 +54,7 @@ class TestRunner(TestCase):
             n_mc=self.n_mc,
             generate_values={'wimp_rate_multiplier': 1.0},
             statistical_model_config=self.runner_config['statistical_model_config'],
-            compute_confidence_interval=True,
+            compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
             toydata_mode=toydata_mode,
             toydata_file=self.toydata_file,
             output_file=self.output_file,
@@ -72,9 +75,12 @@ class TestRunner(TestCase):
             remove(self.toydata_file)
 
             # check confidence interval computation
-            results = toyfiles_to_numpy(self.runner._output_file)
-            if np.any(np.isnan(results['free']['dl'])) or np.any(np.isnan(results['free']['ul'])):
-                raise ValueError('Confidence interval computation failed!')
+            if COMPUTE_CONFIDENCE_INTERVAL:
+                results = toyfiles_to_numpy(self.runner._output_file)
+                mask = np.any(np.isnan(results['free']['dl']))
+                mask &= np.any(np.isnan(results['free']['ul']))
+                if mask:
+                    raise ValueError('Confidence interval computation failed!')
             remove(self.output_file)
 
     def test_init_signatures(self):

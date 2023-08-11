@@ -9,7 +9,7 @@ computation_options:
     to_vary:
       {
         poi_expectation: "np.linspace(0, 30, 10)",
-        wimp_mass: [10, 50, 200],
+        wimp_mass: [50],
       }
     in_common:
       {
@@ -22,7 +22,7 @@ computation_options:
 
   threshold:
     to_zip: {}
-    to_vary: {wimp_mass: [10, 50, 200]}
+    to_vary: {wimp_mass: [50]}
     in_common:
       {
         hypotheses: ["free", "null", "true"],
@@ -36,7 +36,7 @@ computation_options:
 
   sensitivity:
     to_zip: {}
-    to_vary: {poi_expectation: [0.], wimp_mass: [10, 50, 200]}
+    to_vary: {poi_expectation: [0.], wimp_mass: [50]}
     in_common:
       {
         hypotheses: ["free", "null", "true"],

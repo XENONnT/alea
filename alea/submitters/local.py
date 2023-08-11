@@ -8,10 +8,9 @@ class SubmitterLocal(Submitter):
 
     def __init__(self, *args, **kwargs):
         """Initialize the SubmitterLocal class."""
-        super().__init__(*args, **kwargs)
-
         self.local_configurations = kwargs.get('local_configurations', {})
         self.inputfolder = self.local_configurations.pop('template_path', None)
+        super().__init__(*args, **kwargs)
 
     def submit(self):
         """Run job in subprocess locally"""

@@ -35,7 +35,7 @@ class TemplateSource(blueice.HistogramPdfSource):
         histname = self.config['histname'].format(**format_dict)
 
         slice_args = self.config.get("slice_args", {})
-        if type(slice_args) is dict:
+        if isinstance(slice_args, dict):
             slice_args = [slice_args]
 
         h = template_to_multihist(templatename, histname)
@@ -57,7 +57,8 @@ class TemplateSource(blueice.HistogramPdfSource):
                 slice_axis_limits = sa.get(
                     "slice_axis_limits", [bes[0], bes[-1]])
                 if sum_axis:
-                    logging.debug(f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
+                    logging.debug(
+                        f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
                     axis_names = h.axis_names_without(slice_axis)
                     h = h.slicesum(
                         axis=slice_axis,
@@ -66,7 +67,8 @@ class TemplateSource(blueice.HistogramPdfSource):
                     h.axis_names = axis_names
                 else:
                     logging.debug(f"Normalization before slicing: {h.n}.")
-                    logging.debug(f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
+                    logging.debug(
+                        f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}")
                     h = h.slice(axis=slice_axis,
                                 start=slice_axis_limits[0],
                                 stop=slice_axis_limits[1])
@@ -126,7 +128,8 @@ class TemplateSource(blueice.HistogramPdfSource):
         self._n_events_histogram = h.similar_blank_histogram()
 
         h *= self.config.get('histogram_scale_factor', 1)
-        logging.debug(f"Multiplying histogram with histogram_scale_factor {self.config.get('histogram_scale_factor', 1)}. Histogram is now normalised to {h.n}.")
+        logging.debug(
+            f"Multiplying histogram with histogram_scale_factor {self.config.get('histogram_scale_factor', 1)}. Histogram is now normalised to {h.n}.")
 
         # Convert h to density...
         if self.config.get('in_events_per_bin'):
@@ -147,7 +150,7 @@ class TemplateSource(blueice.HistogramPdfSource):
         if np.min(self._pdf_histogram.histogram) < 0:
             raise AssertionError(
                 f"There are bins for source {templatename} with negative entries."
-                    )
+            )
 
     def simulate(self, n_events):
         dtype = []
@@ -189,9 +192,9 @@ class CombinedSource(blueice.HistogramPdfSource):
         templatenames = self.config['templatenames']
 
         slice_args = self.config.get("slice_args", {})
-        if type(slice_args) is dict:
+        if isinstance(slice_args, dict):
             slice_args = [slice_args]
-        if type(slice_args[0]) is dict:
+        if isinstance(slice_args[0], dict):
             slice_argss = []
             for n in histnames:
                 slice_argss.append(slice_args)
@@ -387,11 +390,11 @@ class SpectrumTemplateSource(blueice.HistogramPdfSource):
         histname = self.config['histname'].format(**format_dict)
 
         spectrum = self.config["spectrum"]
-        if type(spectrum) is str:
+        if isinstance(spectrum, str):
             spectrum = self._get_json_spectrum(spectrum.format(**format_dict))
 
         slice_args = self.config.get("slice_args", {})
-        if type(slice_args) is dict:
+        if isinstance(slice_args, dict):
             slice_args = [slice_args]
 
         h = template_to_multihist(templatename, histname)

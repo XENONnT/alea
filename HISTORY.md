@@ -1,3 +1,14 @@
+0.1.0 / 2023-08-11
+------------------
+* Unify and clean code style and docstring by @dachengx in https://github.com/XENONnT/alea/pull/68
+* First runner manipulating statistical model by @dachengx in https://github.com/XENONnT/alea/pull/50
+* Set best_fit_args to confidence_interval_args if None by @kdund in https://github.com/XENONnT/alea/pull/76
+* Livetime scaling by @kdund in https://github.com/XENONnT/alea/pull/73
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.0.0...v0.1.0
+
+
 0.0.0 / 2023-07-28
 ------------------
 * readme update with pointer to previous work in lieu of commit history by @kdund in https://github.com/XENONnT/alea/pull/8

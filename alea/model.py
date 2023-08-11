@@ -77,7 +77,7 @@ class StatisticalModel:
             **kwargs,
         ):
         """Initialize a statistical model"""
-        if isinstance(self, StatisticalModel):
+        if type(self) == StatisticalModel:
             raise RuntimeError(
                 "You cannot instantiate the StatisticalModel class directly, "
                 "you must use a subclass where the likelihood function and data generation "
@@ -96,6 +96,7 @@ class StatisticalModel:
         self._define_parameters(parameter_definition)
 
         self._check_ll_and_generate_data_signature()
+        self._set_nominal_values(**kwargs.get("nominal_values", {}))
 
     def _define_parameters(self, parameter_definition):
         """Initialize the parameters of the model"""
@@ -159,6 +160,8 @@ class StatisticalModel:
         Caution:
             This implementation won't allow you to call generate_data by positional arguments.
         """
+        if set(kwargs.keys()) - set(self.parameters.fittable):
+            raise ValueError("You cannot pass non-fittable parameters to generate_data")
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)
@@ -223,6 +226,15 @@ class StatisticalModel:
             raise ValueError(
                 "The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
+
+    def _set_nominal_values(self, **nominal_values):
+        """
+        Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+        """
+        self.parameters.set_nominal_values(**nominal_values)
 
     def get_expectation_values(self, **parameter_values):
         """

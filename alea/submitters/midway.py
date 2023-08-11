@@ -7,6 +7,7 @@ from utilix import batchq
 from alea.submitter import Submitter
 
 
+# suggested default arguments for utilix.batchq.submit_job
 BATCHQ_DEFAULT_ARGUMENTS = {
     'max_jobs': 100,
     'hours': 1,  # in the unit of hours
@@ -21,7 +22,18 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 
 
 class SubmitterMidway(Submitter):
+    """
+    Submitter for Midway cluster, using utilix.batchq.submit_job.
+    The default batchq arguments are defined in BATCHQ_DEFAULT_ARGUMENTS.
+    You can also overwrite them by passing them inside configuration file.
+
+    Keyword Args:
+        midway_configurations (dict): The configurations for utilix.batchq.submit_job.
+            There can be template_path inside it, indicating the path to the template.
+    """
+
     def __init__(self, *args, **kwargs):
+        """Initialize the SubmitterMidway class."""
         super().__init__(*args, **kwargs)
 
         self.name = self.__class__.__name__
@@ -33,6 +45,16 @@ class SubmitterMidway(Submitter):
         self._check_batchq_arguments()
 
     def _submit(self, job, **kwargs):
+        """
+        Submits job to batch queue which actually runs the analysis.
+
+        Args:
+            job (str): The job script to be submitted.
+
+        Keyword Args:
+            jobname (str): The name of the job.
+            log (str): The path to the log file.
+        """
         jobname = kwargs.pop('jobname', None)
         if jobname is None:
             jobname = self.name
@@ -63,7 +85,13 @@ class SubmitterMidway(Submitter):
                 f'{set(self.batchq_arguments) - set(args)}.')
 
     def submit(self, **kwargs):
-        """Submits job to batch queue which actually runs the analysis"""
+        """
+        Submits job to batch queue which actually runs the analysis.
+        Overwrite the BATCHQ_DEFAULT_ARGUMENTS by configuration file.
+
+        Keyword Args:
+            jobname (str): The name of the job.
+        """
         _jobname = kwargs.pop('jobname', self.name.lower())
         batchq_kwargs = {}
         for job, (script, output_file) in enumerate(self.computation_tickets_generator()):
@@ -74,7 +102,7 @@ class SubmitterMidway(Submitter):
             while batchq.count_jobs(_jobname) > self.max_jobs:
                 self.logging.info('Too many jobs. Sleeping for 30s.')
                 time.sleep(30)
-            batchq_kwargs['log'] = os.path.join(self.log_dir, f'{output_file}.log')
             batchq_kwargs['jobname'] = f'{_jobname}_{job:03d}'
+            batchq_kwargs['log'] = os.path.join(self.log_dir, f'{output_file}.log')
             self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
             self._submit(script, **batchq_kwargs)

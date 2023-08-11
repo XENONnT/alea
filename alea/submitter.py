@@ -14,23 +14,56 @@ from alea.utils import load_yaml, compute_variations, add_i_batch
 
 class Submitter():
     """
-    All the source of template should be from the same folder.
-    All the output, like toydata and fitting results, should be in the same folder.
+    Submitter base class that generate the submission script from the configuration.
+    It is initialized by the configuration file, and the configuration file should contain
+    the arguments of __init__ method of the Submitter.
+
+    Attributes:
+        statistical_model (str): the name of the statistical model
+        statistical_model_config (str): the configuration file of the statistical model
+        poi (str): the parameter of interest
+        computation_options (dict): the configuration of the computation
+        computation (dict): the dictionary of the computation,
+            with keys to_zip, to_vary and in_common
+        debug (bool): whether to run in debug mode.
+            If True, only one job will be submitted, and its script will be printed.
+
+    Args:
+        statistical_model (str): the name of the statistical model
+        statistical_model_config (str): the configuration file of the statistical model
+        poi (str): the parameter of interest
+        computation_options (dict): the configuration of the computation
+        computation (str, optional (default='discovery_power')): the name of the computation,
+            it should be a key of computation_options
+        outputfolder (str, optional (default=None)): the output folder
+        debug (bool, optional (default=False)): whether to run in debug mode
+        loglevel (str, optional (default='INFO')): the log level
+
+    Keyword Args:
+        kwargs: the arguments of __init__ method of the Submitter,
+            containing configurations of clusters
+
+    Caution:
+        All the source of template should be from the same folder.
+        All the output, including toydata and fitting results, should be in the same folder.
     """
+
     logging = logging.getLogger('submitter_logger')
 
     def __init__(
             self,
-            statistical_model,
-            statistical_model_config,
-            poi,
-            computation_options,
-            computation='discovery_power',
-            outputfolder=None,
+            statistical_model: str,
+            statistical_model_config: str,
+            poi: str,
+            computation_options: dict,
+            computation: str = 'discovery_power',
+            outputfolder: str = None,
             debug: bool = False,
-            loglevel='INFO',
-            **kwargs):
-        if isinstance(self, Submitter):
+            loglevel: str = 'INFO',
+            **kwargs,
+        ):
+        """Initializes the submitter."""
+        if type(self) == Submitter:
             raise RuntimeError(
                 "You cannot instantiate the Submitter class directly, "
                 "you must use a subclass where the submit method are implemented")
@@ -74,6 +107,20 @@ class Submitter():
 
     @staticmethod
     def arg_to_str(value, annotation) -> str:
+        """
+        Convert the argument to string for the submission script
+
+        Args:
+            value: the value of the argument, can be various type
+            annotation: the annotation of the argument
+
+        Returns:
+            str: the string of the argument
+
+        Caution:
+            Currently we only support str, int, float, bool, dict and list.
+            The float will be rounded to 4 digits after the decimal point.
+        """
         if value is None:
             return 'None'
             # raise ValueError('provides argument can not be None')
@@ -82,6 +129,7 @@ class Submitter():
         elif annotation is int:
             return '{:d}'.format(value)
         elif annotation is float:
+            # currently we only support 4 digits after the decimal point
             return '{:.4f}'.format(value)
         elif annotation is bool:
             return str(value)
@@ -94,7 +142,17 @@ class Submitter():
                 + ' it can only be str, int, float, bool, dict or list')
 
     @staticmethod
-    def str_to_arg(value, annotation) -> str:
+    def str_to_arg(value: str, annotation):
+        """
+        Convert the string to argument for the submission script
+
+        Args:
+            value: the string of the argument
+            annotation: the annotation of the argument
+
+        Returns:
+            the value of the argument, can be various type
+        """
         if value == 'None':
             return None
         if annotation is str:
@@ -121,10 +179,23 @@ class Submitter():
                 'it can only be str, int, float, bool, dict or list')
 
     def computation_tickets_generator(self):
-        """Get the submission script for the current configuration"""
+        """
+        Get the submission script for the current configuration.
+        It generates the submission script for each combination of the computation options
+        for Runner from to_zip, to_vary and in_common.
+            - First, generate the combined computational options directly.
+            - Second, update the input and output folder of the options.
+            - Thrid, collect the non-fittable(settable) parameters into nominal_values.
+            - Then, collect the fittable parameters into generate_values.
+            - Finally, it generates the submission script for each combination.
 
+        Yields:
+            (str, str): the submission script and name output_file
+
+        Todo:
+            Add support for inputfolder
+        """
         statistical_model_class = StatisticalModel.get_model_from_name(self.statistical_model)
-        # TODO: add support and test for inputfolder
         self.model = statistical_model_class.from_config(
             self.statistical_model_config, inputfolder=self.inputfolder)
 
@@ -212,5 +283,6 @@ class Submitter():
                 yield script, function_args['output_file']
 
     def submit(self):
+        """Submit the jobs to the destinations."""
         raise NotImplementedError(
             "You must write a submit function your submitter class")

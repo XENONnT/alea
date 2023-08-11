@@ -1,12 +1,13 @@
-import os
-import shlex
 import subprocess
 
 from alea.submitter import Submitter
 
 
 class SubmitterLocal(Submitter):
+    """Submitter for local machine."""
+
     def __init__(self, *args, **kwargs):
+        """Initialize the SubmitterLocal class."""
         super().__init__(*args, **kwargs)
 
         self.local_configurations = kwargs.get('local_configurations', {})

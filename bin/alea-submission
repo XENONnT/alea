@@ -64,12 +64,16 @@ def main():
         destination = 'osg'
     elif parsed_args.local:
         destination = 'local'
+    kwargs = {
+        'computation': parsed_args.computation,
+        'debug': parsed_args.debug,
+    }
+    # if outputfolder is provided, overwrite the one in runner config file
+    if parsed_args.outputfolder:
+        kwargs['outputfolder'] = parsed_args.outputfolder
 
     submitter = submitter_classes[destination].from_config(
-        parsed_args.runner_config,
-        computation=parsed_args.computation,
-        debug=parsed_args.debug,
-        outputfolder=parsed_args.outputfolder)
+        parsed_args.runner_config, **kwargs)
 
     submitter.submit()
 

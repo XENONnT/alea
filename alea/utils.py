@@ -226,13 +226,24 @@ def clip_limits(value):
 
 
 def add_i_batch(filename):
+    """Add i_batch to filename"""
     if 'i_batch' in filename:
         raise ValueError('i_batch already in filename')
     fpat_split = os.path.splitext(filename)
     return fpat_split[0] + '_{i_batch:d}' + fpat_split[1]
 
 
-def convert_variations(variations: dict, iteration):
+def convert_variations(variations: dict, iteration) -> list:
+    """
+    Convert variations to a list of dict, according to the iteration method.
+
+    Args:
+        variations (dict): variations to be converted
+        iteration: iteration method, either zip or itertools.product
+
+    Returns:
+        list: a list of dict
+    """
     for k, v in variations.items():
         if isinstance(v, str):
             variations[k] = evaluate_numpy_scipy_expression(v).tolist()
@@ -244,16 +255,44 @@ def convert_variations(variations: dict, iteration):
 
 
 def convert_to_zip(to_zip):
+    """
+    Convert dict into a list of dict, according to the zip method.
+
+    Example:
+        >>> convert_to_zip({'a': [1, 2], 'b': [3, 4]})
+        [{'a': 1, 'b': 3}, {'a': 2, 'b': 4}]
+    """
     return convert_variations(to_zip, zip)
 
 
 def convert_to_vary(to_vary):
+    """
+    Convert dict into a list of dict, according to the itertools.product method.
+
+    Example:
+        >>> convert_to_vary({'a': [1, 2], 'b': [3, 4]})
+        [{'a': 1, 'b': 3}, {'a': 1, 'b': 4}, {'a': 2, 'b': 3}, {'a': 2, 'b': 4}]
+    """
     return convert_variations(to_vary, itertools.product)
 
 
-def compute_variations(to_zip, to_vary, in_common):
+def compute_variations(to_zip, to_vary, in_common) -> list:
+    """
+    Compute variations of Runner from to_zip, to_vary and in_common.
+    By priority, the order is to_zip, to_vary, in_common.
+    The values in to_zip will overwrite the keys in to_vary and in_common.
+    The values in to_vary will overwrite the keys in in_common.
+
+    Args:
+        to_zip (dict): variations to be zipped
+        to_vary (dict): variations to be varied
+        in_common (dict): variations in common
+
+    Returns:
+        list: a list of dict
+    """
     zipped = convert_to_zip(to_zip=to_zip)
     varied = convert_to_vary(to_vary=to_vary)
 
-    combined = [{**z, **v, **in_common} for z, v in itertools.product(zipped, varied)]
+    combined = [{**in_common, **v, **z} for z, v in itertools.product(zipped, varied)]
     return combined

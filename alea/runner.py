@@ -41,7 +41,7 @@ class Runner:
         statistical_model (str): statistical model class name
         poi (str): parameter of interest
         hypotheses (list): list of hypotheses
-        _n_mc (int): number of Monte Carlo
+        n_mc (int): number of Monte Carlo
         statistical_model_args (dict, optional (default={})): arguments for statistical model
         parameter_definition (dict or list, optional (default=None)): parameter definition
         likelihood_config (dict, optional (default=None)): likelihood configuration
@@ -54,6 +54,8 @@ class Runner:
             common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
+        nominal_values (dict, optional (default=None)):
+            nominal values of parameters. If None, nothing will be assigned to model.
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
@@ -69,6 +71,7 @@ class Runner:
             n_mc: int = 3,
             common_hypothesis: dict = None,
             generate_values: dict = None,
+            nominal_values: dict = None,
             statistical_model_config: str = None,
             parameter_definition: Optional[dict or list] = None,
             statistical_model_args: dict = None,
@@ -102,15 +105,19 @@ class Runner:
                     'likelihood_config is overwritten, '
                     'becuase statistical_model_config is provided!')
 
-        # likelihood_config is keyword argument, because not all statistical model needs it
+        # update nominal_values into statistical_model_args
         if statistical_model_args is None:
             statistical_model_args = {}
+        # nominal_values is keyword argument
+        statistical_model_args['nominal_values'] = nominal_values if nominal_values else {}
+        # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args['likelihood_config'] = likelihood_config
+        # initialize statistical model
         self.statistical_model = statistical_model_class(
             parameter_definition=parameter_definition,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
-            **(statistical_model_args if statistical_model_args else {}),
+            **statistical_model_args,
         )
 
         self.poi = poi
@@ -257,6 +264,11 @@ class Runner:
             self.statistical_model.data = data
             fit_results = []
             for hypothesis_values in self._hypotheses_values:
+                # hypothesis_values should only be a fittable subset of parameters
+                if set(hypothesis_values.keys()) - set(self.statistical_model.parameters.fittable):
+                    raise ValueError(
+                        f'Invalid hypothesis values: {hypothesis_values} '
+                        f'for fittable parameters: {self.parameters.fittable}')
                 fit_result, max_llh = self.statistical_model.fit(**hypothesis_values)
                 fit_result['ll'] = max_llh
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):

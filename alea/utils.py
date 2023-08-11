@@ -2,18 +2,32 @@ import os
 import re
 import yaml
 import importlib_resources
+import itertools
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
 from typing import Optional
 
-import numpy as np
+# These imports are needed to evaluate strings
+import numpy  # noqa: F401
+import numpy as np  # noqa: F401
+from scipy import stats  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 
 
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
+
+
+def evaluate_numpy_scipy_expression(value: str):
+    """Evaluate numpy(np) and scipy.stats expression."""
+    if value.startswith("stats."):
+        return eval(value)
+    elif value.startswith("np.") or value.startswith("numpy."):
+        return eval(value)
+    else:
+        raise ValueError(f"Expression {value} not understood.")
 
 
 def get_analysis_space(analysis_space: dict) -> list:
@@ -23,7 +37,7 @@ def get_analysis_space(analysis_space: dict) -> list:
     for element in analysis_space:
         for key, value in element.items():
             if isinstance(value, str) and value.startswith("np."):
-                eval_element = (key, eval(value))
+                eval_element = (key, evaluate_numpy_scipy_expression(value))
             elif isinstance(value, str):
                 eval_element = (
                     key,
@@ -218,199 +232,28 @@ def add_i_batch(filename):
     return fpat_split[0] + '_{i_batch:d}' + fpat_split[1]
 
 
-import copy
-import json
-import itertools
-
-from tqdm import tqdm
-import mergedeep
-
-
-def dict_product(dicts):
-    """
-    >>> list(dict_product(dict(number=[1, 2], character='ab')))
-    [{'character': 'a', 'number': 1},
-     {'character': 'a', 'number': 2},
-     {'character': 'b', 'number': 1},
-     {'character': 'b', 'number': 2}]
-    """
-    return (dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
-
-
-def variations_sanity_check(
-        parameters_to_vary,
-        parameters_to_zip,
-        parameters_in_common):
-    """Check that the signal_rate_multiplier is not varied when signal_expectation is not None"""
-    ptv_op = 'output_file' not in json.dumps(parameters_to_vary)
-    ptz_op = 'output_file' not in json.dumps(parameters_to_zip)
-    assert ptv_op and ptz_op, 'output_file should only be provided in parameters_in_common'
-    ptz_srm = parameters_to_zip.get('generate_args', [{}])[0].get('signal_rate_multiplier', None)
-    ptv_srm = parameters_to_vary.get('generate_args', [{}])[0].get('signal_rate_multiplier', None)
-    ptz_se = parameters_to_zip.get('signal_expectation', None)
-    ptv_se = parameters_to_vary.get('signal_expectation', None)
-    pic_se = parameters_in_common.get('signal_expectation', None)
-    srm_flag = (ptz_srm is None and ptv_srm is None)
-    se_flag = (ptz_se is None and ptv_se is None and pic_se is None)
-    assert srm_flag or se_flag, 'signal_rate_multiplier cannot be varied when signal_expectation is not None'
-
-
-def compute_parameters_to_zip(parameters_to_zip, silent=False):
-    """Compute all variations of parameters_to_zip"""
-    # 0. if nothing to zip, return empty list
-    if len(parameters_to_zip) == 0:
+def convert_variations(variations: dict, iteration):
+    for k, v in variations.items():
+        if isinstance(v, str):
+            variations[k] = evaluate_numpy_scipy_expression(v).tolist()
+    result = [dict(zip(variations, t)) for t in iteration(*variations.values())]
+    if result:
+        return result
+    else:
         return [{}]
 
-    ptz = copy.deepcopy(parameters_to_zip)
-    # 1. get all lists
-    all_lists = []
-    for key, value in ptz.items():
-        if isinstance(value, list):
-            all_lists.append(value)
-        elif isinstance(value, dict):
-            if len(value) == 1:
-                key_inner, item = list(value.keys())[0], list(value.values())[0]
-                if isinstance(item, list):
-                    all_lists.append(item)
-                    ptz[key] = [{key_inner: list_value} for list_value in item]
-                else:
-                    raise NotImplementedError(
-                        'parameters_to_zip not implemented for dict with values of type('
-                        + str(type(value)) + ')')
-            else:
-                ptz[key] = list(dict_product(value))
-                all_lists.append(ptz[key])
-        else:
-            raise NotImplementedError(
-                'parameters_to_zip not implemented for type(' + type(value) + ')')
 
-    # 2. check that all values have the same length
-    if len(all_lists) > 0:
-        it = iter(all_lists)
-        the_len = len(next(it))
-        if not all(len(l) == the_len for l in it):
-            raise ValueError('not all lists have same length!')
-
-    # 3. put all values in a list of dicts
-    varied_dicts_zip = []
-    for values in zip(*ptz.values()):
-        this_dict = {key: value for key, value in zip(ptz.keys(), values)}
-        varied_dicts_zip.append(this_dict)
-
-    # 4. zipping sanity check
-    if len(all_lists) > 0:
-        # TODO: be strict about this
-        if len(all_lists[0]) != len(varied_dicts_zip):
-            raise Exception(
-                'Zipping failed. You probably escaped checking with a special case.'
-            )
-    else:
-        if not silent:
-            print(
-                'Cannot check sanity of zip - better provide a list like, var: [1, 2, 3]'
-            )
-
-    return varied_dicts_zip
+def convert_to_zip(to_zip):
+    return convert_variations(to_zip, zip)
 
 
-def compute_parameters_to_vary(parameters_to_vary) -> list:
-    """Compute all variations of parameters_to_vary using itertools.product"""
-    # 0. if nothing to vary, return empty list
-    if len(parameters_to_vary) == 0:
-        return [{}]
-
-    for key, value in parameters_to_vary.items():
-        if isinstance(value, str) and value.startswith('np.'):
-            parameters_to_vary[key] = eval(value).tolist()
-
-    # 1. allows variations inside of dicts
-    # make dict_product of all dicts in parameters_to_vary
-    for k in copy.deepcopy(parameters_to_vary):
-        if isinstance(parameters_to_vary[k], dict):
-            parameters_to_vary[k] = [
-                item for item in dict_product(parameters_to_vary[k])
-            ]
-
-    # 2. these are the variations of parameters_to_vary
-    cartesian_product = itertools.product(*parameters_to_vary.values())
-    parameter_names = parameters_to_vary.keys()
-
-    variations_to_return = []
-    for variation in cartesian_product:
-        variations_to_return.append(dict(zip(parameter_names, variation)))
-
-    return variations_to_return
+def convert_to_vary(to_vary):
+    return convert_variations(to_vary, itertools.product)
 
 
-def compute_variations(
-        parameters_to_zip,
-        parameters_to_vary,
-        parameters_in_common,
-        special_parameters=None,
-        silent=False):
-    """
-    if parameters are defined in multiple places the order or precedence is(high to low):
-    1. parameters_to_zip
-    2. parameters_to_vary
-    3. parameters_in_common
-    """
-    varied_dicts = compute_parameters_to_vary(parameters_to_vary=parameters_to_vary)
-    zipped_dicts = compute_parameters_to_zip(parameters_to_zip=parameters_to_zip, silent=silent)
+def compute_variations(to_zip, to_vary, in_common):
+    zipped = convert_to_zip(to_zip=to_zip)
+    varied = convert_to_vary(to_vary=to_vary)
 
-    combined_variations = list(itertools.product(varied_dicts, zipped_dicts))
-
-    if special_parameters is None:
-        special_parameters = [
-            'generate_args', 'livetime'
-        ]
-
-    if len(combined_variations) > 0:
-        keys_are_shared = bool(
-            set(combined_variations[0][0]) & set(combined_variations[0][1]))
-        if keys_are_shared:
-            shared_parameters = list(
-                set(combined_variations[0][0]).intersection(combined_variations[0][1]))
-            if not silent:
-                print(f'There are shared keys between parameters: {shared_parameters}.')
-            problematic_parameters = []
-            for parameter in shared_parameters:
-                if parameter not in special_parameters:
-                    problematic_parameters.append(parameter)
-
-            if len(problematic_parameters) == 0:
-                if not silent:
-                    print(
-                        'Did not find big problems.'
-                        + ' But you still need to watch out that everything is correct but only special_parameters are shared.'
-                    )
-            else:
-                if len(problematic_parameters) > 1:
-                    message = ' '.join(problematic_parameters) + ' are shared.'
-                else:
-                    message = ' '.join(problematic_parameters) + ' is shared.'
-                raise Exception(message)
-
-    # TODO: make sure that hypotheses only exist in parameters_in_common
-    # similar restrictions should also apply to other parameters
-    hypotheses = []
-    for extra_arg in parameters_in_common['hypotheses']:
-        if type(extra_arg) is dict:
-            if all([type(v) is list for k, v in extra_arg.items()]):
-                hypotheses += list(dict_product(extra_arg))
-            elif all([not type(v) is list for k, v in extra_arg.items()]):
-                pass
-            else:
-                raise Exception(
-                    'The hypotheses dict should either contain only lists or only non-lists.'
-                )
-        else:
-            hypotheses += [extra_arg]
-    parameters_in_common['hypotheses'] = hypotheses
-
-    merged_combinations = []
-    for variation, zipped in tqdm(combined_variations, disable=silent):
-        pic = copy.deepcopy(parameters_in_common)
-        mergedeep.merge(pic, variation, zipped)
-        merged_combinations.append(pic)
-    else:
-        return merged_combinations
+    combined = [{**z, **v, **in_common} for z, v in itertools.product(zipped, varied)]
+    return combined

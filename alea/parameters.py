@@ -1,10 +1,6 @@
 import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
-# These imports are needed to evaluate the uncertainty string
-import numpy  # noqa: F401
-import scipy  # noqa: F401
-
 from alea.utils import within_limits, clip_limits
 
 
@@ -70,16 +66,11 @@ class Parameter:
     def uncertainty(self) -> float or Any:
         """
         Return the uncertainty of the parameter.
-        If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
+        If the uncertainty is a string, it should be evaluated as a numpy or scipy function.
         """
         if isinstance(self._uncertainty, str):
-            # Evaluate the uncertainty if it's a string starting with "scipy." or "numpy."
-            if self._uncertainty.startswith("scipy.") or self._uncertainty.startswith("numpy."):
-                return eval(self._uncertainty)
-            else:
-                raise ValueError(
-                    f"Uncertainty string '{self._uncertainty}'"
-                    " must start with 'scipy.' or 'numpy.'")
+            NotImplementedError(
+                "Only float uncertainties are supported at the moment.")
         else:
             return self._uncertainty
 

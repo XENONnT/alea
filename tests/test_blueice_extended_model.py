@@ -14,16 +14,14 @@ class TestBlueiceExtendedModel(TestCase):
     @classmethod
     def setUp(cls):
         """Initialise the BlueiceExtendedModel instance"""
-        cls.config = load_yaml('unbinned_wimp_statistical_model.yaml')
+        cls.config_file_path = 'unbinned_wimp_statistical_model.yaml'
+        cls.config = load_yaml(cls.config_file_path)
         cls.n_likelihood_terms = len(cls.config['likelihood_config']['likelihood_terms'])
         cls.set_new_model(cls)
 
     def set_new_model(self):
         """Set a new BlueiceExtendedModel instance"""
-        self.model = BlueiceExtendedModel(
-            parameter_definition=self.config['parameter_definition'],
-            likelihood_config=self.config['likelihood_config'],
-        )
+        self.model = BlueiceExtendedModel.from_config(self.config_file_path)
 
     def test_expectation_values(self):
         """Test of the expectation_values method"""

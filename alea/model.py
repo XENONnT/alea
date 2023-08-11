@@ -1,5 +1,6 @@
 import inspect
 import warnings
+from pydoc import locate
 from copy import deepcopy
 from typing import Dict, List, Tuple, Callable, Optional
 
@@ -76,7 +77,7 @@ class StatisticalModel:
             **kwargs,
         ):
         """Initialize a statistical model"""
-        if type(self) == StatisticalModel:
+        if isinstance(self, StatisticalModel):
             raise RuntimeError(
                 "You cannot instantiate the StatisticalModel class directly, "
                 "you must use a subclass where the likelihood function and data generation "
@@ -483,6 +484,18 @@ class StatisticalModel:
             dl = np.nan
 
         return dl, ul
+
+    @staticmethod
+    def get_model_from_name(statistical_model: str):
+        """Get the statistical model class from a string."""
+        statistical_model_class = locate(statistical_model)
+        if statistical_model_class is None:
+            raise ValueError(f'Could not find {statistical_model}!')
+        if not inspect.isclass(statistical_model_class):
+            raise ValueError(f'{statistical_model_class} is not a class!')
+        if not issubclass(statistical_model_class, StatisticalModel):
+            raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
+        return statistical_model_class
 
 
 class MinuitWrap:

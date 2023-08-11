@@ -1,8 +1,6 @@
 from copy import deepcopy
-from typing import Callable, Optional
+from typing import Optional
 from datetime import datetime
-from pydoc import locate
-import inspect
 import warnings
 
 from tqdm import tqdm
@@ -59,8 +57,8 @@ class Runner:
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
-        metadata (dict, optional (default=None)): metadata
         output_file (str, optional (default='test_toymc.h5')): output filename
+        metadata (dict, optional (default=None)): metadata to be saved in output file
     """
 
     def __init__(
@@ -79,21 +77,15 @@ class Runner:
             confidence_level: float = 0.9,
             confidence_interval_kind: str = 'central',
             toydata_mode: str = 'generate_and_write',
-            toydata_file: str = None,
+            toydata_file: str = 'test_toydata_file.h5',
+            output_file: str = 'test_output_file.h5',
             metadata: dict = None,
-            output_file: str = 'test_toymc.h5',
         ):
         """
         Initialize statistical model,
         parameters list, and generate values list
         """
-        statistical_model_class = locate(statistical_model)
-        if statistical_model_class is None:
-            raise ValueError(f'Could not find {statistical_model}!')
-        if not inspect.isclass(statistical_model_class):
-            raise ValueError(f'{statistical_model_class} is not a class!')
-        if not issubclass(statistical_model_class, StatisticalModel):
-            raise ValueError(f'{statistical_model_class} is not a subclass of StatisticalModel!')
+        statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
         # if statistical_model_config is provided
         # overwrite parameter_definition and likelihood_config
@@ -101,7 +93,6 @@ class Runner:
             model_config = load_yaml(statistical_model_config)
             parameter_definition = model_config['parameter_definition']
             likelihood_config = model_config['likelihood_config']
-        else:
             if parameter_definition is not None:
                 warnings.warn(
                     'parameter_definition is overwritten, '

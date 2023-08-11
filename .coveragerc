@@ -1,4 +1,9 @@
 # .coveragerc to control coverage.py
+[run]
+omit =
+    alea/submitters/midway.py
+    alea/submitters/osg.py
+
 [report]
 # omit =
 

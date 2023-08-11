@@ -12,8 +12,6 @@ from .models import *
 
 from .runner import *
 
-from .configuration import *
-
 from .submitter import *
 
 from .submitters import *

@@ -1,9 +1,10 @@
+#!/usr/bin/env python
 import inspect
 from json import loads
 from argparse import ArgumentParser
 
 from alea.runner import Runner
-from alea.configuration import Configuration
+from alea.submitter import Submitter
 
 
 def main():
@@ -20,11 +21,11 @@ def main():
             help=None)
 
     parsed_args = parser.parse_args()
-    args = dict()
+    kwargs = {}
     for arg, value in parsed_args.__dict__.items():
-        args.update({arg: Configuration.str_to_arg(value, signatures[arg].annotation)})
+        kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
 
-    runner = Runner(**args)
+    runner = Runner(**kwargs)
 
     runner.run()
 

@@ -33,6 +33,10 @@ setuptools.setup(
             'examples/templates/*',
         ],
     },
+    scripts=[
+        'bin/alea-run_toymc',
+        'bin/alea-submission',
+    ],
     url="https://github.com/XENONnT/alea",
     classifiers=[
         'Development Status :: 4 - Beta',

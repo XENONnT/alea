@@ -11,7 +11,8 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list
+from alea.utils import (adapt_likelihood_config_for_blueice, get_template_folder_list,
+                        load_yaml)
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -52,7 +53,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self.data_generators = self._build_data_generators()
 
     @classmethod
-    def from_config(cls, config_file_path: str) -> "BlueiceExtendedModel":
+    def from_config(cls, config_file_path: str, **kwargs) -> "BlueiceExtendedModel":
         """Initializes the statistical model from a yaml config file.
 
         Args:
@@ -61,9 +62,8 @@ class BlueiceExtendedModel(StatisticalModel):
         Returns:
             BlueiceExtendedModel: Statistical model.
         """
-        with open(config_file_path, "r") as f:
-            config = yaml.safe_load(f)
-        return cls(**config)
+        config = load_yaml(config_file_path)
+        return cls(**{**config, **kwargs})
 
     @property
     def data(self) -> dict:

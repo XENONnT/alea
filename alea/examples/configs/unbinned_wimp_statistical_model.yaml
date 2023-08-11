@@ -94,9 +94,10 @@ likelihood_config:
         histname: wimp_template
         parameters:
           - wimp_rate_multiplier
-          - wimp_mass
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency
 
@@ -125,8 +126,9 @@ likelihood_config:
         histname: wimp_template
         parameters:
           - wimp_rate_multiplier
-          - wimp_mass
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency

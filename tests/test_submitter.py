@@ -14,7 +14,7 @@ class TestSubmitter(TestCase):
     def setUp(cls):
         """Initialise the Submitter instance"""
         cls.config_file_path = 'unbinned_wimp_running.yaml'
-        cls.outputfolder = 'test_output'
+        cls.outputfolder = 'test_output.h5'
         cls.set_submitter(cls)
 
     def set_submitter(self):

@@ -9,6 +9,6 @@ A tool to perform toyMC-based inference constructions
 [![Readthedocs Badge](https://readthedocs.org/projects/alea/badge/?version=latest)](https://alea.readthedocs.io/en/latest/?badge=latest)
 [![CodeFactor](https://www.codefactor.io/repository/github/xenonnt/alea/badge)](https://www.codefactor.io/repository/github/xenonnt/alea)
 
-`alea` is a public package inherited the spirits of previously private XENON likelihood definition and inference construction code `binference` that based on the blueice repo https://github.com/JelleAalbers/blueice. 
+`alea` is a public package inherited the spirits of previously private XENON likelihood definition and inference construction code `binference` that based on the blueice repo https://github.com/JelleAalbers/blueice.
 
 Binference was developed for XENON1T WIMP searches by Knut Dundas Morå, and for the first XENONnT results by Robert Hammann, Knut Dundas Morå and Tim Wolf.

@@ -86,6 +86,7 @@ class SubmitterMidway(Submitter):
         """
         Submits job to batch queue which actually runs the analysis.
         Overwrite the BATCHQ_DEFAULT_ARGUMENTS by configuration file.
+        If debug is True, only submit the first job.
 
         Keyword Args:
             jobname (str): The name of the job.

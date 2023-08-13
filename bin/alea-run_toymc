@@ -1,29 +1,10 @@
 #!/usr/bin/env python
-import inspect
-from json import loads
-from argparse import ArgumentParser
-
 from alea.runner import Runner
 from alea.submitter import Submitter
 
 
 def main():
-    signatures = inspect.signature(Runner.__init__)
-    args = list(signatures.parameters.keys())
-    parser = ArgumentParser(description='command line running of run_toymcs')
-
-    # skip the first one because it is self(Runner itself)
-    for arg in args[1:]:
-        parser.add_argument(f'--{arg}',
-            type=str,
-            required=True,
-            # TODO: add the help message
-            help=None)
-
-    parsed_args = parser.parse_args()
-    kwargs = {}
-    for arg, value in parsed_args.__dict__.items():
-        kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
+    kwargs = Submitter.init_runner_from_args_string()
 
     runner = Runner(**kwargs)
 

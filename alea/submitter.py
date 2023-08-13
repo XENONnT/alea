@@ -2,7 +2,10 @@ import os
 import logging
 import inspect
 import shlex
+import inspect
+from argparse import ArgumentParser
 from copy import deepcopy
+from typing import List
 from json import dumps, loads
 
 from tqdm import tqdm
@@ -26,7 +29,8 @@ class Submitter():
         computation (dict): the dictionary of the computation,
             with keys to_zip, to_vary and in_common
         debug (bool): whether to run in debug mode.
-            If True, only one job will be submitted, and its script will be printed.
+            If True, only one job will be submitted or one runner will be returned.
+            And its script will be printed.
 
     Args:
         statistical_model (str): the name of the statistical model
@@ -372,3 +376,29 @@ class Submitter():
         """Submit the jobs to the destinations."""
         raise NotImplementedError(
             "You must write a submit function your submitter class")
+
+    @staticmethod
+    def init_runner_from_args_string(sys_argv: List[str] = None):
+        """Initialize a Runner from string of arguments.
+
+        Args:
+            sys_argv (list, optional (default=None)): string of arguments, with the format of
+                ['--arg1', 'value1', '--arg2', 'value2', ...]. The arguments must be the same as
+                the arguments of Runner.__init__.
+        """
+        signatures = inspect.signature(Runner.__init__)
+        args = list(signatures.parameters.keys())
+        parser = ArgumentParser(description='Command line running of run_toymcs')
+
+        # skip the first one because it is self(Runner itself)
+        for arg in args[1:]:
+            parser.add_argument(f'--{arg}',
+                type=str,
+                required=True,
+                help=None)
+
+        parsed_args = parser.parse_args(args=sys_argv)
+        kwargs = {}
+        for arg, value in parsed_args.__dict__.items():
+            kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
+        return kwargs

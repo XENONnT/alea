@@ -1,5 +1,7 @@
+import shlex
 import subprocess
 
+from alea.runner import Runner
 from alea.submitter import Submitter
 
 
@@ -13,10 +15,13 @@ class SubmitterLocal(Submitter):
         super().__init__(*args, **kwargs)
 
     def submit(self):
-        """Run job in subprocess locally"""
-        for job, (script, _) in enumerate(self.computation_tickets_generator()):
+        """Run job in subprocess locally.
+        If debug is True, only return the first instance of Runner.
+        """
+        for _, (script, _) in enumerate(self.computation_tickets_generator()):
             if self.debug:
                 print(script)
-                if job > 0:
-                    break
+                kwargs = Submitter.init_runner_from_args_string(shlex.split(script)[1:])
+                runner = Runner(**kwargs)
+                return runner
             subprocess.call(script, shell=True)

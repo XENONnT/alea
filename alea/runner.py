@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Callable, Optional
+from typing import Dict, Callable, Optional, Union
 from datetime import datetime
 from pydoc import locate
 import inspect
@@ -55,13 +55,14 @@ class Runner:
             confidence interval threshold of likelihood ratio
         common_hypothesis (dict, optional (default=None)):
             common hypothesis, the values are copied to each hypothesis
-        generate_values (dict, optional (default=None)):
+        generate_values (Dict[str, float], optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
         metadata (dict, optional (default=None)): metadata
         output_file (str, optional (default='test_toymc.h5')): output filename
+
     """
 
     def __init__(
@@ -70,18 +71,18 @@ class Runner:
         poi: str,
         hypotheses: list,
         n_mc: int,
-        common_hypothesis: dict = None,
-        generate_values: dict = None,
-        statistical_model_args: dict = None,
-        parameter_definition: Optional[dict or list] = None,
-        likelihood_config: dict = None,
+        common_hypothesis: Optional[dict] = None,
+        generate_values: Optional[Dict[str, float]] = None,
+        statistical_model_args: Optional[dict] = None,
+        parameter_definition: Optional[Union[dict, list]] = None,
+        likelihood_config: Optional[dict] = None,
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
-        confidence_interval_threshold: Callable[[float], float] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         toydata_mode: str = "generate_and_write",
-        toydata_file: str = None,
-        metadata: dict = None,
+        toydata_file: Optional[str] = None,
+        metadata: Optional[dict] = None,
         output_file: str = "test_toymc.h5",
     ):
         """Initialize statistical model, parameters list, and generate values list."""
@@ -193,6 +194,7 @@ class Runner:
         """Write toydata to file.
 
         If toydata is a list of dict, convert it to a list of list.
+
         """
         self.statistical_model.store_data(self._toydata_file, toydata, toydata_names)
 

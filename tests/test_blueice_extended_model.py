@@ -28,7 +28,7 @@ class TestBlueiceExtendedModel(TestCase):
     def test_expectation_values(self):
         """Test of the expectation_values method."""
         self.set_new_model()
-        expectation_values = self.model.get_expectation_values()
+        self.model.get_expectation_values()
 
         # should avoid accidentally set data
         is_data_set = False

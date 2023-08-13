@@ -1,7 +1,7 @@
 import inspect
 import warnings
 from copy import deepcopy
-from typing import Dict, List, Tuple, Callable, Optional
+from typing import List, Tuple, Callable, Optional, Union
 
 import numpy as np
 from scipy.stats import chi2
@@ -50,7 +50,6 @@ class StatisticalModel:
         is_data_set (bool): True if data is set
 
     Args:
-        data: pre-set data of the model
         parameter_definition (dict or list, optional (default=None)):
             definition of the parameters of the model
         confidence_level (float, optional (default=0.9)):
@@ -59,23 +58,25 @@ class StatisticalModel:
             kind of confidence interval to compute
         confidence_interval_threshold (Callable[[float], float], optional (default=None)):
             threshold for confidence interval
+        data (dict or list, optional (default=None)): pre-set data of the model
 
     Raise:
         RuntimeError: if you try to instantiate the StatisticalModel class directly
         NotImplementedError: if you do not implement the likelihood function or the data generation
+
     """
 
     def __init__(
         self,
-        data=None,
-        parameter_definition: Optional[dict or list] = None,
+        parameter_definition: Optional[Union[dict, list]] = None,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",  # one of central, upper, lower
-        confidence_interval_threshold: Callable[[float], float] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        data: Optional[Union[dict, list]] = None,
         **kwargs,
     ):
         """Initialize a statistical model."""
-        if type(self) == StatisticalModel:
+        if type(self) == StatisticalModel:  # noqa: E721
             raise RuntimeError(
                 "You cannot instantiate the StatisticalModel class directly, "
                 "you must use a subclass where the likelihood function and data generation "
@@ -139,11 +140,12 @@ class StatisticalModel:
 
         Returns:
             float: likelihood value
+
         """
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
-    def generate_data(self, **kwargs) -> dict or list:
+    def generate_data(self, **kwargs) -> Union[dict, list]:
         """Generate data for the given parameters. The parameters are passed as keyword arguments,
         positional arguments are not possible. If a parameter is not given, the default value is
         used.
@@ -156,6 +158,7 @@ class StatisticalModel:
 
         Caution:
             This implementation won't allow you to call generate_data by positional arguments.
+
         """
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
@@ -168,6 +171,7 @@ class StatisticalModel:
 
         Data-sets are expected to be in the form of a list of one or more structured arrays,
         representing the data-sets of one or more likelihood terms.
+
         """
         if self._data is None:
             raise RuntimeError("data has not been assigned this statistical model!")
@@ -183,8 +187,8 @@ class StatisticalModel:
         self,
         file_name,
         data_list,
-        data_name_list: Optional[List] = None,
-        metadata: Optional[Dict] = None,
+        data_name_list: Optional[List[str]] = None,
+        metadata: Optional[dict] = None,
     ):
         """
         Store a list of datasets.
@@ -229,6 +233,7 @@ class StatisticalModel:
 
         Args:
             parameter_values: values of the parameters
+
         """
         return NotImplementedError("get_expectation_values is optional to implement")
 
@@ -237,6 +242,7 @@ class StatisticalModel:
         """Nominal expectation values for the sources of the likelihood.
 
         For this to work, you must implement `get_expectation_values`.
+
         """
         return self.get_expectation_values()  # no kwargs for nominal
 
@@ -248,6 +254,7 @@ class StatisticalModel:
 
         Returns:
             int: index of the likelihood term
+
         """
         if hasattr(self, "likelihood_names"):
             likelihood_names = self.likelihood_names
@@ -264,6 +271,7 @@ class StatisticalModel:
 
         Returns:
             Callable: function that can be passed to Minuit
+
         """
 
         def cost(args):
@@ -289,6 +297,7 @@ class StatisticalModel:
         Returns:
             dict, float: best-fit values of each parameter,
             and the value of the likelihood evaluated there
+
         """
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
@@ -318,23 +327,26 @@ class StatisticalModel:
     def _confidence_interval_checks(
         self,
         poi_name: str,
-        parameter_interval_bounds: Tuple[float, float],
-        confidence_level: float,
-        confidence_interval_kind: str,
+        parameter_interval_bounds: Optional[Tuple[float, float]] = None,
+        confidence_level: Optional[float] = None,
+        confidence_interval_kind: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
 
         Args:
             poi_name (str): name of the parameter of interest
-            parameter_interval_bounds (Tuple[float, float]): range in which to search for the
-                confidence interval edges
-            confidence_level (float): confidence level for confidence intervals
-            confidence_interval_kind (str): kind of confidence interval to compute
+            parameter_interval_bounds (Tuple[float, float], optional (default=None)):
+                range in which to search for the confidence interval edges
+            confidence_level (float, optional (default=None)):
+                confidence level for confidence intervals
+            confidence_interval_kind (str, optional (default=None)):
+                kind of confidence interval to compute
 
         Returns:
             Tuple[str, Callable[[float], float], Tuple[float, float]]:
                 confidence interval kind, confidence interval threshold, parameter interval bounds
+
         """
         if confidence_level is None:
             confidence_level = self._confidence_level
@@ -371,8 +383,8 @@ class StatisticalModel:
                 )
             except NotImplementedError:
                 warnings.warn(
-                    "The statistical model does not have a get_expectation_values model implemented,"
-                    " confidence interval bounds will be set directly."
+                    "The statistical model does not have a get_expectation_values model "
+                    "implemented, confidence interval bounds will be set directly."
                 )
                 pass  # no problem, continuing with bounds as set
 
@@ -386,18 +398,19 @@ class StatisticalModel:
             elif confidence_interval_kind == "central":
                 critical_value = chi2(1).isf(1.0 - confidence_level)
 
-            confidence_interval_threshold = lambda _: critical_value
+            def confidence_interval_threshold(_):
+                return critical_value
 
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
     def confidence_interval(
         self,
         poi_name: str,
-        parameter_interval_bounds: Tuple[float, float] = None,
-        confidence_level: float = None,
-        confidence_interval_kind: str = None,
-        confidence_interval_args: dict = None,
-        best_fit_args: dict = None,
+        parameter_interval_bounds: Optional[Tuple[float, float]] = None,
+        confidence_level: Optional[float] = None,
+        confidence_interval_kind: Optional[str] = None,
+        confidence_interval_args: Optional[dict] = None,
+        best_fit_args: Optional[dict] = None,
     ) -> Tuple[float, float]:
         """Uses self.fit to compute confidence intervals for a certain named parameter. If the
         parameter is a rate parameter, and the model has expectation values implemented, the bounds
@@ -410,21 +423,22 @@ class StatisticalModel:
                 in which to search for the confidence interval edges. May be specified as:
                     - setting the property "parameter_interval_bounds" for the parameter
                     - passing a list here
-                    - passing None here, in which case the parameter_interval_bounds property of the parameter is used
+                    - passing None here, the property of the parameter is used
             confidence_level (float, optional (default=None)):
                 confidence level for confidence intervals.
                 If None, the default confidence level of the model is used.
             confidence_interval_kind (str, optional (default=None)):
                 kind of confidence interval to compute.
                 If None, the default kind of the model is used.
-
-        Keyword Args:
             confidence_interval_args (dict, optional (default=None)): Parameters that will be fixed
-                in the profile likelihood computation. If None, all fittable parameters will be profiled except the poi
-            best_fit_args (dict, optional (default=None)): If you require the "global" best-fit used to normalise the
-                profile likelihood ratio to fix fewer parameters than the profile likelihood-- mainly used for 1-D slices
-                of higher-dimensional confidence volumes, where the global best-fit may not be along the profile.
-                if None, will be set to confidence_interval_args
+                in the profile likelihood computation. If None, all fittable parameters
+                will be profiled except the poi.
+            best_fit_args (dict, optional (default=None)): If you require the "global" best-fit
+                used to normalise the profile likelihood ratio to fix fewer parameters than the
+                profile likelihood-- mainly used for 1-D slices of higher-dimensional confidence
+                volumes, where the global best-fit may not be along the profile.
+                If None, will be set to confidence_interval_args.
+
         """
         if confidence_interval_args is None:
             confidence_interval_args = {}
@@ -505,6 +519,7 @@ class MinuitWrap:
     Args:
         f (Callable): function to be wrapped
         parameters (Parameters): parameters of the model
+
     """
 
     def __init__(self, f: Callable, parameters: Parameters):

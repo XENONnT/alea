@@ -5,6 +5,7 @@ import importlib_resources
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
+from typing import Tuple
 import logging
 
 import numpy as np
@@ -45,6 +46,7 @@ def adapt_likelihood_config_for_blueice(
 
     Returns:
         dict: adapted likelihood config
+
     """
 
     likelihood_config_copy = deepcopy(likelihood_config)
@@ -73,6 +75,7 @@ def _get_abspath(file_name):
     """Get the abspath of the file.
 
     Raise FileNotFoundError when not found in any subfolder
+
     """
     for sub_dir in ("examples/configs", "examples/templates"):
         p = os.path.join(_package_path(sub_dir), file_name)
@@ -95,10 +98,11 @@ def formatted_to_asterisked(formatted):
 
     Returns:
         str: asterisked string
+
     """
     asterisked = formatted
-    for found in re.findall("\{(.*?)\}", formatted):
-        asterisked = asterisked.replace("{" + found + "}", "*")
+    for found in re.findall("\{(.*?)\}", formatted):  # noqa: W605
+        asterisked = asterisked.replace("{" + found + "}", "*")  # noqa: W605
     return asterisked
 
 
@@ -120,6 +124,7 @@ def get_file_path(fname, folder_list=None):
 
     Returns:
         str: full path to the resource file
+
     """
     if folder_list is None:
         folder_list = []
@@ -175,7 +180,7 @@ def within_limits(value, limits):
         return limits[0] <= value <= limits[1]
 
 
-def clip_limits(value):
+def clip_limits(value) -> Tuple[float, float]:
     """Clip limits to be within [-MAX_FLOAT, MAX_FLOAT] by converting None to -MAX_FLOAT and
     MAX_FLOAT."""
     if value is None:

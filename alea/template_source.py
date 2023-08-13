@@ -19,6 +19,7 @@ class TemplateSource(blueice.HistogramPdfSource):
     in events per day / bin, if False or absent, taken to be events per day / bin volume :param
     histogram_multiplier: multiply histogram by this number :param log10_bins: List of axis numbers.
     If True, bin edges on this axis in the root file are log10() of the actual bin edges.
+
     """
 
     def build_histogram(self):
@@ -50,7 +51,8 @@ class TemplateSource(blueice.HistogramPdfSource):
                 slice_axis_limits = sa.get("slice_axis_limits", [bes[0], bes[-1]])
                 if sum_axis:
                     logging.debug(
-                        f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}"
+                        f"Slice and sum over axis {slice_axis} from "
+                        f"{slice_axis_limits[0]} to {slice_axis_limits[1]}"
                     )
                     axis_names = h.axis_names_without(slice_axis)
                     h = h.slicesum(
@@ -60,7 +62,8 @@ class TemplateSource(blueice.HistogramPdfSource):
                 else:
                     logging.debug(f"Normalization before slicing: {h.n}.")
                     logging.debug(
-                        f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to {slice_axis_limits[1]}"
+                        f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to "
+                        f"{slice_axis_limits[1]}"
                     )
                     h = h.slice(
                         axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
@@ -121,14 +124,16 @@ class TemplateSource(blueice.HistogramPdfSource):
 
         h *= self.config.get("histogram_scale_factor", 1)
         logging.debug(
-            f"Multiplying histogram with histogram_scale_factor {self.config.get('histogram_scale_factor', 1)}. Histogram is now normalised to {h.n}."
+            f"Multiplying histogram with histogram_scale_factor "
+            f"{self.config.get('histogram_scale_factor', 1)}. "
+            f"Histogram is now normalised to {h.n}."
         )
 
         # Convert h to density...
         if self.config.get("in_events_per_bin"):
             h.histogram /= h.bin_volumes()
         self.events_per_day = (h.histogram * self._bin_volumes).sum()
-        logging.debug(f"events_per_day: " + str(self.events_per_day))
+        logging.debug(f"events_per_day: {self.events_per_day}")
 
         # ... and finally to probability density
         if 0 < self.events_per_day:
@@ -165,6 +170,7 @@ class CombinedSource(blueice.HistogramPdfSource):
     templatenames: list of names of histograms within the h5 files :param named_parameters : list of
     names of weights to be applied to histograms. Must be 1 shorter than histnames, templatenames
     :param histogram_parameters: names of parameters that should be put in the h5/histogram names,
+
     """
 
     def build_histogram(self):
@@ -237,22 +243,11 @@ class CombinedSource(blueice.HistogramPdfSource):
         for i in range(len(weights)):
             h_comp = histograms[0].similar_blank_histogram()
             h = histograms[i + 1]
-            base_part_norm = 0.0
-            # h_centers = h_comp.bin_centers()
-            # h_inds = [range(len(hc)) for hc in h_centers]
-            # for inds in product(*h_inds):
-            #     bincs = [h_centers[j][k] for j, k in enumerate(inds)]
-            #     inds_comp = h_comp.get_bin_indices(bincs)
-            #     base_part_norm += histograms[0][inds]
-            #     h_comp[inds] = h[inds_comp]
-            # print("i", i, "h_comp", h_comp.histogram.shape, h_comp.n)
-            # h_comp *= base_part_norm
             hslices = []
             for j, bincs in enumerate(h.bin_centers()):
                 hsliced = h_comp.get_axis_bin_index(bincs[0], j)
                 hsliceu = h_comp.get_axis_bin_index(bincs[-1], j) + 1
                 hslices.append(slice(hsliced, hsliceu))
-            base_part_norm = histograms[0][hslices].sum()
             h_comp[hslices] += h.histogram  # TODO check here what norm I want.
             histograms[0] += h_comp * weights[i]
 
@@ -352,6 +347,7 @@ class SpectrumTemplateSource(blueice.HistogramPdfSource):
         """Translates bbf-style JSON files to spectra.
 
         units are keV and /kev*day*kg
+
         """
         contents = json.load(open(fn, "r"))
         logging.debug(contents["description"])

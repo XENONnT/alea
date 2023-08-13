@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 from scipy import stats
@@ -18,11 +18,12 @@ class GaussianModel(StatisticalModel):
     Caution:
         You must define the nominal values of the parameters (mu, sigma)
         in the parameters definition.
+
     """
 
     def __init__(
         self,
-        parameter_definition: Optional[Dict or List] = None,
+        parameter_definition: Optional[Union[Dict[str, dict], List[str]]] = None,
         **kwargs,
     ):
         """Initialise a gaussian model."""
@@ -38,6 +39,7 @@ class GaussianModel(StatisticalModel):
                 if None, the nominal value is used
             sigma (float, optional (default=None)): standard deviation of the gaussian,
                 if None, the nominal value is used
+
         """
         hat_mu = self.data[0]["hat_mu"][0]
         return stats.norm.logpdf(x=hat_mu, loc=mu, scale=sigma)
@@ -53,6 +55,7 @@ class GaussianModel(StatisticalModel):
 
         Returns:
             list: data generated from the model
+
         """
         hat_mu = stats.norm(loc=mu, scale=sigma).rvs()
         data = [np.array([(hat_mu,)], dtype=[("hat_mu", float)])]

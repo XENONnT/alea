@@ -25,6 +25,7 @@ class BlueiceDataGenerator:
         mus: The expected number of events of each source of the likelihood term.
         parameters (list): The parameters of the likelihood term.
         ll_term (BinnedLogLikelihood or UnbinnedLogLikelihood): A blueice likelihood term.
+
     """
 
     def __init__(self, ll_term):
@@ -96,6 +97,7 @@ class BlueiceDataGenerator:
             numpy.array: Array of simulated data for all sources in the given analysis space.
             The index "source" indicates the corresponding source of an entry.
             The dtype follows self.dtype.
+
         """
         if filter_kwargs:
             kwargs = {k: v for k, v in kwargs.items() if k in self.parameters + ["livetime_days"]}
@@ -106,7 +108,7 @@ class BlueiceDataGenerator:
         # check if the cached generator may be used:
         if ("FAKE_PARAMETER" in self.last_kwargs.keys()) or (len(unmatched_item) != 0):
             ret = self.ll(full_output=True, **kwargs)  # result, mus, ps
-            if type(ret) == float:
+            if isinstance(ret, float):
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
             _, mus, ps_array = ret
@@ -114,13 +116,14 @@ class BlueiceDataGenerator:
                 self.source_histograms[i].histogram = ps_array[i].reshape(self.data_lengths)
                 if not self.binned:
                     logging.debug(
-                        f"Source {str(self.ll.base_model.sources[i].name)} is not binned. Multiplying histogram with bin volumes."
+                        f"Source {str(self.ll.base_model.sources[i].name)} is not binned. "
+                        "Multiplying histogram with bin volumes."
                     )
                     self.source_histograms[i] *= self.source_histograms[i].bin_volumes()
                     logging.debug("n after multiplying: " + str(self.source_histograms[i].n))
             self.mus = mus
             self.last_kwargs = kwargs
-            logging.debug(f"mus of simulate: " + str(mus))
+            logging.debug(f"mus of simulate: {mus}")
 
         if n_toys is not None:
             if sample_n_toys:

@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple, Iterator, Optional, Union, cast
 
 # These imports are needed to evaluate the uncertainty string
 import numpy  # noqa: F401
@@ -23,11 +23,13 @@ class Parameter:
         relative_uncertainty (bool, optional (default=None)):
             Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional (default=None)): Anchors for blueice template morphing.
-        fit_limits (tuple, optional (default=None)): The limits for fitting the parameter.
-        parameter_interval_bounds (tuple, optional (default=None)):
+        fit_limits (Tuple[float, float], optional (default=None)):
+            The limits for fitting the parameter.
+        parameter_interval_bounds (Tuple[float, float], optional (default=None)):
             Limits for computing confidence intervals
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
         description (str, optional (default=None)): A description of the parameter.
+
     """
 
     def __init__(
@@ -36,11 +38,11 @@ class Parameter:
         nominal_value: Optional[float] = None,
         fittable: bool = True,
         ptype: Optional[str] = None,
-        uncertainty: Optional[float or str] = None,
+        uncertainty: Optional[Union[float, str]] = None,
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
-        fit_limits: Optional[Tuple] = None,
-        parameter_interval_bounds: Optional[Tuple] = None,
+        fit_limits: Optional[Tuple[float, float]] = None,
+        parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
@@ -58,17 +60,17 @@ class Parameter:
         self.description = description
 
     def __repr__(self) -> str:
-        parameter_str = [f"{k}={v}" for k, v in self.__dict__.items() if v is not None]
-        parameter_str = ", ".join(parameter_str)
+        parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
         _repr = f"{self.__class__.__module__}.{self.__class__.__qualname__}"
         _repr += f"({parameter_str})"
         return _repr
 
     @property
-    def uncertainty(self) -> float or Any:
+    def uncertainty(self) -> Any:
         """Return the uncertainty of the parameter.
 
         If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
+
         """
         if isinstance(self._uncertainty, str):
             # Evaluate the uncertainty if it's a string starting with "scipy." or "numpy."
@@ -83,11 +85,11 @@ class Parameter:
             return self._uncertainty
 
     @uncertainty.setter
-    def uncertainty(self, value: float or str) -> None:
+    def uncertainty(self, value: Union[float, str]) -> None:
         self._uncertainty = value
 
     @property
-    def fit_guess(self) -> float:
+    def fit_guess(self) -> Optional[float]:
         """Return the initial guess for fitting the parameter."""
         # make sure to only return fit_guess if fittable
         if self._fit_guess is not None and not self.fittable:
@@ -96,11 +98,11 @@ class Parameter:
             return self._fit_guess
 
     @fit_guess.setter
-    def fit_guess(self, value: float) -> None:
+    def fit_guess(self, value: Optional[float]) -> None:
         self._fit_guess = value
 
     @property
-    def parameter_interval_bounds(self) -> float:
+    def parameter_interval_bounds(self) -> Optional[Tuple[float, float]]:
         # make sure to only return parameter_interval_bounds if fittable
         if self._parameter_interval_bounds is not None and not self.fittable:
             raise ValueError(
@@ -113,7 +115,7 @@ class Parameter:
             return clip_limits(value)
 
     @parameter_interval_bounds.setter
-    def parameter_interval_bounds(self, value: Optional[List]) -> None:
+    def parameter_interval_bounds(self, value: Optional[Tuple[float, float]]) -> None:
         self._parameter_interval_bounds = value
 
     def __eq__(self, other: object) -> bool:
@@ -157,16 +159,18 @@ class Parameters:
         nominal_values (Dict[str, float]): A dictionary of parameter nominal values.
         parameters (Dict[str, Parameter]): A dictionary to store the parameters,
             with parameter name as key.
+
     """
 
     def __init__(self):
         """Initialise a collection of parameters."""
-        self.parameters: Dict[str, Parameter] = {}
+        self.parameters = cast(Dict[str, Parameter], {})
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> Iterator[Parameter]:
         """Return an iterator over the parameters.
 
         Each iteration return a Parameter object.
+
         """
         return iter(self.parameters.values())
 
@@ -179,6 +183,7 @@ class Parameters:
 
         Returns:
             Parameters: The created Parameters object.
+
         """
         parameters = cls()
         for name, param_config in config.items():
@@ -196,6 +201,7 @@ class Parameters:
 
         Returns:
             Parameters: The created Parameters object.
+
         """
         parameters = cls()
         for name in names:
@@ -217,6 +223,7 @@ class Parameters:
 
         Raises:
             ValueError: If the parameter name already exists.
+
         """
         if parameter.name in self.names:
             raise ValueError(f"Parameter {parameter.name} already exists.")
@@ -260,6 +267,7 @@ class Parameters:
         """A dict of uncertainties for all parameters with a not-NaN uncertainty.
 
         Caution: this is not the same as the parameter.uncertainty property.
+
         """
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
@@ -268,6 +276,7 @@ class Parameters:
         """Return parameters with a not-NaN uncertainty.
 
         The parameters are the same objects as in the original Parameters object, not a copy.
+
         """
         param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
         params = Parameters()
@@ -300,6 +309,7 @@ class Parameters:
 
         Returns:
             dict: A dictionary of parameter values.
+
         """
         values = {}
 
@@ -331,6 +341,7 @@ class Parameters:
 
         Returns:
             Parameter: The retrieved Parameter object.
+
         """
         try:
             return super().__getattribute__("parameters")[name]
@@ -348,6 +359,7 @@ class Parameters:
 
         Returns:
             Parameter: The retrieved Parameter object.
+
         """
         if name in self.parameters:
             return self.parameters[name]
@@ -370,6 +382,7 @@ class Parameters:
 
         Returns:
             bool: True if all values are within the fit limits.
+
         """
         return all(
             self.parameters[name].value_in_fit_limits(value) for name, value in kwargs.items()

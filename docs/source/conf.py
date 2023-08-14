@@ -4,8 +4,8 @@
 
 import alea
 
-project = 'Alea'
-copyright = '2023, Alea contributors, the XENON collaboration'
+project = "Alea"
+copyright = "2023, Alea contributors, the XENON collaboration"
 
 release = alea.__version__
 version = alea.__version__
@@ -13,21 +13,21 @@ version = alea.__version__
 # -- General configuration
 
 extensions = [
-    'nbsphinx',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.todo',
+    "nbsphinx",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.todo",
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
+    "python": ("https://docs.python.org/3/", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
-intersphinx_disabled_domains = ['std']
+intersphinx_disabled_domains = ["std"]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # -- Options for NAPOLEON output
 
@@ -37,15 +37,16 @@ napoleon_include_special_with_doc = True
 
 # -- Options for HTML output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # -- Options for EPUB output
 
-epub_show_urls = 'footnote'
+epub_show_urls = "footnote"
 
 # -- Options for TODO output
 
 todo_include_todos = True
+
 
 def setup(app):
     # Hack to import something from this dir. Apparently we're in a weird
@@ -53,6 +54,8 @@ def setup(app):
     # if you just try to do a relative import...
     import os
     import sys
+
     sys.path.append(os.path.dirname(os.path.realpath(__file__)))
     from build_release_notes import convert_release_notes
+
     convert_release_notes()

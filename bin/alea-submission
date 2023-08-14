@@ -5,78 +5,69 @@ from alea.submitters import SubmitterLocal, SubmitterMidway, SubmitterOSG
 
 
 def main():
-    parser = ArgumentParser('Submitter script for toyMCs in alea')
+    parser = ArgumentParser("Submitter script for toyMCs in alea")
     # Required arguments
+    parser.add_argument("running_config", type=str, help="YAML runner config file")
     parser.add_argument(
-        'running_config',
-        type=str,
-        help='YAML runner config file')
-    parser.add_argument(
-        '--computation',
+        "--computation",
         type=str,
         required=True,
         choices=[
-            'discovery_power',
-            'threshold',
-            'sensitivity',
+            "discovery_power",
+            "threshold",
+            "sensitivity",
         ],
-        help='Type of computation, defined in YAML runner config file')
+        help="Type of computation, defined in YAML runner config file",
+    )
     # Exclusive groups on submission destination
     group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument(
-        '--local',
-        action='store_true',
-        help='Executes the defined jobs locally')
-    group.add_argument(
-        '--midway',
-        action='store_true',
-        help='Prepare submission for Midway')
-    group.add_argument(
-        '--osg',
-        action='store_true',
-        help='Write out files for submission to OSG')
+    group.add_argument("--local", action="store_true", help="Executes the defined jobs locally")
+    group.add_argument("--midway", action="store_true", help="Prepare submission for Midway")
+    group.add_argument("--osg", action="store_true", help="Write out files for submission to OSG")
     # Optional arguments
     parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='Only 1 job will be prepared and its script will be printed out')
+        "--debug",
+        action="store_true",
+        help="Only 1 job will be prepared and its script will be printed out",
+    )
     parser.add_argument(
-        '--outputfolder',
+        "--outputfolder",
         type=str,
         required=False,
         default=None,
-        help='Overwriting the outputfolder, usually defined in runner config file')
+        help="Overwriting the outputfolder, usually defined in runner config file",
+    )
     parsed_args = parser.parse_args()
 
     if sum([parsed_args.midway, parsed_args.osg, parsed_args.local]) != 1:
         raise ValueError(
-            'You can only and must choose one of the following: --midway, --osg, --local')
+            "You can only and must choose one of the following: --midway, --osg, --local"
+        )
 
     submitter_classes = {
-        'midway': SubmitterMidway,
-        'osg': SubmitterOSG,
-        'local': SubmitterLocal,
+        "midway": SubmitterMidway,
+        "osg": SubmitterOSG,
+        "local": SubmitterLocal,
     }
 
     if parsed_args.midway:
-        destination = 'midway'
+        destination = "midway"
     elif parsed_args.osg:
-        destination = 'osg'
+        destination = "osg"
     elif parsed_args.local:
-        destination = 'local'
+        destination = "local"
     kwargs = {
-        'computation': parsed_args.computation,
-        'debug': parsed_args.debug,
+        "computation": parsed_args.computation,
+        "debug": parsed_args.debug,
     }
     # if outputfolder is provided, overwrite the one in runner config file
     if parsed_args.outputfolder:
-        kwargs['outputfolder'] = parsed_args.outputfolder
+        kwargs["outputfolder"] = parsed_args.outputfolder
 
-    submitter = submitter_classes[destination].from_config(
-        parsed_args.running_config, **kwargs)
+    submitter = submitter_classes[destination].from_config(parsed_args.running_config, **kwargs)
 
     submitter.submit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

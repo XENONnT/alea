@@ -45,7 +45,6 @@ class TestRunner(TestCase):
 
     def set_blueice_runner(self, toydata_mode="generate_and_write"):
         """Set a new runner instance with BlueiceExtendedModel."""
-        # TODO: interpret the config file after submitter class is implemented
         parameter_zvc = self.running_config["computation_options"]["discovery_power"]
         self.runner = Runner(
             statistical_model=self.running_config["statistical_model"],

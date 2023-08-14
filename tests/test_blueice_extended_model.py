@@ -34,7 +34,6 @@ class TestBlueiceExtendedModel(TestCase):
             is_data_set |= ll_term.is_data_set
         if is_data_set:
             raise ValueError("Data should not be set after get_expectation_values.")
-        # TODO: assert expectation values after manually initialize template source
 
     def test_generate_data(self):
         """Test of the generate_data method."""
@@ -63,7 +62,6 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the fit method."""
         self.model.data = self.model.generate_data()
         fit_result, max_llh = self.model.fit()
-        # TODO:
         # check whether all parameters are in fit_result
         # and whether fittable parameters are fitted
         # and whether the results are in boundaries
@@ -74,5 +72,4 @@ class TestCustomAncillaryLikelihood(TestCase):
 
     def test_ancillary_likelihood(self):
         """Test of the ancillary_likelihood method."""
-        # TODO:
         pass

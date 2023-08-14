@@ -250,7 +250,7 @@ class Runner:
         if self._toydata_mode == 'generate_and_write':
             self.write_toydata(toydata, toydata_names)
 
-    def toy_simulation(self):
+    def simulate_and_fit(self):
         """
         For each Monte Carlo:
             - run toy simulation a specified toydata mode and generate values.
@@ -290,6 +290,6 @@ class Runner:
 
     def run(self):
         """Run toy simulation"""
-        results = self.toy_simulation()
+        results = self.simulate_and_fit()
 
         self.write_output(results)

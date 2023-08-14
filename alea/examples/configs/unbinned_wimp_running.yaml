@@ -54,7 +54,7 @@ midway_configurations:
   mem_per_cpu: 8000
   container: "xenonnt-development.simg"
   partition: "xenon1t"
-OSG_configurations:
+osg_configurations:
   template_path: null
   request_memory: "8000Mb"
   singularity_container: null

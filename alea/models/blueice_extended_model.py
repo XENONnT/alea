@@ -444,11 +444,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             param = self.parameters[name]
             if param.relative_uncertainty:
                 uncertainty *= param.nominal_value
-            if isinstance(uncertainty, float):
+            if isinstance(uncertainty, float) or isinstance(uncertainty, int):
                 func = stats.norm(
                     central_values[name], uncertainty)
             else:
-                NotImplementedError(
-                    "Only float uncertainties are supported at the moment.")
+                raise NotImplementedError(
+                    "Only numerical uncertainties are supported at the moment.")
             constraint_functions[name] = func
         return constraint_functions

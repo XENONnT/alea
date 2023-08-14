@@ -22,7 +22,7 @@ class TestRunner(TestCase):
     @classmethod
     def setUp(cls):
         """Initialise the Runner instance"""
-        cls.runner_config = load_yaml('unbinned_wimp_running.yaml')
+        cls.running_config = load_yaml('unbinned_wimp_running.yaml')
         cls.toydata_file = 'simple_data.h5'
         cls.output_file = 'test_toymc.h5'
         cls.n_mc = 3
@@ -46,14 +46,14 @@ class TestRunner(TestCase):
     def set_blueice_runner(self, toydata_mode='generate_and_write'):
         """Set a new runner instance with BlueiceExtendedModel"""
         # TODO: interpret the config file after submitter class is implemented
-        parameter_zvc = self.runner_config['computation_options']['discovery_power']
+        parameter_zvc = self.running_config['computation_options']['discovery_power']
         self.runner = Runner(
-            statistical_model=self.runner_config['statistical_model'],
-            poi=self.runner_config['poi'],
+            statistical_model=self.running_config['statistical_model'],
+            poi=self.running_config['poi'],
             hypotheses=parameter_zvc['in_common']['hypotheses'],
             n_mc=self.n_mc,
             generate_values={'wimp_rate_multiplier': 1.0},
-            statistical_model_config=self.runner_config['statistical_model_config'],
+            statistical_model_config=self.running_config['statistical_model_config'],
             compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
             toydata_mode=toydata_mode,
             toydata_file=self.toydata_file,
@@ -61,7 +61,7 @@ class TestRunner(TestCase):
         )
 
     def test_runners(self):
-        """Test of the toy_simulation and write_output method"""
+        """Test of the simulate_and_fit and write_output method"""
         set_runners = [self.set_gaussian_runner, self.set_blueice_runner]
         for set_runner in set_runners:
             # test toydata_mode generate_and_write

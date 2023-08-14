@@ -70,7 +70,7 @@ class Parameter:
         """
         if isinstance(self._uncertainty, str):
             NotImplementedError(
-                "Only float uncertainties are supported at the moment.")
+                "Only numerical uncertainties are supported at the moment.")
         else:
             return self._uncertainty
 

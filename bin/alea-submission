@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 
-from alea.submitters import SubmitterMidway, SubmitterOSG, SubmitterLocal
+from alea.submitters import SubmitterLocal, SubmitterMidway, SubmitterOSG
 
 
 def main():
     parser = ArgumentParser('Submitter script for toyMCs in alea')
     # Required arguments
     parser.add_argument(
-        'runner_config',
+        'running_config',
         type=str,
         help='YAML runner config file')
     parser.add_argument(
@@ -73,7 +73,7 @@ def main():
         kwargs['outputfolder'] = parsed_args.outputfolder
 
     submitter = submitter_classes[destination].from_config(
-        parsed_args.runner_config, **kwargs)
+        parsed_args.running_config, **kwargs)
 
     submitter.submit()
 

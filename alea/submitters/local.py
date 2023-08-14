@@ -26,4 +26,4 @@ class SubmitterLocal(Submitter):
                 kwargs = Submitter.init_runner_from_args_string(shlex.split(script)[1:])
                 runner = Runner(**kwargs)
                 return runner
-            subprocess.call(script, shell=True)
+            subprocess.call(shlex.split(script))

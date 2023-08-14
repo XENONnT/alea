@@ -177,7 +177,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
-            likelihood_object = cast(Callable, locate(config["likelihood_type"]))
+            likelihood_class = cast(Callable, locate(config["likelihood_type"]))
 
             blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
             blueice_config["livetime_days"] = self.parameters[
@@ -206,7 +206,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 # in the source:
                 blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
 
-            ll = likelihood_object(blueice_config)
+            ll = likelihood_class(blueice_config)
 
             for source in config["sources"]:
                 # set rate parameters

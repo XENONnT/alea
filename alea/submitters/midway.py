@@ -101,6 +101,7 @@ class SubmitterMidway(Submitter):
                 self.logging.info("Too many jobs. Sleeping for 30s.")
                 time.sleep(30)
             batchq_kwargs["jobname"] = f"{_jobname}_{job:03d}"
-            batchq_kwargs["log"] = os.path.join(self.log_dir, f"{output_file}.log")
+            if output_file is not None:
+                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{output_file}.log")
             self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
             self._submit(script, **batchq_kwargs)

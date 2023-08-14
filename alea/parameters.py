@@ -1,7 +1,7 @@
 import warnings
 from typing import Any, Dict, List, Tuple, Iterator, Optional, Union, cast
 
-from alea.utils import within_limits, clip_limits
+from alea.utils import within_limits, clip_limits, evaluate_numpy_scipy_expression
 
 
 class Parameter:
@@ -46,8 +46,8 @@ class Parameter:
         self.nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
-        self.uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
+        self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds
@@ -68,12 +68,23 @@ class Parameter:
 
         """
         if isinstance(self._uncertainty, str):
-            NotImplementedError("Only numerical uncertainties are supported at the moment.")
+            return evaluate_numpy_scipy_expression(self._uncertainty)
         else:
             return self._uncertainty
 
     @uncertainty.setter
     def uncertainty(self, value: Optional[Union[float, str]]) -> None:
+        if self.relative_uncertainty and (value is not None):
+            if value and (not isinstance(value, (float, int))):
+                raise ValueError(
+                    f"When relative_uncertainty of {self.name} is True, "
+                    f"uncertainty should be float, not {value}."
+                )
+            if self.nominal_value is None:
+                raise ValueError(
+                    f"When relative_uncertainty of {self.name} is True, "
+                    "nominal_value should be set."
+                )
         self._uncertainty = value
 
     @property

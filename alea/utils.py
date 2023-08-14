@@ -7,7 +7,7 @@ from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
-from typing import List, Tuple, Optional, Union, get_args, get_origin
+from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
@@ -247,12 +247,41 @@ def can_assign_to_typing(value_type, target_type) -> bool:
             return issubclass(value_type, target_type)
 
 
-def add_i_batch(filename):
+def add_i_batch(filename: str) -> str:
     """Add i_batch to filename."""
     if "i_batch" in filename:
         raise ValueError("i_batch already in filename")
     fpat_split = os.path.splitext(filename)
     return fpat_split[0] + "_{i_batch:d}" + fpat_split[1]
+
+
+def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str]]:
+    """Expand dict into a list of dict, according to the itertools.product method, if necessary.
+
+    Args:
+        variations (list): variations to be expanded
+
+    Example:
+        >>> expand_grid_dict(['free', {'a': [1, 2], 'b': [3, 4]}])
+        ['free', {'a': 1, 'b': 3}, {'a': 1, 'b': 4}, {'a': 2, 'b': 3}, {'a': 2, 'b': 4}]
+
+    """
+
+    result = cast(List[Union[dict, str]], [])
+    for v in variations:
+        if isinstance(v, dict):
+            is_list = [isinstance(value, list) for value in v.values()]
+            if all(is_list):
+                result += convert_to_vary(v)
+            if {True, False}.issubset(is_list):
+                raise ValueError(
+                    "If some values in variations are lists, "
+                    "all values must be lists or no values is list. "
+                    f"But you are mixing lists and non-lists in {v}."
+                )
+        else:
+            result.append(v)
+    return result
 
 
 def convert_variations(variations: dict, iteration) -> list:
@@ -269,6 +298,9 @@ def convert_variations(variations: dict, iteration) -> list:
     for k, v in variations.items():
         if isinstance(v, str):
             variations[k] = evaluate_numpy_scipy_expression(v).tolist()
+        if not isinstance(variations[k], list):
+            raise ValueError(f"variations {k} must be a list, not {v} with {type(v)}")
+        variations[k] = expand_grid_dict(variations[k])
     result = [dict(zip(variations, t)) for t in iteration(*variations.values())]
     if result:
         return result
@@ -276,7 +308,7 @@ def convert_variations(variations: dict, iteration) -> list:
         return [{}]
 
 
-def convert_to_zip(to_zip):
+def convert_to_zip(to_zip: Dict[str, List]) -> List[Dict[str, Any]]:
     """Convert dict into a list of dict, according to the zip method.
 
     Example:
@@ -287,7 +319,7 @@ def convert_to_zip(to_zip):
     return convert_variations(to_zip, zip)
 
 
-def convert_to_vary(to_vary):
+def convert_to_vary(to_vary: Dict[str, List]) -> List[Dict[str, Any]]:
     """Convert dict into a list of dict, according to the itertools.product method.
 
     Example:
@@ -296,6 +328,34 @@ def convert_to_vary(to_vary):
 
     """
     return convert_variations(to_vary, itertools.product)
+
+
+def convert_to_in_common(in_common: Dict[str, Any]) -> Dict[str, Any]:
+    """Expand the values in in_common, according to the itertools.product method, if necessary. This
+    usually happens to the hypotheses.
+
+    Example:
+        >>> convert_to_in_common({'hypotheses': ['free', {'a': [1, 2], 'b': [3, 4]}]})
+        {
+            "hypotheses": [
+                "free",
+                {"a": 1, "b": 3},
+                {"a": 1, "b": 4},
+                {"a": 2, "b": 3},
+                {"a": 2, "b": 4},
+            ]
+        }
+
+    """
+    for k, v in in_common.items():
+        if isinstance(v, list) and (k != "hypotheses"):
+            raise ValueError(
+                f"except hypotheses, in_common can not contain list, "
+                f"you might need to put {(k, v)} in to_zip or to_vary"
+            )
+    if "hypotheses" in in_common:
+        in_common["hypotheses"] = expand_grid_dict(in_common["hypotheses"])
+    return in_common
 
 
 def compute_variations(to_zip, to_vary, in_common) -> list:
@@ -315,5 +375,7 @@ def compute_variations(to_zip, to_vary, in_common) -> list:
     zipped = convert_to_zip(to_zip=to_zip)
     varied = convert_to_vary(to_vary=to_vary)
 
-    combined = [{**in_common, **v, **z} for z, v in itertools.product(zipped, varied)]
+    combined = [
+        {**convert_to_in_common(in_common), **v, **z} for z, v in itertools.product(zipped, varied)
+    ]
     return combined

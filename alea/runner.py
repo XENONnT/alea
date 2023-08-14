@@ -61,6 +61,7 @@ class Runner:
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
+        only_toydata (bool, optional (default=False)): whether only generate toydata
         output_file (str, optional (default='test_toymc.h5')): output filename
         metadata (dict, optional (default=None)): metadata to be saved in output file
 
@@ -84,6 +85,7 @@ class Runner:
         confidence_interval_kind: str = "central",
         toydata_mode: str = "generate_and_write",
         toydata_file: str = "test_toydata_file.h5",
+        only_toydata: bool = False,
         output_file: str = "test_output_file.h5",
         metadata: Optional[dict] = None,
     ):
@@ -131,6 +133,7 @@ class Runner:
         self._toydata_file = toydata_file
         self._toydata_mode = toydata_mode
         self._output_file = output_file
+        self.only_toydata = only_toydata
         self._metadata = metadata if metadata else {}
 
         self._result_names, self._result_dtype = self._get_parameter_list()
@@ -214,6 +217,7 @@ class Runner:
         If toydata is a list of dict, convert it to a list of list.
 
         """
+        print(f"Saving {self._toydata_file}")
         self.model.store_data(self._toydata_file, toydata, toydata_names)
 
     def data_generator(self):
@@ -226,6 +230,11 @@ class Runner:
             "no_toydata",
         }:
             raise ValueError(f"Unknown toydata mode: {self._toydata_mode}")
+        if self.only_toydata and self._toydata_mode != "generate_and_write":
+            raise ValueError(
+                f"only_toydata is True, you should only generate_and_write, "
+                f"but toydata_mode is {self._toydata_mode}!"
+            )
         # check toydata file size
         if self._toydata_mode == "read":
             toydata, toydata_names = self.read_toydata()
@@ -257,6 +266,10 @@ class Runner:
         # save toydata
         if self._toydata_mode == "generate_and_write":
             self.write_toydata(toydata, toydata_names)
+
+    def simulate(self):
+        """Only generate toydata."""
+        all(self.data_generator())
 
     def simulate_and_fit(self):
         """
@@ -299,7 +312,13 @@ class Runner:
         return results
 
     def run(self):
-        """Run toy simulation."""
-        results = self.simulate_and_fit()
+        """Run toy simulation.
 
-        self.write_output(results)
+        If only_toydata is True, only generate toydata.
+
+        """
+        if self.only_toydata:
+            self.simulate()
+        else:
+            results = self.simulate_and_fit()
+            self.write_output(results)

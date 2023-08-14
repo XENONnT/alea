@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from copy import deepcopy
 from pydoc import locate
@@ -420,7 +421,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         d_dict = structured_array_to_dict(d)
         if set(d_dict.keys()) != set(self.parameters.names):
             raise ValueError(
-                "The data dict must contain all parameters as keys in CustomAncillaryLikelihood."
+                "The data dict must contain all parameters as keys in CustomAncillaryLikelihood. "
+                f"But {set(d_dict.keys())} is provided and "
+                f"{set(self.parameters.names)} is expected."
             )
         self.constraint_functions = self._get_constraint_functions(**d_dict)
 
@@ -455,14 +458,29 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
         for name, uncertainty in self.parameters.uncertainties.items():
-            param = self.parameters[name]
-            if param.relative_uncertainty:
-                uncertainty *= param.nominal_value
-            if isinstance(uncertainty, float) or isinstance(uncertainty, int):
+            if isinstance(uncertainty, (float, int)):
+                param = self.parameters[name]
+                if param.relative_uncertainty:
+                    if param.nominal_value is None:
+                        raise ValueError(
+                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                            "but nominal value is None. "
+                            "Please provide a nominal value."
+                        )
+                    if param.nominal_value == 0:
+                        warnings.warn(
+                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                            "but nominal value is 0. "
+                            "This will result in a relative uncertainty of 0."
+                        )
+                    uncertainty *= param.nominal_value
                 func = stats.norm(central_values[name], uncertainty)
+            elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
+                func = uncertainty
             else:
                 raise NotImplementedError(
-                    "Only numerical uncertainties are supported at the moment."
+                    f"Uncertainty {uncertainty} is not understandable. "
+                    "Only float, int, and scipy.stats distributions are supported."
                 )
             constraint_functions[name] = func
         return constraint_functions

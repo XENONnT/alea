@@ -285,7 +285,7 @@ class Submitter:
 
             # update folder and i_batch
             for f in ["output_file", "toydata_file"]:
-                if f in function_args:
+                if (f in function_args) and (function_args[f] is not None):
                     function_args[f] = os.path.join(
                         self.outputfolder, add_i_batch(function_args[f])
                     )
@@ -340,29 +340,29 @@ class Submitter:
 
             n_batch = function_args["n_batch"]
             for i_batch in range(n_batch):
-                function_args_i = deepcopy(function_args)
-                function_args_i["i_batch"] = i_batch
+                i_args = deepcopy(function_args)
+                i_args["i_batch"] = i_batch
 
                 for name in ["output_file", "toydata_file", "limit_threshold"]:
-                    if function_args_i.get(name, None) is not None:
+                    if i_args.get(name, None) is not None:
                         # Note: here the later format will overwrite the previous one,
                         # so generate_values have the highest priority.
                         needed_kwargs = {
-                            **function_args_i,
-                            **function_args_i["nominal_values"],
-                            **function_args_i["generate_values"],
+                            **i_args,
+                            **i_args["nominal_values"],
+                            **i_args["generate_values"],
                         }
-                        function_args_i[name] = function_args_i[name].format(**needed_kwargs)
+                        i_args[name] = i_args[name].format(**needed_kwargs)
 
                 script_array = []
                 for arg, annotation in annotations.items():
                     script_array.append(f"--{arg}")
-                    script_array.append(self.arg_to_str(function_args_i[arg], annotation))
+                    script_array.append(self.arg_to_str(i_args[arg], annotation))
                 script = " ".join(script_array)
 
                 script = "alea-run_toymc " + " ".join(map(shlex.quote, script.split(" ")))
 
-                yield script, function_args_i["output_file"]
+                yield script, i_args["output_file"]
 
     def update_statistical_model_args(self, function_args):
         """Update template_path in the statistical model arguments.

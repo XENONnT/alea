@@ -7,7 +7,7 @@ from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
-from typing import Optional
+from typing import List, Optional
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
@@ -135,7 +135,7 @@ def formatted_to_asterisked(formatted, wildcards: Optional[str or list]=None):
     return asterisked
 
 
-def get_file_path(fname, folder_list=None):
+def get_file_path(fname, folder_list: Optional[List[str]] = None):
     """Find the full path to the resource file
     Try 5 methods in the following order
 
@@ -181,7 +181,7 @@ def get_file_path(fname, folder_list=None):
     raise RuntimeError(f'Can not find {fname}, please check your file system')
 
 
-def get_template_folder_list(likelihood_config):
+def get_template_folder_list(likelihood_config, extra_template_path: Optional[str] = None):
     """Get a list of template_folder from likelihood_config"""
     if "template_folder" not in likelihood_config:
         # return empty list if template_folder is not specified
@@ -195,6 +195,9 @@ def get_template_folder_list(likelihood_config):
     else:
         raise ValueError(
             "template_folder must be either a string or a list of strings.")
+    # Add extra_template_path to the end of template_folder_list
+    if extra_template_path is not None:
+        template_folder_list.append(extra_template_path)
     return template_folder_list
 
 

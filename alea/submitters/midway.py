@@ -9,7 +9,6 @@ from alea.submitter import Submitter
 
 # suggested default arguments for utilix.batchq.submit_job
 BATCHQ_DEFAULT_ARGUMENTS = {
-    'max_jobs': 100,
     'hours': 1,  # in the unit of hours
     'mem_per_cpu': 2000,  # in the unit of Mb
     'container': 'xenonnt-development.simg',
@@ -32,11 +31,13 @@ class SubmitterMidway(Submitter):
             There can be template_path inside it, indicating the path to the template.
     """
 
+    max_jobs = 100
+
     def __init__(self, *args, **kwargs):
         """Initialize the SubmitterMidway class."""
         self.name = self.__class__.__name__
         self.midway_configurations = kwargs.get('midway_configurations', {})
-        self.inputfolder = self.midway_configurations.pop('template_path', None)
+        self.template_path = self.midway_configurations.pop('template_path', None)
         self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.midway_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)

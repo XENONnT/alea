@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from copy import deepcopy
 from pydoc import locate
 
@@ -49,7 +49,8 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_config (dict): A dictionary defining the likelihood.
         """
         super().__init__(parameter_definition=parameter_definition, **kwargs)
-        self._likelihood = self._build_ll_from_config(likelihood_config)
+        self._likelihood = self._build_ll_from_config(
+            likelihood_config, template_path=kwargs.get("template_path", None))
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
         self.likelihood_names.append("ancillary_likelihood")
         self.livetime_parameter_names = [t.get("livetime_parameter", None) for t in
@@ -103,6 +104,11 @@ class BlueiceExtendedModel(StatisticalModel):
         self._data = data
         self.is_data_set = True
 
+    @property
+    def not_fittable(self) -> List[str]:
+        """A list of parameter names which are not fittable."""
+        return self.livetime_parameter_names + super().not_fittable
+
     def get_expectation_values(self, **kwargs) -> dict:
         """
         Return total expectation values (summed over all likelihood terms with the same name)
@@ -149,7 +155,9 @@ class BlueiceExtendedModel(StatisticalModel):
                 ret[n] = ret.get(n, 0) + mu
         return ret
 
-    def _build_ll_from_config(self, likelihood_config: dict) -> "LogLikelihoodSum":
+    def _build_ll_from_config(
+            self, likelihood_config: dict,
+            template_path: Optional[str] = None) -> "LogLikelihoodSum":
         """
         Iterate through all likelihood terms and build blueice likelihood instances.
 
@@ -161,7 +169,8 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         lls = []
 
-        template_folder_list = get_template_folder_list(likelihood_config)
+        template_folder_list = get_template_folder_list(
+            likelihood_config, extra_template_path=template_path)
 
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
@@ -181,7 +190,7 @@ class BlueiceExtendedModel(StatisticalModel):
             for i, source in enumerate(config["sources"]):
                 parameters_to_ignore: List[str] = [
                     p.name for p in self.parameters if (
-                        p.ptype == "shape") and (p.name not in source["parameters"])]
+                        p.ptype == "shape") and (p.name not in source.get("parameters", []))]
                 # no efficiency affects PDF:
                 parameters_to_ignore += [
                     p.name for p in self.parameters if (

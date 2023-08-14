@@ -11,7 +11,7 @@ class SubmitterLocal(Submitter):
     def __init__(self, *args, **kwargs):
         """Initialize the SubmitterLocal class."""
         self.local_configurations = kwargs.get('local_configurations', {})
-        self.inputfolder = self.local_configurations.pop('template_path', None)
+        self.template_path = self.local_configurations.pop('template_path', None)
         super().__init__(*args, **kwargs)
 
     def submit(self):

@@ -274,6 +274,16 @@ class StatisticalModel:
         """Return a set of all parameters that the generate_data and likelihood accepts"""
         return self.parameters.names
 
+    @property
+    def fittable(self) -> List[str]:
+        """A list of parameter names which are fittable."""
+        return self.parameters.fittable
+
+    @property
+    def not_fittable(self) -> List[str]:
+        """A list of parameter names which are not fittable."""
+        return self.parameters.not_fittable
+
     def make_objective(self):
         """
         Make a function that can be passed to Minuit

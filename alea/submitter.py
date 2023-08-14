@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from alea.model import StatisticalModel
 from alea.runner import Runner
-from alea.utils import load_yaml, compute_variations, add_i_batch
+from alea.utils import get_file_path, load_yaml, compute_variations, add_i_batch
 
 
 class Submitter():
@@ -82,12 +82,28 @@ class Submitter():
         self.computation = computation_options[computation]
         self.debug = debug
 
+        # Find statistical model config file
+        if not os.path.exists(self.statistical_model_config):
+            self.statistical_model_config = os.path.join(
+                os.path.dirname(get_file_path(self.config_file_path)),
+                self.statistical_model_config)
+        if not (
+            os.path.exists(self.statistical_model_config) and
+            os.path.isfile(self.statistical_model_config)):
+            raise FileNotFoundError(
+                f"statistical_model_config {self.statistical_model_config} "
+                "is not a valid filename or does not exist, "
+                "presumably it should be in the same folder as "
+                f"config_file_path {self.config_file_path}.")
+
+        # Initialize the statistical model
         statistical_model_class = StatisticalModel.get_model_from_name(self.statistical_model)
         self.model = statistical_model_class.from_config(
-            self.statistical_model_config, inputfolder=self.inputfolder)
-        self.parameters_fittable = self.model.parameters.fittable
-        self.parameters_not_fittable = self.model.parameters.not_fittable
-        self.parameters_with_uncertainty = self.model.parameters.with_uncertainty
+            self.statistical_model_config, template_path=self.template_path)
+
+        # Get fittable and not fittable parameters, for parameters classification later
+        self.parameters_fittable = self.model.fittable
+        self.parameters_not_fittable = self.model.not_fittable
 
     @property
     def outputfolder(self) -> str:
@@ -114,6 +130,7 @@ class Submitter():
             BlueiceExtendedModel: Statistical model.
         """
         config = load_yaml(config_file_path)
+        cls.config_file_path = config_file_path
         return cls(**{**config, **kwargs})
 
     @staticmethod
@@ -202,9 +219,6 @@ class Submitter():
 
         Yields:
             (str, str): the submission script and name output_file
-
-        Todo:
-            Add support for inputfolder
         """
 
         to_zip = self.computation.get('to_zip', {})
@@ -230,6 +244,12 @@ class Submitter():
             'statistical_model_config': self.statistical_model_config,
             'poi': self.poi,
         }
+
+        if set(merged_args_list[0].keys()) & set(common_runner_args.keys()):
+            raise ValueError(
+                'You specified the following arguments in computation_options, '
+                'but they are already specified in the submitter: '
+                f'{set(merged_args_list[0].keys()) & set(common_runner_args.keys())}.')
 
         for merged_args in tqdm(merged_args_list):
             function_args = deepcopy(default_args)
@@ -272,6 +292,8 @@ class Submitter():
                 function_args['limit_threshold'] = os.path.join(
                     self.outputfolder, function_args['limit_threshold'])
 
+            # update template_path in statistical_model_args if needed
+            self.update_statistical_model_args(function_args)
             # update generate_values and nominal_values for runner
             self.update_runner_args(function_args)
             # update poi according to poi_expectation
@@ -286,24 +308,74 @@ class Submitter():
 
             n_batch = function_args['n_batch']
             for i_batch in range(n_batch):
-                function_args['i_batch'] = i_batch
+                function_args_i = deepcopy(function_args)
+                function_args_i['i_batch'] = i_batch
 
                 for name in ['output_file', 'toydata_file', 'limit_threshold']:
-                    if function_args.get(name, None) is not None:
-                        function_args[name] = function_args[name].format(
-                            **{**function_args['generate_values'],
-                               **function_args['nominal_values'],
-                               **function_args})
+                    if function_args_i.get(name, None) is not None:
+                        # Note: here the later format will overwrite the previous one,
+                        # so generate_values have the highest priority.
+                        needed_kwargs = {
+                            **function_args_i,
+                            **function_args_i['nominal_values'],
+                            **function_args_i['generate_values'],
+                        }
+                        function_args_i[name] = function_args_i[name].format(**needed_kwargs)
 
                 script_array = []
                 for arg, annotation in annotations.items():
                     script_array.append(f'--{arg}')
-                    script_array.append(self.arg_to_str(function_args[arg], annotation))
+                    script_array.append(self.arg_to_str(function_args_i[arg], annotation))
                 script = ' '.join(script_array)
 
                 script = f'alea-run_toymc ' + ' '.join(map(shlex.quote, script.split(' ')))
 
-                yield script, function_args['output_file']
+                yield script, function_args_i['output_file']
+
+    def update_statistical_model_args(self, function_args):
+        """
+        Update template_path in the statistical model arguments.
+
+        Args:
+            function_args (dict): the arguments of Runner
+        """
+        if self.template_path is None:
+            return
+        if function_args['statistical_model_args'] is None:
+            function_args['statistical_model_args'] = {}
+        function_args['statistical_model_args']['template_path'] = self.template_path
+
+    def update_runner_args(self, function_args):
+        """
+        Update the runner arguments' generate_values and nominal_values.
+        If the argument is fittable, it will be added to generate_values,
+        otherwise it will be added to nominal_values.
+
+        Args:
+            function_args (dict): the arguments of Runner
+        """
+        if function_args['generate_values'] is None:
+            function_args['generate_values'] = {}
+        if function_args['nominal_values'] is not None:
+            raise ValueError(
+                'nominal_values should not be provided directly, '
+                'it will be automatically deduced from the statistical model.')
+        function_args['nominal_values'] = {}
+        kw_to_pop = []
+        for k, v in function_args.items():
+            if k in self.parameters_fittable:
+                function_args['generate_values'][k] = v
+                kw_to_pop.append(k)
+            elif k in self.parameters_not_fittable:
+                function_args['nominal_values'][k] = v
+                kw_to_pop.append(k)
+        for k in kw_to_pop:
+            function_args.pop(k)
+        if set(function_args['generate_values'].keys()) - set(self.parameters_fittable):
+            raise ValueError(
+                f'The generate_values {function_args["generate_values"]} '
+                f'should be a subset of the fittable parameters '
+                f'{self.parameters_fittable} in the statistical model.')
 
     def update_poi(self, function_args):
         """
@@ -339,38 +411,6 @@ class Submitter():
         ratio = poi_expectation / nominal_expectation
         # update poi to the correct value
         function_args['generate_values'][function_args['poi']] = ratio
-
-    def update_runner_args(self, function_args):
-        """
-        Update the runner argumentsgenerate_values and nominal_values.
-        If the argument is fittable, it will be added to generate_values,
-        otherwise it will be added to nominal_values.
-
-        Args:
-            function_args (dict): the arguments of Runner
-        """
-        if function_args['nominal_values'] is None:
-            function_args['generate_values'] = {}
-        if function_args['nominal_values'] is not None:
-            raise ValueError(
-                'nominal_values should not be provided directly, '
-                'it will be automatically deduced from the statistical model.')
-        function_args['nominal_values'] = {}
-        kw_to_pop = []
-        for k, v in function_args.items():
-            if k in self.parameters_fittable:
-                function_args['generate_values'][k] = v
-                kw_to_pop.append(k)
-            elif k in self.parameters_not_fittable:
-                function_args['nominal_values'][k] = v
-                kw_to_pop.append(k)
-        for k in kw_to_pop:
-            function_args.pop(k)
-        if set(function_args['generate_values'].keys()) - set(self.parameters_fittable):
-            raise ValueError(
-                f'The generate_values {function_args["generate_values"]} '
-                f'should be a subset of the fittable parameters '
-                f'{self.parameters_fittable} in the statistical model.')
 
     def submit(self):
         """Submit the jobs to the destinations."""

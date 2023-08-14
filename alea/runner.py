@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, Dict, Union
 from datetime import datetime
 import warnings
 
@@ -12,8 +12,8 @@ from alea.utils import load_yaml
 
 
 class Runner:
-    """
-    Runner manipulates statistical model and toydata.
+    """Runner manipulates statistical model and toydata.
+
         - initialize the statistical model
         - generate or reads toy data
         - save toy data if needed
@@ -42,52 +42,52 @@ class Runner:
         poi (str): parameter of interest
         hypotheses (list): list of hypotheses
         n_mc (int): number of Monte Carlo
-        statistical_model_args (dict, optional (default={})): arguments for statistical model
-        parameter_definition (dict or list, optional (default=None)): parameter definition
-        likelihood_config (dict, optional (default=None)): likelihood configuration
-        compute_confidence_interval (bool, optional (default=False)):
-            whether compute confidence interval
-        confidence_level (float, optional (default=0.9)): confidence level
-        confidence_interval_kind (str, optional (default='central')):
-            kind of confidence interval, choice from 'central', 'upper' or 'lower'
         common_hypothesis (dict, optional (default=None)):
             common hypothesis, the values are copied to each hypothesis
         generate_values (dict, optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
         nominal_values (dict, optional (default=None)):
             nominal values of parameters. If None, nothing will be assigned to model.
+        statistical_model_config (str, optional (default=None)):
+            statistical model configuration filename
+        parameter_definition (dict or list, optional (default=None)): parameter definition
+        statistical_model_args (dict, optional (default={})): arguments for statistical model
+        likelihood_config (dict, optional (default=None)): likelihood configuration
+        compute_confidence_interval (bool, optional (default=False)):
+            whether compute confidence interval
+        confidence_level (float, optional (default=0.9)): confidence level
+        confidence_interval_kind (str, optional (default='central')):
+            kind of confidence interval, choice from 'central', 'upper' or 'lower'
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
         output_file (str, optional (default='test_toymc.h5')): output filename
         metadata (dict, optional (default=None)): metadata to be saved in output file
+
     """
 
     def __init__(
-            self,
-            statistical_model: str = 'alea.examples.gaussian_model.GaussianModel',
-            poi: str = 'mu',
-            hypotheses: list = ['free'],
-            n_mc: int = 3,
-            common_hypothesis: dict = None,
-            generate_values: dict = None,
-            nominal_values: dict = None,
-            statistical_model_config: str = None,
-            parameter_definition: Optional[dict or list] = None,
-            statistical_model_args: dict = None,
-            likelihood_config: dict = None,
-            compute_confidence_interval: bool = False,
-            confidence_level: float = 0.9,
-            confidence_interval_kind: str = 'central',
-            toydata_mode: str = 'generate_and_write',
-            toydata_file: str = 'test_toydata_file.h5',
-            output_file: str = 'test_output_file.h5',
-            metadata: dict = None,
-        ):
-        """
-        Initialize statistical model,
-        parameters list, and generate values list
-        """
+        self,
+        statistical_model: str = "alea.examples.gaussian_model.GaussianModel",
+        poi: str = "mu",
+        hypotheses: list = ["free"],
+        n_mc: int = 3,
+        common_hypothesis: Optional[dict] = None,
+        generate_values: Optional[Dict[str, float]] = None,
+        nominal_values: Optional[dict] = None,
+        statistical_model_config: Optional[str] = None,
+        parameter_definition: Optional[Union[dict, list]] = None,
+        statistical_model_args: Optional[dict] = None,
+        likelihood_config: Optional[dict] = None,
+        compute_confidence_interval: bool = False,
+        confidence_level: float = 0.9,
+        confidence_interval_kind: str = "central",
+        toydata_mode: str = "generate_and_write",
+        toydata_file: str = "test_toydata_file.h5",
+        output_file: str = "test_output_file.h5",
+        metadata: Optional[dict] = None,
+    ):
+        """Initialize statistical model, parameters list, and generate values list."""
         statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
         # if statistical_model_config is provided
@@ -96,22 +96,24 @@ class Runner:
             model_config = load_yaml(statistical_model_config)
             if parameter_definition is not None:
                 warnings.warn(
-                    'parameter_definition is overwritten, '
-                    'because statistical_model_config is provided!')
+                    "parameter_definition is overwritten, "
+                    "because statistical_model_config is provided!"
+                )
             if likelihood_config is not None:
                 warnings.warn(
-                    'likelihood_config is overwritten, '
-                    'because statistical_model_config is provided!')
-            parameter_definition = model_config['parameter_definition']
-            likelihood_config = model_config['likelihood_config']
+                    "likelihood_config is overwritten, "
+                    "because statistical_model_config is provided!"
+                )
+            parameter_definition = model_config["parameter_definition"]
+            likelihood_config = model_config["likelihood_config"]
 
         # update nominal_values into statistical_model_args
         if statistical_model_args is None:
             statistical_model_args = {}
         # nominal_values is keyword argument
-        statistical_model_args['nominal_values'] = nominal_values if nominal_values else {}
+        statistical_model_args["nominal_values"] = nominal_values if nominal_values else {}
         # likelihood_config is keyword argument, because not all statistical model needs it
-        statistical_model_args['likelihood_config'] = likelihood_config
+        statistical_model_args["likelihood_config"] = likelihood_config
         # initialize statistical model
         self.model = statistical_model_class(
             parameter_definition=parameter_definition,
@@ -136,39 +138,39 @@ class Runner:
         self._hypotheses_values = self._get_hypotheses()
 
     def _get_parameter_list(self):
-        """Get parameter list and result list from statistical model"""
+        """Get parameter list and result list from statistical model."""
         parameter_list = sorted(self.model.get_parameter_list())
         # add likelihood, lower limit, and upper limit
-        result_names = parameter_list + ['ll', 'dl', 'ul']
+        result_names = parameter_list + ["ll", "dl", "ul"]
         result_dtype = [(n, float) for n in parameter_list]
-        result_dtype += [(n, float) for n in ['ll', 'dl', 'ul']]
+        result_dtype += [(n, float) for n in ["ll", "dl", "ul"]]
         return result_names, result_dtype
 
     def _get_hypotheses(self):
-        """Get generate values list from hypotheses"""
+        """Get generate values list from hypotheses."""
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
         if len(hypotheses) == 0:
-            raise ValueError('hypotheses should not be empty!')
-        if 'free' not in hypotheses and self._compute_confidence_interval:
-            raise ValueError('free hypothesis is needed for confidence interval calculation!')
-        if 'free' in hypotheses and hypotheses.index('free') != 0:
-            raise ValueError('free hypothesis should be the first hypothesis!')
+            raise ValueError("hypotheses should not be empty!")
+        if "free" not in hypotheses and self._compute_confidence_interval:
+            raise ValueError("free hypothesis is needed for confidence interval calculation!")
+        if "free" in hypotheses and hypotheses.index("free") != 0:
+            raise ValueError("free hypothesis should be the first hypothesis!")
 
         for hypothesis in hypotheses:
-            if hypothesis == 'null':
+            if hypothesis == "null":
                 # there is no signal component
-                hypothesis = {self.poi: 0.}
-            elif hypothesis == 'true':
+                hypothesis = {self.poi: 0.0}
+            elif hypothesis == "true":
                 # the true signal component is used
                 if self.poi not in self.generate_values:
                     raise ValueError(
-                        f'{self.poi} should be provided in generate_values',
+                        f"{self.poi} should be provided in generate_values",
                     )
                 hypothesis = {
                     self.poi: self.generate_values.get(self.poi),
                 }
-            elif hypothesis == 'free':
+            elif hypothesis == "free":
                 hypothesis = {}
 
             array = deepcopy(self.common_hypothesis)
@@ -177,77 +179,83 @@ class Runner:
         return hypotheses_values
 
     def write_output(self, results):
-        """Write output file with metadata"""
+        """Write output file with metadata."""
         metadata = deepcopy(self._metadata)
 
-        result_names = [f'{i:d}' for i in range(len(self._hypotheses_values))]
+        result_names = [f"{i:d}" for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if ea in {'free', 'null', 'true'}:
+            if ea in {"free", "null", "true"}:
                 result_names[i] = ea
 
-        metadata['date'] = datetime.now().strftime('%Y%m%d_%H:%M:%S')
-        metadata['poi'] = self.poi
-        metadata['common_hypothesis'] = self.common_hypothesis
-        metadata['generate_values'] = self.generate_values
+        metadata["date"] = datetime.now().strftime("%Y%m%d_%H:%M:%S")
+        metadata["poi"] = self.poi
+        metadata["common_hypothesis"] = self.common_hypothesis
+        metadata["generate_values"] = self.generate_values
 
-        array_metadatas = [{'hypotheses_values': ea} for ea in self._hypotheses_values]
+        array_metadatas = [{"hypotheses_values": ea} for ea in self._hypotheses_values]
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
 
-        print(f'Saving {self._output_file}')
+        print(f"Saving {self._output_file}")
         numpy_to_toyfile(
             self._output_file,
             numpy_arrays_and_names=numpy_arrays_and_names,
             metadata=metadata,
-            array_metadatas=array_metadatas)
+            array_metadatas=array_metadatas,
+        )
 
     def read_toydata(self):
-        """Read toydata from file"""
+        """Read toydata from file."""
         toydata, toydata_names = toydata_from_file(self._toydata_file)
         return toydata, toydata_names
 
     def write_toydata(self, toydata, toydata_names):
-        """
-        Write toydata to file.
+        """Write toydata to file.
+
         If toydata is a list of dict, convert it to a list of list.
+
         """
         self.model.store_data(self._toydata_file, toydata, toydata_names)
 
     def data_generator(self):
-        """Generate, save or read toydata"""
+        """Generate, save or read toydata."""
         # check toydata mode
         if self._toydata_mode not in {
-            'read', 'generate', 'generate_and_write', 'no_toydata',
+            "read",
+            "generate",
+            "generate_and_write",
+            "no_toydata",
         }:
-            raise ValueError(f'Unknown toydata mode: {self._toydata_mode}')
+            raise ValueError(f"Unknown toydata mode: {self._toydata_mode}")
         # check toydata file size
-        if self._toydata_mode == 'read':
+        if self._toydata_mode == "read":
             toydata, toydata_names = self.read_toydata()
             if len(toydata) < self._n_mc:
                 raise ValueError(
-                    f'Number of stored toydata {len(toydata)} is '
-                    f'less than number of Monte Carlo {self._n_mc}!')
+                    f"Number of stored toydata {len(toydata)} is "
+                    f"less than number of Monte Carlo {self._n_mc}!"
+                )
             elif len(toydata) > self._n_mc:
                 warnings.warn(
-                    f'Number of stored toydata {len(toydata)} is '
-                    f'larger than number of Monte Carlo {self._n_mc}.')
+                    f"Number of stored toydata {len(toydata)} is "
+                    f"larger than number of Monte Carlo {self._n_mc}."
+                )
         else:
             toydata = []
             toydata_names = None
         # generate toydata
         for i_mc in range(self._n_mc):
-            if self._toydata_mode == 'generate' or self._toydata_mode == 'generate_and_write':
-                data = self.model.generate_data(
-                    **self.generate_values)
-                if self._toydata_mode == 'generate_and_write':
+            if self._toydata_mode == "generate" or self._toydata_mode == "generate_and_write":
+                data = self.model.generate_data(**self.generate_values)
+                if self._toydata_mode == "generate_and_write":
                     # append toydata
                     toydata.append(data)
-            elif self._toydata_mode == 'read':
+            elif self._toydata_mode == "read":
                 data = toydata[i_mc]
-            elif self._toydata_mode == 'no_toydata':
+            elif self._toydata_mode == "no_toydata":
                 data = None
             yield data
         # save toydata
-        if self._toydata_mode == 'generate_and_write':
+        if self._toydata_mode == "generate_and_write":
             self.write_toydata(toydata, toydata_names)
 
     def simulate_and_fit(self):
@@ -267,20 +275,22 @@ class Runner:
                 # hypothesis_values should only be a fittable subset of parameters
                 if set(hypothesis_values.keys()) - set(self.model.parameters.fittable):
                     raise ValueError(
-                        f'The hypothesis {hypothesis_values} '
-                        f'should be a subset of the fittable parameters '
-                        f'{self.model.parameters.fittable} in the statistical model.')
+                        f"The hypothesis {hypothesis_values} "
+                        f"should be a subset of the fittable parameters "
+                        f"{self.model.parameters.fittable} in the statistical model."
+                    )
                 fit_result, max_llh = self.model.fit(**hypothesis_values)
-                fit_result['ll'] = max_llh
+                fit_result["ll"] = max_llh
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):
                     dl, ul = self.model.confidence_interval(
                         poi_name=self.poi,
                         best_fit_args=self._hypotheses_values[0],
-                        confidence_interval_args=hypothesis_values)
+                        confidence_interval_args=hypothesis_values,
+                    )
                 else:
                     dl, ul = np.nan, np.nan
-                fit_result['dl'] = dl
-                fit_result['ul'] = ul
+                fit_result["dl"] = dl
+                fit_result["ul"] = ul
 
                 fit_results.append(fit_result)
             # assign fitting results
@@ -289,7 +299,7 @@ class Runner:
         return results
 
     def run(self):
-        """Run toy simulation"""
+        """Run toy simulation."""
         results = self.simulate_and_fit()
 
         self.write_output(results)

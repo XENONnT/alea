@@ -6,10 +6,11 @@ import warnings
 
 from tqdm import tqdm
 import numpy as np
+from scipy.interpolate import interp1d
 from inference_interface import toydata_from_file, numpy_to_toyfile
 
 from alea.model import StatisticalModel
-from alea.utils import load_yaml
+from alea.utils import load_yaml, load_json, deterministic_hash
 
 
 class Runner:
@@ -92,6 +93,8 @@ class Runner:
         metadata: Optional[dict] = None,
     ):
         """Initialize statistical model, parameters list, and generate values list."""
+        self.poi = poi
+
         statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
         # if statistical_model_config is provided
@@ -119,6 +122,12 @@ class Runner:
         statistical_model_args["nominal_values"] = self.nominal_values
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
+        # find confidence_interval_threshold function for the model
+        statistical_model_args[
+            "confidence_interval_threshold"
+        ] = self.get_confidence_interval_threshold(
+            statistical_model_args, generate_values, nominal_values, confidence_level
+        )
         # initialize statistical model
         self.model = statistical_model_class(
             parameter_definition=parameter_definition,
@@ -127,7 +136,6 @@ class Runner:
             **statistical_model_args,
         )
 
-        self.poi = poi
         self.hypotheses = hypotheses if hypotheses else []
         self.common_hypothesis = common_hypothesis if common_hypothesis else {}
         self.generate_values = generate_values if generate_values else {}
@@ -172,6 +180,46 @@ class Runner:
                 "common_hypothesis should be a dict of float! " f"But {value} is provided."
             )
         self._common_hypothesis = value
+
+    def get_confidence_interval_threshold(
+        self, statistical_model_args, generate_values, nominal_values, confidence_level
+    ):
+        """Get confidence interval threshold function from limit_threshold file.
+
+        Args:
+            statistical_model_args (dict): arguments for statistical model
+            generate_values (dict): generate values of toydata,
+                it can contain "poi_expectation"
+            nominal_values (dict): nominal values of parameters
+            confidence_level (float): confidence level
+
+        """
+        if "limit_threshold" not in statistical_model_args:
+            return None
+
+        # keys for hashing, should be in limit_threshold
+        hashed_keys = {
+            "poi": self.poi,
+            "nominal_values": nominal_values if nominal_values else {},
+            "generate_values": generate_values if generate_values else {},
+            "confidence_level": confidence_level,
+        }
+
+        # make sure no poi and poi_expectation in the hashed_keys
+        hashed_keys["generate_values"].pop(self.poi, None)
+        hashed_keys["generate_values"].pop("poi_expectation", None)
+        hashed_keys["nominal_values"].pop(self.poi, None)
+        hashed_keys["nominal_values"].pop("poi_expectation", None)
+        threshold_key = deterministic_hash(hashed_keys)
+        threshold = load_json(statistical_model_args["limit_threshold"])
+
+        # raise error if out of bounds
+        func = interp1d(
+            threshold[threshold_key][self.poi],
+            threshold[threshold_key]["threshold"],
+            bounds_error=True,
+        )
+        return func
 
     @staticmethod
     def runner_arguments():

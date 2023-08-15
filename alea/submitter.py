@@ -4,8 +4,8 @@ import inspect
 import shlex
 from argparse import ArgumentParser
 from copy import deepcopy
-from typing import List, Optional
 from json import dumps, loads
+from typing import List, Dict, Any, Optional
 
 from tqdm import tqdm
 
@@ -257,14 +257,16 @@ class Submitter:
 
             # update n_mc if n_batch is provided
             self.update_n_batch(runner_args)
-            # update template_path in statistical_model_args if needed
-            self.update_template_path(runner_args)
             # update folder and i_batch
             self.update_output_toydata(runner_args, self.outputfolder)
             # update generate_values and nominal_values for runner
-            self.update_runner_args(runner_args)
+            self.update_runner_args(
+                runner_args, self.parameters_fittable, self.parameters_not_fittable
+            )
             # update the path of limit_threshold
             self.update_limit_threshold(runner_args, self.outputfolder)
+            # update template_path and limit_threshold in statistical_model_args if needed
+            self.update_statistical_model_args(runner_args, self.template_path)
             # check if all arguments are supported
             self.check_redunant_arguments(runner_args)
 
@@ -320,28 +322,6 @@ class Submitter:
 
                 yield script, i_args["output_file"]
 
-    def update_template_path(self, runner_args):
-        """Update template_path in the statistical model arguments.
-
-        Args:
-            runner_args (dict): the arguments of Runner
-
-        """
-        if self.template_path is None:
-            return
-        if runner_args["statistical_model_args"] is None:
-            runner_args["statistical_model_args"] = {}
-        runner_args["statistical_model_args"]["template_path"] = self.template_path
-
-    @staticmethod
-    def update_output_toydata(runner_args, outputfolder):
-        for f in ["output_file", "toydata_file"]:
-            if (f in runner_args) and (runner_args[f] is not None):
-                if "n_batch" in runner_args:
-                    runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
-                else:
-                    runner_args[f] = os.path.join(outputfolder, runner_args[f])
-
     @staticmethod
     def update_n_batch(runner_args):
         """Update n_mc if n_batch is provided.
@@ -358,28 +338,20 @@ class Submitter:
             runner_args["n_mc"] = runner_args["n_mc"] // runner_args["n_batch"]
 
     @staticmethod
-    def check_redunant_arguments(runner_args):
-        signatures = inspect.signature(Runner.__init__)
-        args = list(signatures.parameters.keys())[1:] + ["n_batch", "limit_threshold"]
-        intended_args = set(runner_args.keys())
-        allowed_args = set(args)
-        if not intended_args.issubset(allowed_args):
-            raise ValueError(
-                f"Not all arguments are supported, "
-                f"arguments {allowed_args} are acceptable, "
-                f"and the following arguments is unknown: "
-                f"{intended_args - allowed_args}."
-            )
+    def update_output_toydata(runner_args, outputfolder: str):
+        for f in ["output_file", "toydata_file"]:
+            if (f in runner_args) and (runner_args[f] is not None):
+                if "n_batch" in runner_args:
+                    runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
+                else:
+                    runner_args[f] = os.path.join(outputfolder, runner_args[f])
 
     @staticmethod
-    def update_limit_threshold(runner_args, outputfolder):
-        if "limit_threshold" in runner_args:
-            if not os.path.exists(runner_args["limit_threshold"]):
-                runner_args["limit_threshold"] = os.path.join(
-                    outputfolder, runner_args["limit_threshold"]
-                )
-
-    def update_runner_args(self, runner_args):
+    def update_runner_args(
+        runner_args: Dict[str, Dict[str, Any]],
+        parameters_fittable: List[str],
+        parameters_not_fittable: List[str],
+    ):
         """Update the runner arguments' generate_values and nominal_values. If the argument is
         fittable, it will be added to generate_values, otherwise it will be added to nominal_values.
 
@@ -389,27 +361,23 @@ class Submitter:
         """
         if runner_args["generate_values"] is None:
             runner_args["generate_values"] = {}
-        if runner_args["nominal_values"] is not None:
-            raise ValueError(
-                "nominal_values should not be provided directly, "
-                "it will be automatically deduced from the statistical model."
-            )
-        runner_args["nominal_values"] = {}
+        if runner_args["nominal_values"] is None:
+            runner_args["nominal_values"] = {}
         kw_to_pop = []
         for k, v in runner_args.items():
-            if k in self.parameters_fittable:
+            if k in parameters_fittable:
                 runner_args["generate_values"][k] = v
                 kw_to_pop.append(k)
-            elif k in self.parameters_not_fittable:
+            elif k in parameters_not_fittable:
                 runner_args["nominal_values"][k] = v
                 kw_to_pop.append(k)
         for k in kw_to_pop:
             runner_args.pop(k)
-        if set(runner_args["generate_values"].keys()) - set(self.parameters_fittable):
+        if set(runner_args["generate_values"].keys()) - set(parameters_fittable):
             raise ValueError(
                 f'The generate_values {runner_args["generate_values"]} '
                 f"should be a subset of the fittable parameters "
-                f"{self.parameters_fittable} in the statistical model."
+                f"{parameters_fittable} in the statistical model."
             )
         if not all([isinstance(v, (float, int)) for v in runner_args["generate_values"].values()]):
             raise ValueError(
@@ -419,6 +387,47 @@ class Submitter:
         if not all([isinstance(v, (float, int)) for v in runner_args["nominal_values"].values()]):
             raise ValueError(
                 f"The nominal_values {runner_args['nominal_values']} should be all float or int."
+            )
+
+    @staticmethod
+    def update_limit_threshold(runner_args, outputfolder: str):
+        if "limit_threshold" in runner_args:
+            if not os.path.exists(runner_args["limit_threshold"]):
+                runner_args["limit_threshold"] = os.path.join(
+                    outputfolder, runner_args["limit_threshold"]
+                )
+
+    @staticmethod
+    def update_statistical_model_args(
+        runner_args: Dict[str, Dict[str, Any]], template_path: Optional[str] = None
+    ):
+        """Update template_path in the statistical model arguments.
+
+        Args:
+            runner_args (dict): the arguments of Runner
+
+        """
+        if runner_args["statistical_model_args"] is None:
+            runner_args["statistical_model_args"] = {}
+        if template_path is not None:
+            runner_args["statistical_model_args"]["template_path"] = template_path
+        if "limit_threshold" in runner_args:
+            runner_args["statistical_model_args"]["limit_threshold"] = runner_args.pop(
+                "limit_threshold"
+            )
+
+    @staticmethod
+    def check_redunant_arguments(runner_args):
+        signatures = inspect.signature(Runner.__init__)
+        args = list(signatures.parameters.keys())[1:] + ["n_batch"]
+        intended_args = set(runner_args.keys())
+        allowed_args = set(args)
+        if not intended_args.issubset(allowed_args):
+            raise ValueError(
+                f"Not all arguments are supported, "
+                f"arguments {allowed_args} are acceptable, "
+                f"and the following arguments is unknown: "
+                f"{intended_args - allowed_args}."
             )
 
     def submit(self):

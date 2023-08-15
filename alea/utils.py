@@ -89,6 +89,13 @@ def load_yaml(file_name: str):
     return data
 
 
+def load_json(file_name: str):
+    """Load data from json file."""
+    with open(get_file_path(file_name), "r") as file:
+        data = json.load(file)
+    return data
+
+
 def _get_abspath(file_name):
     """Get the abspath of the file.
 

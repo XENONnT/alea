@@ -22,8 +22,19 @@ class SubmitterLocal(Submitter):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def initialized_runner(script: str):
+    def initialized_runner(script: str, pop_limit_threshold: bool = False):
+        """Initialize a Runner from a script.
+
+        Args:
+            script: the script to initialize the Runner
+            pop_limit_threshold: whether to pop the limit_threshold from the
+                statistical_model_args, this is needed for the NeymanConstructor,
+                to initialize runner when the limit_threshold does not exist yet.
+
+        """
         kwargs = Submitter.init_runner_from_args_string(shlex.split(script)[1:])
+        if pop_limit_threshold:
+            kwargs["statistical_model_args"].pop("limit_threshold", None)
         runner = Runner(**kwargs)
         return runner
 
@@ -62,7 +73,7 @@ class NeymanConstructor(SubmitterLocal):
 
         """
         script = next(self.computation_tickets_generator())[0]
-        runner = self.initialized_runner(script)
+        runner = self.initialized_runner(script, pop_limit_threshold=True)
 
         threshold = cast(Dict[str, Any], {})
         for runner_args in self.merged_arguments_generator():
@@ -135,7 +146,8 @@ class NeymanConstructor(SubmitterLocal):
             threshold[k]["poi_expectation"] = [x[2] for x in sorted_pairs]
 
         # save the threshold into a json file
-        if os.path.splitext(runner_args["limit_threshold"])[-1] != ".json":
+        statistical_model_args = runner_args["statistical_model_args"]
+        if os.path.splitext(statistical_model_args["limit_threshold"])[-1] != ".json":
             raise ValueError("The limit_threshold file should be a json file.")
-        with open(runner_args["limit_threshold"], mode="w") as f:
+        with open(statistical_model_args["limit_threshold"], mode="w") as f:
             json.dump(threshold, f, indent=4)

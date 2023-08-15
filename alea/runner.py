@@ -113,7 +113,8 @@ class Runner:
         if statistical_model_args is None:
             statistical_model_args = {}
         # nominal_values is keyword argument
-        statistical_model_args["nominal_values"] = nominal_values if nominal_values else {}
+        self.nominal_values = nominal_values if nominal_values else {}
+        statistical_model_args["nominal_values"] = self.nominal_values
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
         # initialize statistical model
@@ -150,6 +151,8 @@ class Runner:
             raise ValueError(
                 "generate_values should be a dict of float! " f"But {value} is provided."
             )
+        # update poi according to poi_expectation
+        self._update_poi(self.poi, value, self.nominal_values)
         self._generate_values = value
 
     @property
@@ -163,6 +166,51 @@ class Runner:
                 "common_hypothesis should be a dict of float! " f"But {value} is provided."
             )
         self._common_hypothesis = value
+
+    def _update_poi(
+        self, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float]
+    ):
+        """Update the poi according to poi_expectation. First, it will check if poi_expectation is
+        provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
+        will raise error. Third, it will check if poi ends with _rate_multiplier, if not so, it will
+        raise error. Finally, it will update poi to the correct value according to poi_expectation.
+
+        Args:
+            poi (str): parameter of interest
+            generate_values (dict): generate values of toydata,
+                it can contain "poi_expectation"
+            nominal_values (dict): nominal values of parameters
+
+        Caution:
+            The expectation is evaluated under nominal_values in each batch.
+
+        """
+        if "poi_expectation" not in generate_values:
+            return
+        if poi in generate_values:
+            raise ValueError(
+                f"You can not specify both {poi} "
+                "along with poi_expectation, "
+                "because {poi} will be updated according to poi_expectation."
+            )
+        if not poi.endswith("_rate_multiplier"):
+            raise ValueError(
+                f"poi {poi} should end with _rate_multiplier, "
+                "if poi_expectation is provided, because you want to update "
+                "the generate_values according to the expectations."
+            )
+        generate_values_copy = deepcopy(generate_values)
+        generate_values_copy.pop("poi_expectation")
+        expectation_values = self.model.get_expectation_values(
+            **{**generate_values_copy, **nominal_values}
+        )
+        component = poi.replace("_rate_multiplier", "")
+        poi_expectation = generate_values["poi_expectation"]
+        nominal_expectation = expectation_values[component]
+        ratio = poi_expectation / nominal_expectation
+        # update poi to the correct value
+        generate_values.pop("poi_expectation")
+        generate_values[poi] = ratio
 
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model."""

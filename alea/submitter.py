@@ -113,7 +113,7 @@ class Submitter:
         )
 
         # Get fittable and not fittable parameters, for parameters classification later
-        self.parameters_fittable = self.model.fittable
+        self.parameters_fittable = self.model.fittable + ["poi_expectation"]
         self.parameters_not_fittable = self.model.not_fittable
 
     @property
@@ -326,8 +326,6 @@ class Submitter:
             self.update_statistical_model_args(function_args)
             # update generate_values and nominal_values for runner
             self.update_runner_args(function_args)
-            # update poi according to poi_expectation
-            self.update_poi(function_args)
 
             allowed_keys = list(annotations.keys()) + ["poi_expectation", "n_batch"]
             if set(function_args.keys()) - set(allowed_keys):
@@ -421,43 +419,6 @@ class Submitter:
                 f"The nominal_values {function_args['nominal_values']} "
                 "should be all float or int."
             )
-
-    def update_poi(self, function_args):
-        """Update the poi according to poi_expectation. First, it will check if poi_expectation is
-        provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
-        will raise error. Third, it will check if poi ends with _rate_multiplier, if not so, it will
-        raise error. Finally, it will update poi to the correct value according to poi_expectation.
-
-        Args:
-            function_args (dict): the arguments of Runner
-
-        Caution:
-            The expectation is evaluated under nominal_values in each batch.
-
-        """
-        if "poi_expectation" not in function_args:
-            return
-        if function_args["poi"] in function_args:
-            raise ValueError(
-                f'You can not specify both {function_args["poi"]} '
-                "along with poi_expectation, "
-                "because it will be updated according to poi_expectation."
-            )
-        if not function_args["poi"].endswith("_rate_multiplier"):
-            raise ValueError(
-                f'poi {function_args["poi"]} should end with _rate_multiplier, '
-                "if poi_expectation is provided, because you want to update "
-                "the generate_values according to the expectations."
-            )
-        expectation_values = self.model.get_expectation_values(
-            **{**function_args["generate_values"], **function_args["nominal_values"]}
-        )
-        component = function_args["poi"].replace("_rate_multiplier", "")
-        poi_expectation = function_args["poi_expectation"]
-        nominal_expectation = expectation_values[component]
-        ratio = poi_expectation / nominal_expectation
-        # update poi to the correct value
-        function_args["generate_values"][function_args["poi"]] = ratio
 
     def submit(self):
         """Submit the jobs to the destinations."""

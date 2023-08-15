@@ -143,7 +143,8 @@ class Runner:
         for hypothesis in hypotheses:
             if isinstance(hypothesis, str) and hypothesis not in allowed_hypothesis_strs:
                 raise ValueError(
-                    f"Hypothesis '{hypothesis}' is not defined. Allowed values are {allowed_hypothesis_strs}."
+                    f"Hypothesis '{hypothesis}' is not defined. "
+                    f"Allowed values are {allowed_hypothesis_strs}."
                 )
             if hypothesis == "zero":
                 # there is no signal component

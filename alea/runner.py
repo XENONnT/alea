@@ -200,8 +200,8 @@ class Runner:
         # keys for hashing, should be in limit_threshold
         hashed_keys = {
             "poi": self.poi,
-            "nominal_values": nominal_values if nominal_values else {},
-            "generate_values": generate_values if generate_values else {},
+            "nominal_values": deepcopy(nominal_values) if nominal_values else {},
+            "generate_values": deepcopy(generate_values) if generate_values else {},
             "confidence_level": confidence_level,
         }
 

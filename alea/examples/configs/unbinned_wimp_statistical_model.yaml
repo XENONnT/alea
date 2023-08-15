@@ -96,6 +96,7 @@ likelihood_config:
       - name: wimp
         histname: wimp_template
         parameters:
+          - wimp_mass
           - wimp_rate_multiplier
           - signal_efficiency
         named_parameters:
@@ -128,6 +129,7 @@ likelihood_config:
       - name: wimp
         histname: wimp_template
         parameters:
+          - wimp_mass
           - wimp_rate_multiplier
           - signal_efficiency
         named_parameters:

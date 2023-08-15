@@ -190,6 +190,17 @@ class BlueiceExtendedModel(StatisticalModel):
                 if p.ptype != "rate":
                     blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
 
+            for source in config["sources"]:
+                if "name" not in source:
+                    raise ValueError("No name specified for source.")
+                if "parameters" not in source:
+                    raise ValueError(f"No parameters specified for source {source['name']}.")
+                if set(source.get("named_parameters", [])) - set(source["parameters"]):
+                    raise ValueError(
+                        f"Named parameters {source['named_parameters']} are not all in the "
+                        f"parameter list {source['parameters']} of source {source['name']}."
+                    )
+
             # add all parameters to extra_dont_hash for each source unless it is used:
             for i, source in enumerate(config["sources"]):
                 parameters_to_ignore: List[str] = [

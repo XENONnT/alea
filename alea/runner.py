@@ -297,7 +297,7 @@ class Runner:
 
     def simulate(self):
         """Only generate toydata."""
-        all(self.data_generator())
+        all(tqdm(self.data_generator(), total=self._n_mc))
 
     def simulate_and_fit(self):
         """

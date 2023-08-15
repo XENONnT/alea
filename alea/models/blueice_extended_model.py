@@ -11,9 +11,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import (adapt_likelihood_config_for_blueice,
-                        get_template_folder_list,
-                        load_yaml)
+from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -107,16 +105,16 @@ class BlueiceExtendedModel(StatisticalModel):
         self.is_data_set = True
 
     def get_source_name_list(self, likelihood_name: str) -> list:
-        """Return a list of source names for a given likelihood term.
-        The order is the same as used in the `source` column of the data,
-        so this can be used to map the indices provided in the data to a
-        source name.
+        """Return a list of source names for a given likelihood term. The order is the same as used
+        in the `source` column of the data, so this can be used to map the indices provided in the
+        data to a source name.
 
         Args:
             likelihood_name (str): Name of the likelihood.
 
         Returns:
             list: List of source names.
+
         """
         ll_index = self.likelihood_names.index(likelihood_name)
         return self.likelihood_list[ll_index].source_name_list
@@ -276,8 +274,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         # last one is AncillaryLikelihood
-        return [
-            BlueiceDataGenerator(ll_term) for ll_term in self.likelihood_list[:-1]]
+        return [BlueiceDataGenerator(ll_term) for ll_term in self.likelihood_list[:-1]]
 
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]

@@ -263,7 +263,8 @@ class Runner:
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
         provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
         will raise error. Third, it will check if poi ends with _rate_multiplier, if not so, it will
-        raise error. Finally, it will update poi to the correct value according to poi_expectation.
+        raise error. Finally, it will update poi to the correct value according to poi_expectation
+        using the get_expectation_values method of model, under specified nominal_values.
 
         Args:
             poi (str): parameter of interest

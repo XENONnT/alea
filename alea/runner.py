@@ -140,7 +140,7 @@ class Runner:
             raise ValueError("free hypothesis should be the first hypothesis!")
 
         for hypothesis in hypotheses:
-            if hypothesis == "null":
+            if hypothesis == "zero":
                 # there is no signal component
                 hypothesis = {self.poi: 0.0}
             elif hypothesis == "true":
@@ -166,7 +166,7 @@ class Runner:
 
         result_names = [f"{i:d}" for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if ea in {"free", "null", "true"}:
+            if ea in {"free", "zero", "true"}:
                 result_names[i] = ea
 
         metadata["date"] = datetime.now().strftime("%Y%m%d_%H:%M:%S")

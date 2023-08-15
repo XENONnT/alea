@@ -27,6 +27,7 @@ class Runner:
         hypotheses (list): list of hypotheses
         common_hypothesis (dict): common hypothesis, the values are copied to each hypothesis
         generate_values (dict): generate values for toydata
+        nominal_values (dict): nominal values of parameters
         _compute_confidence_interval (bool): whether compute confidence interval
         _n_mc (int): number of Monte Carlo
         _toydata_file (str): toydata filename

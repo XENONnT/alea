@@ -158,6 +158,9 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
         str: full path to the resource file
 
     """
+    if os.path.exists(fname):
+        return fname
+
     if folder_list is None:
         folder_list = []
     # 1. From absolute path

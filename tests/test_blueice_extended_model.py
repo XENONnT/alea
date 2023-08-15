@@ -7,9 +7,9 @@ from alea.utils import load_yaml
 from alea.models import BlueiceExtendedModel, CustomAncillaryLikelihood
 
 
-@pytest.mark.usefixtures('rm_cache')
+@pytest.mark.usefixtures("rm_cache")
 class TestBlueiceExtendedModel(TestCase):
-    """Test of the BlueiceExtendedModel class"""
+    """Test of the BlueiceExtendedModel class."""
 
     @classmethod
     def setUp(cls):
@@ -142,9 +142,9 @@ class TestBlueiceExtendedModel(TestCase):
 
 
 class TestCustomAncillaryLikelihood(TestCase):
-    """Test of the CustomAncillaryLikelihood class"""
+    """Test of the CustomAncillaryLikelihood class."""
 
     def test_ancillary_likelihood(self):
-        """Test of the ancillary_likelihood method"""
+        """Test of the ancillary_likelihood method."""
         # TODO:
         pass

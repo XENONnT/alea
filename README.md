@@ -1,10 +1,12 @@
 # alea
 [![DOI](https://zenodo.org/badge/654100988.svg)](https://zenodo.org/badge/latestdoi/654100988)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/XENONnT/alea/HEAD?labpath=notebooks)
 [![Test package](https://github.com/XENONnT/alea/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/XENONnT/alea/actions/workflows/pytest.yml)
 [![Coverage Status](https://coveralls.io/repos/github/XENONnT/alea/badge.svg?branch=main)](https://coveralls.io/github/XENONnT/alea?branch=main)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/alea-inference.svg)](https://pypi.python.org/pypi/alea-inference/)
 [![Readthedocs Badge](https://readthedocs.org/projects/alea/badge/?version=latest)](https://alea.readthedocs.io/en/latest/?badge=latest)
 [![CodeFactor](https://www.codefactor.io/repository/github/xenonnt/alea/badge)](https://www.codefactor.io/repository/github/xenonnt/alea)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/XENONnT/alea/main.svg)](https://results.pre-commit.ci/latest/github/XENONnT/alea/main)
 
 alea is a flexible statistical inference framework. The Python package is designed for constructing, handling, and fitting statistical models, computing confidence intervals and conducting sensitivity studies. It is primarily developed for the [XENONnT dark matter experiment](https://xenonexperiment.org/), but can be used for any statistical inference problem.
 

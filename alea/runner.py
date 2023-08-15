@@ -222,6 +222,12 @@ class Runner:
         threshold_key = deterministic_hash(hashed_keys)
         threshold = load_json(statistical_model_args["limit_threshold"])
 
+        if threshold_key not in threshold:
+            raise ValueError(
+                f"limit_threshold file {statistical_model_args['limit_threshold']} "
+                f"does not contain {threshold_key}, Looking for hashed_keys {hashed_keys}!"
+            )
+
         # if out of bounds, return the asymptotic critical value
         func = interp1d(
             threshold[threshold_key][self.poi],

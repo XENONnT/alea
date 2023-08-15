@@ -30,22 +30,24 @@ computation_options:
         n_mc: 5000,
         n_batch: 40,
         limit_threshold: "thresholds.h5",
-        toydata_mode: "generate",
         parameters_as_wildcards: ["poi_expectation", "n_mc", "n_batch"],
       }
 
   sensitivity:
     to_zip: {}
-    to_vary: {poi_expectation: [0.], wimp_mass: [50]}
+    to_vary: {}
     in_common:
       {
+        poi_expectation: 0.,
+        wimp_mass: 50,
         hypotheses: ["free", "null", "true"],
-        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_file: "toymc_sensi_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         compute_confidence_interval: True,
         limit_threshold: "thresholds.h5",
-        toydata_mode: "generate",
+        toydata_mode: "generate_and_write",
+        toydata_file: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
       }
 
 midway_configurations:

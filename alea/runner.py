@@ -83,7 +83,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
-        toydata_mode: str = "generate_and_write",
+        toydata_mode: str = "generate",
         toydata_file: str = "test_toydata_file.h5",
         only_toydata: bool = False,
         output_file: str = "test_output_file.h5",

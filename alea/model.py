@@ -5,14 +5,13 @@ from copy import deepcopy
 from typing import List, Tuple, Callable, Optional, Union
 
 import numpy as np
-from scipy.stats import chi2
 from scipy.optimize import brentq
 from iminuit import Minuit
 from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits
+from alea.utils import within_limits, clip_limits, confidence_interval_critical_value
 
 
 class StatisticalModel:
@@ -397,10 +396,9 @@ class StatisticalModel:
             confidence_interval_threshold = self.confidence_interval_threshold
         else:
             # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-            if confidence_interval_kind in {"lower", "upper"}:
-                critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
-            elif confidence_interval_kind == "central":
-                critical_value = chi2(1).isf(1.0 - confidence_level)
+            critical_value = confidence_interval_critical_value(
+                confidence_interval_kind, confidence_level
+            )
 
             def confidence_interval_threshold(_):
                 return critical_value

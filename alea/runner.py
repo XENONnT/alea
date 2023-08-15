@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 from inference_interface import toydata_from_file, numpy_to_toyfile
 
 from alea.model import StatisticalModel
-from alea.utils import load_yaml, load_json, deterministic_hash
+from alea.utils import load_yaml, load_json, confidence_interval_critical_value, deterministic_hash
 
 
 class Runner:
@@ -126,7 +126,11 @@ class Runner:
         statistical_model_args[
             "confidence_interval_threshold"
         ] = self.get_confidence_interval_threshold(
-            statistical_model_args, generate_values, nominal_values, confidence_level
+            statistical_model_args,
+            generate_values,
+            nominal_values,
+            confidence_interval_kind,
+            confidence_level,
         )
         # initialize statistical model
         self.model = statistical_model_class(
@@ -182,7 +186,12 @@ class Runner:
         self._common_hypothesis = value
 
     def get_confidence_interval_threshold(
-        self, statistical_model_args, generate_values, nominal_values, confidence_level
+        self,
+        statistical_model_args,
+        generate_values,
+        nominal_values,
+        confidence_interval_kind,
+        confidence_level,
     ):
         """Get confidence interval threshold function from limit_threshold file.
 
@@ -213,11 +222,14 @@ class Runner:
         threshold_key = deterministic_hash(hashed_keys)
         threshold = load_json(statistical_model_args["limit_threshold"])
 
-        # raise error if out of bounds
+        # if out of bounds, return the asymptotic critical value
         func = interp1d(
             threshold[threshold_key][self.poi],
             threshold[threshold_key]["threshold"],
-            bounds_error=True,
+            bounds_error=False,
+            fill_value=confidence_interval_critical_value(
+                confidence_interval_kind, confidence_level
+            ),
         )
         return func
 

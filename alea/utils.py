@@ -17,6 +17,7 @@ from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_
 import numpy  # noqa: F401
 import numpy as np  # noqa: F401
 from scipy import stats  # noqa: F401
+from scipy.stats import chi2
 
 logging.basicConfig(level=logging.INFO)
 
@@ -219,6 +220,20 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
     if extra_template_path is not None:
         template_folder_list.append(extra_template_path)
     return template_folder_list
+
+
+def confidence_interval_critical_value(confidence_interval_kind: str, confidence_level: float):
+    """Return the critical value for the confidence interval."""
+    if confidence_interval_kind in {"lower", "upper"}:
+        critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
+    elif confidence_interval_kind == "central":
+        critical_value = chi2(1).isf(1.0 - confidence_level)
+    else:
+        raise ValueError(
+            f"confidence_interval_kind must be either 'lower', 'upper' or 'central', "
+            f"not {confidence_interval_kind}"
+        )
+    return critical_value
 
 
 def within_limits(value, limits):

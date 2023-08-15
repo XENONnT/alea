@@ -29,7 +29,6 @@ class Submitter:
         statistical_model (str): the name of the statistical model
         statistical_model_config (str): the configuration file of the statistical model
         poi (str): the parameter of interest
-        computation_options (dict): the configuration of the computation
         computation (dict): the dictionary of the computation,
             with keys to_zip, to_vary and in_common
         debug (bool): whether to run in debug mode.
@@ -290,7 +289,7 @@ class Submitter:
         _, _, annotations = Runner.runner_arguments()
 
         for runner_args in self.merged_arguments_generator():
-            for i_batch in range(runner_args["n_batch"]):
+            for i_batch in range(runner_args.get("n_batch", 1)):
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
@@ -299,11 +298,17 @@ class Submitter:
                         # Note: here the later format will overwrite the previous one,
                         # so generate_values have the highest priority.
                         needed_kwargs = {
-                            **i_args,
+                            "i_batch": i_args["i_batch"],
                             **i_args["nominal_values"],
                             **i_args["generate_values"],
                         }
-                        i_args[name] = i_args[name].format(**needed_kwargs)
+                        try:
+                            i_args[name] = i_args[name].format(**needed_kwargs)
+                        except KeyError:
+                            raise KeyError(
+                                f"Keys for {i_args[name]} are not in provided arguments "
+                                f"{needed_kwargs}, please check the {name}."
+                            )
 
                 script_array = []
                 for arg, annotation in annotations.items():
@@ -332,7 +337,10 @@ class Submitter:
     def update_output_toydata(runner_args, outputfolder):
         for f in ["output_file", "toydata_file"]:
             if (f in runner_args) and (runner_args[f] is not None):
-                runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
+                if "n_batch" in runner_args:
+                    runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
+                else:
+                    runner_args[f] = os.path.join(outputfolder, runner_args[f])
 
     @staticmethod
     def update_n_batch(runner_args):
@@ -352,7 +360,7 @@ class Submitter:
     @staticmethod
     def check_redunant_arguments(runner_args):
         signatures = inspect.signature(Runner.__init__)
-        args = list(signatures.parameters.keys())[1:] + ["n_batch"]
+        args = list(signatures.parameters.keys())[1:] + ["n_batch", "limit_threshold"]
         intended_args = set(runner_args.keys())
         allowed_args = set(args)
         if not intended_args.issubset(allowed_args):
@@ -369,11 +377,6 @@ class Submitter:
             if not os.path.exists(runner_args["limit_threshold"]):
                 runner_args["limit_threshold"] = os.path.join(
                     outputfolder, runner_args["limit_threshold"]
-                )
-            if not os.path.exists(runner_args["limit_threshold"]):
-                raise FileNotFoundError(
-                    f"limit_threshold {runner_args['limit_threshold']} "
-                    "is not a valid filename or does not exist."
                 )
 
     def update_runner_args(self, runner_args):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 
-from alea.submitters import SubmitterLocal, SubmitterMidway, SubmitterOSG
+from alea.submitters import SubmitterLocal, SubmitterMidway, SubmitterOSG, NeymanConstructor
 
 
 def main():
@@ -44,12 +44,6 @@ def main():
             "You can only and must choose one of the following: --midway, --osg, --local"
         )
 
-    submitter_classes = {
-        "midway": SubmitterMidway,
-        "osg": SubmitterOSG,
-        "local": SubmitterLocal,
-    }
-
     if parsed_args.midway:
         destination = "midway"
     elif parsed_args.osg:
@@ -63,6 +57,16 @@ def main():
     # if outputfolder is provided, overwrite the one in runner config file
     if parsed_args.outputfolder:
         kwargs["outputfolder"] = parsed_args.outputfolder
+
+    if parsed_args.computation == "threshold":
+        if destination != "local":
+            raise ValueError("Threshold computation can only be done locally.")
+
+    submitter_classes = {
+        "midway": SubmitterMidway,
+        "osg": SubmitterOSG,
+        "local": SubmitterLocal if parsed_args.computation != "threshold" else NeymanConstructor,
+    }
 
     submitter = submitter_classes[destination].from_config(parsed_args.running_config, **kwargs)
 

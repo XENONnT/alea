@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import yaml
 import importlib_resources
 import itertools
@@ -7,6 +8,9 @@ from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
+from hashlib import sha1
+from base64 import b32encode
+from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 
 # These imports are needed to evaluate strings
@@ -115,26 +119,30 @@ def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]
     Returns:
         str: asterisked string
 
+    Example:
+        >>> formatted_to_asterisked("a_{a:.2f}_b_{b:d}", wildcards="a")
+        "a_{a:.2f}_b_{b:d}"
+
     """
-    asterisked = formatted
-    # find all wildcards
+    # find all wildcards if wildcards is None
     if wildcards is None:
-        wildcards = re.findall("{(.*?)}", formatted)
+        return re.sub("{(.*?)}", "*", formatted)
+
+    # convert wildcards to list if wildcards is a string
+    if isinstance(wildcards, str):
+        wildcards = [wildcards]
     else:
-        if isinstance(wildcards, str):
-            wildcards = [wildcards]
-        else:
-            if not isinstance(wildcards, list):
-                raise ValueError(
-                    f"wildcards must be a string or list of strings, not {type(wildcards)}"
-                )
-        _wildcards = []
-        for wildcard in wildcards:
-            _wildcards += re.findall("{" + wildcard + "(.*?)}", formatted)
-        wildcards = _wildcards
+        if not isinstance(wildcards, list):
+            raise ValueError(
+                f"wildcards must be a string or list of strings, not {type(wildcards)}"
+            )
+
     # replace wildcards with asterisk
-    for wildcard in wildcards:
-        asterisked = asterisked.replace("{" + wildcard + "}", "*")
+    asterisked = formatted
+    for found in re.findall("{(.*?)}", formatted):
+        for wildcard in wildcards:
+            if wildcard in found:
+                asterisked = asterisked.replace("{" + found + "}", "*")
     return asterisked
 
 
@@ -395,3 +403,61 @@ def compute_variations(to_zip, to_vary, in_common) -> list:
         {**convert_to_in_common(in_common), **v, **z} for z, v in itertools.product(zipped, varied)
     ]
     return combined
+
+
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Special json encoder for numpy types
+    Edited from mpl3d: mpld3/_display.py
+    """
+
+    def default(self, obj):
+        try:
+            iterable = iter(obj)
+        except TypeError:
+            pass
+        else:
+            return [self.default(item) for item in iterable]
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
+def hashablize(obj):
+    """Convert a container hierarchy into one that can be hashed.
+
+    See http://stackoverflow.com/questions/985294
+
+    """
+    if isinstance(obj, Mapping):
+        # Convert immutabledict etc for json decoding
+        obj = dict(obj)
+    try:
+        hash(obj)
+    except TypeError:
+        if isinstance(obj, dict):
+            return tuple((k, hashablize(v)) for (k, v) in sorted(obj.items()))
+        elif isinstance(obj, np.ndarray):
+            return tuple(obj.tolist())
+        elif hasattr(obj, "__iter__"):
+            return tuple(hashablize(o) for o in obj)
+        else:
+            raise TypeError("Can't hashablize object of type %r" % type(obj))
+    else:
+        return obj
+
+
+def deterministic_hash(thing, length=10):
+    """Return a base32 lowercase string of length determined from hashing a container hierarchy.
+
+    Copied from strax: strax/utils.py
+
+    """
+    hashable = hashablize(thing)
+    jsonned = json.dumps(hashable, cls=NumpyJSONEncoder)
+    # disable bandit
+    digest = sha1(jsonned.encode("ascii")).digest()
+    return b32encode(digest)[:length].decode("ascii").lower()

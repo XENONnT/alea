@@ -6,8 +6,8 @@ import warnings
 
 from tqdm import tqdm
 import numpy as np
-
 from inference_interface import toydata_from_file, numpy_to_toyfile
+
 from alea.model import StatisticalModel
 from alea.utils import load_yaml
 
@@ -154,7 +154,11 @@ class Runner:
                 "generate_values should be a dict of float! " f"But {value} is provided."
             )
         # update poi according to poi_expectation
-        self._update_poi(self.poi, value, self.nominal_values)
+        if "poi_expectation" in value:
+            self.input_poi_expectation = True
+            value = self.update_poi(self.poi, value, self.nominal_values)
+        else:
+            self.input_poi_expectation = False
         self._generate_values = value
 
     @property
@@ -187,7 +191,7 @@ class Runner:
         default_args = dict(zip(args[1:], defaults))
         return args, default_args, annotations
 
-    def _update_poi(
+    def update_poi(
         self, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float]
     ):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
@@ -205,8 +209,6 @@ class Runner:
             The expectation is evaluated under nominal_values in each batch.
 
         """
-        if "poi_expectation" not in generate_values:
-            return
         if poi in generate_values:
             raise ValueError(
                 f"You can not specify both {poi} "
@@ -225,12 +227,13 @@ class Runner:
             **{**generate_values_copy, **nominal_values}
         )
         component = poi.replace("_rate_multiplier", "")
-        poi_expectation = generate_values["poi_expectation"]
         nominal_expectation = expectation_values[component]
+        poi_expectation = generate_values["poi_expectation"]
         ratio = poi_expectation / nominal_expectation
         # update poi to the correct value
         generate_values.pop("poi_expectation")
         generate_values[poi] = ratio
+        return generate_values
 
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model."""

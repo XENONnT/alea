@@ -8,7 +8,7 @@ from glob import glob
 from copy import deepcopy
 from pydoc import locate
 import logging
-from hashlib import sha1
+from hashlib import sha256
 from base64 import b32encode
 from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
@@ -475,11 +475,11 @@ def hashablize(obj):
 def deterministic_hash(thing, length=10):
     """Return a base32 lowercase string of length determined from hashing a container hierarchy.
 
-    Copied from strax: strax/utils.py
+    Edited from strax: strax/utils.py
 
     """
     hashable = hashablize(thing)
     jsonned = json.dumps(hashable, cls=NumpyJSONEncoder)
     # disable bandit
-    digest = sha1(jsonned.encode("ascii")).digest()
+    digest = sha256(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()

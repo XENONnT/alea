@@ -392,25 +392,6 @@ class StatisticalModel:
             parameter_of_interest._check_parameter_interval_bounds(value)
             parameter_interval_bounds = clip_limits(value)
 
-        if parameter_of_interest.ptype == "rate":
-            try:
-                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
-                    source_name = poi_name.replace("_rate_multiplier", "")
-                else:
-                    source_name = poi_name
-                mu_parameter = self.get_expectation_values(**kwargs)[source_name]
-                # update parameter_interval_bounds because poi is rate_multiplier
-                parameter_interval_bounds = (
-                    parameter_interval_bounds[0] / mu_parameter,
-                    parameter_interval_bounds[1] / mu_parameter,
-                )
-            except NotImplementedError:
-                warnings.warn(
-                    "The statistical model does not have a get_expectation_values model "
-                    "implemented, confidence interval bounds will be set directly."
-                )
-                pass  # no problem, continuing with bounds as set
-
         # define threshold if none is defined:
         if self.confidence_interval_threshold is not None:
             confidence_interval_threshold = self.confidence_interval_threshold

@@ -132,7 +132,7 @@ class Parameter:
         """Check if parameter_interval_bounds is within fit_limits and is not None."""
         if (value is None) or (value[0] is None) or (value[1] is None):
             warnings.warn(
-                f"parameter_interval_bounds not defined for parameter {self.name}. "
+                f"parameter_interval_bounds not completely defined for parameter {self.name}. "
                 "This may cause numerical overflow when calculating confidential interval."
             )
         value = clip_limits(value)

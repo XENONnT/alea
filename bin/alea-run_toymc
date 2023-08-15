@@ -5,9 +5,7 @@ from alea.submitter import Submitter
 
 def main():
     kwargs = Submitter.init_runner_from_args_string()
-
     runner = Runner(**kwargs)
-
     runner.run()
 
 

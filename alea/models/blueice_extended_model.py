@@ -2,7 +2,6 @@ from typing import List
 from copy import deepcopy
 from pydoc import locate
 
-import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
@@ -13,7 +12,7 @@ from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import (adapt_likelihood_config_for_blueice,
                         get_template_folder_list,
-                        get_file_path)
+                        load_yaml)
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -63,9 +62,7 @@ class BlueiceExtendedModel(StatisticalModel):
         Returns:
             BlueiceExtendedModel: Statistical model.
         """
-        file_path = get_file_path(config_file_path)
-        with open(file_path, "r") as f:
-            config = yaml.safe_load(f)
+        config = load_yaml(config_file_path)
         return cls(**config)
 
     @property
@@ -101,7 +98,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self._data = data
         self.is_data_set = True
 
-    def get_source_name_list(self, likelihood_name: str) -> List:
+    def get_source_name_list(self, likelihood_name: str) -> list:
         """Return a list of source names for a given likelihood term.
         The order is the same as used in the `source` column of the data,
         so this can be used to map the indices provided in the data to a

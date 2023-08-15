@@ -6,6 +6,7 @@ parameter_definition:
 
   livetime:
     nominal_value: 2.
+    ptype: livetime
     fittable: false
     description: Livetime in years
 

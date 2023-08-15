@@ -481,5 +481,5 @@ def deterministic_hash(thing, length=10):
     hashable = hashablize(thing)
     jsonned = json.dumps(hashable, cls=NumpyJSONEncoder)
     # disable bandit
-    digest = sha1(jsonned.encode("ascii")).digest()  # noqa
+    digest = sha1(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()

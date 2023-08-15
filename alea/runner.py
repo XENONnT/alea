@@ -140,6 +140,30 @@ class Runner:
 
         self._hypotheses_values = self._get_hypotheses()
 
+    @property
+    def generate_values(self) -> Dict[str, float]:
+        return self._generate_values
+
+    @generate_values.setter
+    def generate_values(self, value: Dict[str, float]) -> None:
+        if not all([isinstance(v, (float, int)) for v in value.values()]):
+            raise ValueError(
+                "generate_values should be a dict of float! " f"But {value} is provided."
+            )
+        self._generate_values = value
+
+    @property
+    def common_hypothesis(self) -> Dict[str, float]:
+        return self._common_hypothesis
+
+    @common_hypothesis.setter
+    def common_hypothesis(self, value: Dict[str, float]) -> None:
+        if not all([isinstance(v, (float, int)) for v in value.values()]):
+            raise ValueError(
+                "common_hypothesis should be a dict of float! " f"But {value} is provided."
+            )
+        self._common_hypothesis = value
+
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model."""
         parameter_list = sorted(self.model.get_parameter_list())
@@ -178,6 +202,10 @@ class Runner:
 
             array = deepcopy(self.common_hypothesis)
             array.update(hypothesis)
+            if not all([isinstance(v, (float, int)) for v in array.values()]):
+                raise ValueError(
+                    "hypothesis should be a dict of float! " f"But {array} is provided."
+                )
             hypotheses_values.append(array)
         return hypotheses_values
 
@@ -187,7 +215,7 @@ class Runner:
 
         result_names = [f"{i:d}" for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if ea in {"free", "null", "true"}:
+            if isinstance(ea, str) and (ea in {"free", "null", "true"}):
                 result_names[i] = ea
 
         metadata["date"] = datetime.now().strftime("%Y%m%d_%H:%M:%S")

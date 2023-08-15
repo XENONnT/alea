@@ -42,10 +42,10 @@ class TestBlueiceExtendedModel(TestCase):
         self.model.store_data(toydata_file, [data for k in self.model.likelihood_names])
         remove(toydata_file)
         self.assertEqual(len(data), self.n_likelihood_terms + 2)
-        if not (("ancillary_likelihood" in data) and ("generate_values" in data)):
-            raise ValueError("Data does not contain ancillary_likelihood and generate_values.")
+        if not (("ancillary_measurements" in data) and ("generate_values" in data)):
+            raise ValueError("Data does not contain ancillary_measurements and generate_values.")
         for k, v in data.items():
-            if k in {"ancillary_likelihood", "generate_values"}:
+            if k in {"ancillary_measurements", "generate_values"}:
                 continue
             elif "source" not in v.dtype.names:
                 raise ValueError("Data does not contain source information.")
@@ -70,6 +70,6 @@ class TestBlueiceExtendedModel(TestCase):
 class TestCustomAncillaryLikelihood(TestCase):
     """Test of the CustomAncillaryLikelihood class."""
 
-    def test_ancillary_likelihood(self):
-        """Test of the ancillary_likelihood method."""
+    def test_ancillary_measurements(self):
+        """Test of the ancillary_measurements method."""
         pass

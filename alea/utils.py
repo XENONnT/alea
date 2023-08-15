@@ -255,6 +255,27 @@ def add_i_batch(filename: str) -> str:
     return fpat_split[0] + "_{i_batch:d}" + fpat_split[1]
 
 
+def can_expand_grid(variations: dict) -> bool:
+    """Check if variations can be expanded into a grid.
+
+    Example:
+        >>> can_expand_grid({'a': [1, 2], 'b': [3, 4]})
+        True
+
+    """
+    is_list = [isinstance(value, list) for value in variations.values()]
+    if {True, False}.issubset(is_list):
+        raise ValueError(
+            "If some values in variations are lists, "
+            "all values must be lists or no values is list. "
+            f"But you are mixing lists and non-lists in {variations}."
+        )
+    if all(is_list):
+        return True
+    else:
+        return False
+
+
 def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str]]:
     """Expand dict into a list of dict, according to the itertools.product method, if necessary.
 
@@ -269,16 +290,8 @@ def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str
 
     result = cast(List[Union[dict, str]], [])
     for v in variations:
-        if isinstance(v, dict):
-            is_list = [isinstance(value, list) for value in v.values()]
-            if all(is_list):
-                result += convert_to_vary(v)
-            if {True, False}.issubset(is_list):
-                raise ValueError(
-                    "If some values in variations are lists, "
-                    "all values must be lists or no values is list. "
-                    f"But you are mixing lists and non-lists in {v}."
-                )
+        if isinstance(v, dict) and can_expand_grid(v):
+            result += convert_to_vary(v)
         else:
             result.append(v)
     return result

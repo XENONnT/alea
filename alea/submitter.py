@@ -409,6 +409,18 @@ class Submitter:
                 f"should be a subset of the fittable parameters "
                 f"{self.parameters_fittable} in the statistical model."
             )
+        if not all(
+            [isinstance(v, (float, int)) for v in function_args["generate_values"].values()]
+        ):
+            raise ValueError(
+                f"The generate_values {function_args['generate_values']} "
+                "should be all float or int."
+            )
+        if not all([isinstance(v, (float, int)) for v in function_args["nominal_values"].values()]):
+            raise ValueError(
+                f"The nominal_values {function_args['nominal_values']} "
+                "should be all float or int."
+            )
 
     def update_poi(self, function_args):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is

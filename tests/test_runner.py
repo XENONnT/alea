@@ -28,7 +28,7 @@ class TestRunner(TestCase):
         self.runner = Runner(
             statistical_model="alea.examples.gaussian_model.GaussianModel",
             poi="mu",
-            hypotheses=["free", "null", "true"],
+            hypotheses=["free", "zero", "true"],
             n_mc=self.n_mc,
             generate_values={"mu": 1.0, "sigma": 1.0},
             parameter_definition=gaussian_model_parameter_definition,

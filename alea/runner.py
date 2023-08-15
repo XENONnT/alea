@@ -132,6 +132,7 @@ class Runner:
 
     def _get_hypotheses(self):
         """Get generate values list from hypotheses."""
+        allowed_hypothesis_strs = ["zero", "true", "free"]
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
         if "free" not in hypotheses and self._compute_confidence_interval:
@@ -140,6 +141,8 @@ class Runner:
             raise ValueError("free hypothesis should be the first hypothesis!")
 
         for hypothesis in hypotheses:
+            if isinstance(hypothesis, str) and hypothesis not in allowed_hypothesis_strs:
+                raise ValueError(f"Hypothesis '{hypothesis}' is not defined. Allowed values are {allowed_hypothesis_strs}.")
             if hypothesis == "zero":
                 # there is no signal component
                 hypothesis = {self.poi: 0.0}

@@ -220,6 +220,57 @@ class Submitter:
                 "or the typing relatives of them."
             )
 
+    def merged_arguments_generator(self):
+        _, default_args, _ = Runner.runner_arguments()
+
+        to_zip = self.computation.get("to_zip", {})
+        to_vary = self.computation.get("to_vary", {})
+        in_common = self.computation.get("in_common", {})
+        allowed_keys = ["to_zip", "to_vary", "in_common"]
+        if set(self.computation.keys()) - set(allowed_keys):
+            raise ValueError(
+                "Keys in computation_options should be to_zip, to_vary or in_common, "
+                "unknown computation options: {}".format(
+                    set(self.computation.keys()) - set(allowed_keys)
+                )
+            )
+
+        merged_args_list = compute_variations(to_zip=to_zip, to_vary=to_vary, in_common=in_common)
+
+        common_runner_args = {
+            "statistical_model": self.statistical_model,
+            "statistical_model_config": self.statistical_model_config,
+            "poi": self.poi,
+        }
+
+        if set(merged_args_list[0].keys()) & set(common_runner_args.keys()):
+            raise ValueError(
+                "You specified the following arguments in computation_options, "
+                "but they are already specified in the submitter: "
+                f"{set(merged_args_list[0].keys()) & set(common_runner_args.keys())}."
+            )
+
+        for merged_args in tqdm(merged_args_list):
+            runner_args = deepcopy(default_args)
+            # update defaults with merged_args and common_runner_args
+            runner_args.update(merged_args)
+            runner_args.update(common_runner_args)
+
+            # update n_mc if n_batch is provided
+            self.update_n_batch(runner_args)
+            # update template_path in statistical_model_args if needed
+            self.update_template_path(runner_args)
+            # update folder and i_batch
+            self.update_output_toydata(runner_args, self.outputfolder)
+            # update generate_values and nominal_values for runner
+            self.update_runner_args(runner_args)
+            # update the path of limit_threshold
+            self.update_limit_threshold(runner_args, self.outputfolder)
+            # check if all arguments are supported
+            self.check_redunant_arguments(runner_args)
+
+            yield runner_args
+
     def computation_tickets_generator(self):
         """Get the submission script for the current configuration. It generates the submission
         script for each combination of the computation options.
@@ -236,109 +287,11 @@ class Submitter:
 
         """
 
-        to_zip = self.computation.get("to_zip", {})
-        to_vary = self.computation.get("to_vary", {})
-        in_common = self.computation.get("in_common", {})
-        allowed_keys = ["to_zip", "to_vary", "in_common"]
-        if set(self.computation.keys()) - set(allowed_keys):
-            raise ValueError(
-                "Keys in computation_options should be to_zip, to_vary or in_common, "
-                "unknown computation options: {}".format(
-                    set(self.computation.keys()) - set(allowed_keys)
-                )
-            )
+        _, _, annotations = Runner.runner_arguments()
 
-        merged_args_list = compute_variations(to_zip=to_zip, to_vary=to_vary, in_common=in_common)
-
-        # find run toyMC default args and annotations:
-        # reference: https://docs.python.org/3/library/inspect.html#inspect.getfullargspec
-        (
-            args,
-            varargs,
-            varkw,
-            defaults,
-            kwonlyargs,
-            kwonlydefaults,
-            annotations,
-        ) = inspect.getfullargspec(Runner.__init__)
-        # skip the first one because it is self(Runner itself)
-        default_args = dict(zip(args[1:], defaults))
-
-        common_runner_args = {
-            "statistical_model": self.statistical_model,
-            "statistical_model_config": self.statistical_model_config,
-            "poi": self.poi,
-        }
-
-        if set(merged_args_list[0].keys()) & set(common_runner_args.keys()):
-            raise ValueError(
-                "You specified the following arguments in computation_options, "
-                "but they are already specified in the submitter: "
-                f"{set(merged_args_list[0].keys()) & set(common_runner_args.keys())}."
-            )
-
-        for merged_args in tqdm(merged_args_list):
-            function_args = deepcopy(default_args)
-            # update defaults with merged_args and common_runner_args
-            function_args.update(merged_args)
-            function_args.update(common_runner_args)
-
-            # update folder and i_batch
-            for f in ["output_file", "toydata_file"]:
-                if (f in function_args) and (function_args[f] is not None):
-                    function_args[f] = os.path.join(
-                        self.outputfolder, add_i_batch(function_args[f])
-                    )
-
-            # check if there are redundant arguments
-            redundant_mask = function_args["parameter_definition"] is not None
-            redundant_mask |= function_args["likelihood_config"] is not None
-            if redundant_mask:
-                raise ValueError(
-                    "Please put the parameter_definition and likelihood_config "
-                    "into statistical model configuration file."
-                )
-
-            # check if all arguments are supported
-            intended_args = set(function_args.keys()) - {"n_batch"}
-            acceptable_args = set(args[1:] + self.parameters_not_fittable + ["poi_expectation"])
-            if not acceptable_args.issuperset(intended_args):
-                logging.warning(
-                    f"Not all arguments are supported, "
-                    f"default arguments will be used for the following arguments: "
-                    f"{acceptable_args - intended_args} "
-                    f"and the following arguments will be ignored: "
-                    f"{intended_args - acceptable_args}."
-                )
-
-            # distribute n_mc into n_batch, so that each batch will run n_mc/n_batch times
-            if function_args["n_mc"] % function_args["n_batch"] != 0:
-                raise ValueError("n_mc must be divisible by n_batch")
-            function_args["n_mc"] = function_args["n_mc"] // function_args["n_batch"]
-
-            # only update folder
-            if "limit_threshold" in function_args:
-                function_args["limit_threshold"] = os.path.join(
-                    self.outputfolder, function_args["limit_threshold"]
-                )
-
-            # update template_path in statistical_model_args if needed
-            self.update_statistical_model_args(function_args)
-            # update generate_values and nominal_values for runner
-            self.update_runner_args(function_args)
-
-            allowed_keys = list(annotations.keys()) + ["poi_expectation", "n_batch"]
-            if set(function_args.keys()) - set(allowed_keys):
-                raise ValueError(
-                    f"Keys in function_args should a subset of {allowed_keys}, "
-                    "unknown computation options: {}".format(
-                        set(function_args.keys()) - set(allowed_keys)
-                    )
-                )
-
-            n_batch = function_args["n_batch"]
-            for i_batch in range(n_batch):
-                i_args = deepcopy(function_args)
+        for runner_args in self.merged_arguments_generator():
+            for i_batch in range(runner_args["n_batch"]):
+                i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
                 for name in ["output_file", "toydata_file", "limit_threshold"]:
@@ -362,62 +315,107 @@ class Submitter:
 
                 yield script, i_args["output_file"]
 
-    def update_statistical_model_args(self, function_args):
+    def update_template_path(self, runner_args):
         """Update template_path in the statistical model arguments.
 
         Args:
-            function_args (dict): the arguments of Runner
+            runner_args (dict): the arguments of Runner
 
         """
         if self.template_path is None:
             return
-        if function_args["statistical_model_args"] is None:
-            function_args["statistical_model_args"] = {}
-        function_args["statistical_model_args"]["template_path"] = self.template_path
+        if runner_args["statistical_model_args"] is None:
+            runner_args["statistical_model_args"] = {}
+        runner_args["statistical_model_args"]["template_path"] = self.template_path
 
-    def update_runner_args(self, function_args):
+    @staticmethod
+    def update_output_toydata(runner_args, outputfolder):
+        for f in ["output_file", "toydata_file"]:
+            if (f in runner_args) and (runner_args[f] is not None):
+                runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
+
+    @staticmethod
+    def update_n_batch(runner_args):
+        """Update n_mc if n_batch is provided.
+
+        Distribute n_mc into n_batch, so that each batch will run n_mc/n_batch times.
+
+        """
+        if "n_mc" not in runner_args:
+            logging.warn("n_mc is not provided, it will be set to the default value of Runner")
+            return
+        if "n_batch" in runner_args:
+            if runner_args["n_mc"] % runner_args["n_batch"] != 0:
+                raise ValueError("n_mc must be divisible by n_batch")
+            runner_args["n_mc"] = runner_args["n_mc"] // runner_args["n_batch"]
+
+    @staticmethod
+    def check_redunant_arguments(runner_args):
+        signatures = inspect.signature(Runner.__init__)
+        args = list(signatures.parameters.keys())[1:] + ["n_batch"]
+        intended_args = set(runner_args.keys())
+        allowed_args = set(args)
+        if not intended_args.issubset(allowed_args):
+            raise ValueError(
+                f"Not all arguments are supported, "
+                f"arguments {allowed_args} are acceptable, "
+                f"and the following arguments is unknown: "
+                f"{intended_args - allowed_args}."
+            )
+
+    @staticmethod
+    def update_limit_threshold(runner_args, outputfolder):
+        if "limit_threshold" in runner_args:
+            if not os.path.exists(runner_args["limit_threshold"]):
+                runner_args["limit_threshold"] = os.path.join(
+                    outputfolder, runner_args["limit_threshold"]
+                )
+            if not os.path.exists(runner_args["limit_threshold"]):
+                raise FileNotFoundError(
+                    f"limit_threshold {runner_args['limit_threshold']} "
+                    "is not a valid filename or does not exist."
+                )
+
+    def update_runner_args(self, runner_args):
         """Update the runner arguments' generate_values and nominal_values. If the argument is
         fittable, it will be added to generate_values, otherwise it will be added to nominal_values.
 
         Args:
-            function_args (dict): the arguments of Runner
+            runner_args (dict): the arguments of Runner
 
         """
-        if function_args["generate_values"] is None:
-            function_args["generate_values"] = {}
-        if function_args["nominal_values"] is not None:
+        if runner_args["generate_values"] is None:
+            runner_args["generate_values"] = {}
+        if runner_args["nominal_values"] is not None:
             raise ValueError(
                 "nominal_values should not be provided directly, "
                 "it will be automatically deduced from the statistical model."
             )
-        function_args["nominal_values"] = {}
+        runner_args["nominal_values"] = {}
         kw_to_pop = []
-        for k, v in function_args.items():
+        for k, v in runner_args.items():
             if k in self.parameters_fittable:
-                function_args["generate_values"][k] = v
+                runner_args["generate_values"][k] = v
                 kw_to_pop.append(k)
             elif k in self.parameters_not_fittable:
-                function_args["nominal_values"][k] = v
+                runner_args["nominal_values"][k] = v
                 kw_to_pop.append(k)
         for k in kw_to_pop:
-            function_args.pop(k)
-        if set(function_args["generate_values"].keys()) - set(self.parameters_fittable):
+            runner_args.pop(k)
+        if set(runner_args["generate_values"].keys()) - set(self.parameters_fittable):
             raise ValueError(
-                f'The generate_values {function_args["generate_values"]} '
+                f'The generate_values {runner_args["generate_values"]} '
                 f"should be a subset of the fittable parameters "
                 f"{self.parameters_fittable} in the statistical model."
             )
-        if not all(
-            [isinstance(v, (float, int)) for v in function_args["generate_values"].values()]
-        ):
+        if not all([isinstance(v, (float, int)) for v in runner_args["generate_values"].values()]):
             raise ValueError(
-                f"The generate_values {function_args['generate_values']} "
+                f"The generate_values {runner_args['generate_values']} "
                 "should be all float or int."
             )
-        if not all([isinstance(v, (float, int)) for v in function_args["nominal_values"].values()]):
+        if not all([isinstance(v, (float, int)) for v in runner_args["nominal_values"].values()]):
             raise ValueError(
-                f"The nominal_values {function_args['nominal_values']} "
-                "should be all float or int."
+                f"The nominal_values {runner_args['nominal_values']} should be all float or int."
             )
 
     def submit(self):
@@ -435,11 +433,11 @@ class Submitter:
 
         """
         signatures = inspect.signature(Runner.__init__)
-        args = list(signatures.parameters.keys())
+        args = list(signatures.parameters.keys())[1:]
         parser = ArgumentParser(description="Command line running of run_toymcs")
 
         # skip the first one because it is self(Runner itself)
-        for arg in args[1:]:
+        for arg in args:
             parser.add_argument(f"--{arg}", type=str, required=True, help=None)
 
         parsed_args = parser.parse_args(args=sys_argv)

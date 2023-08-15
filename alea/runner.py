@@ -1,3 +1,4 @@
+import inspect
 from copy import deepcopy
 from typing import Optional, Dict, Union
 from datetime import datetime
@@ -84,7 +85,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
-        toydata_mode: str = "generate",
+        toydata_mode: str = "generate_and_write",
         toydata_file: str = "test_toydata_file.h5",
         only_toydata: bool = False,
         output_file: str = "test_output_file.h5",
@@ -167,6 +168,24 @@ class Runner:
                 "common_hypothesis should be a dict of float! " f"But {value} is provided."
             )
         self._common_hypothesis = value
+
+    @staticmethod
+    def runner_arguments():
+        """Get runner arguments and annotations."""
+        # find run toyMC default args and annotations:
+        # reference: https://docs.python.org/3/library/inspect.html#inspect.getfullargspec
+        (
+            args,
+            varargs,
+            varkw,
+            defaults,
+            kwonlyargs,
+            kwonlydefaults,
+            annotations,
+        ) = inspect.getfullargspec(Runner.__init__)
+        # skip the first one because it is self(Runner itself)
+        default_args = dict(zip(args[1:], defaults))
+        return args, default_args, annotations
 
     def _update_poi(
         self, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float]

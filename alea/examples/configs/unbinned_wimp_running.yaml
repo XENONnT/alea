@@ -22,15 +22,18 @@ computation_options:
 
   threshold:
     to_zip: {}
-    to_vary: {wimp_mass: [50]}
+    to_vary:
+      {
+        poi_expectation: "np.linspace(0, 30, 10)",
+        wimp_mass: [50],
+      }
     in_common:
       {
         hypotheses: ["free", "null", "true"],
         output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
-        limit_threshold: "thresholds.h5",
-        parameters_as_wildcards: ["poi_expectation", "n_mc", "n_batch"],
+        limit_threshold: "thresholds.json",
       }
 
   sensitivity:

@@ -1,8 +1,8 @@
 from alea.submitter import Submitter
 
 
-class SubmitterOSG(Submitter):
-    """Submitter for OSG cluster.
+class SubmitterHTCondor(Submitter):
+    """Submitter for htcondor cluster.
 
     Todo:
         Implement this class.

@@ -8,6 +8,7 @@ from alea.submitter import Submitter
 
 
 # suggested default arguments for utilix.batchq.submit_job
+# for XENONnT collaboration
 BATCHQ_DEFAULT_ARGUMENTS = {
     "hours": 1,  # in the unit of hours
     "mem_per_cpu": 2000,  # in the unit of Mb
@@ -20,13 +21,13 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 }
 
 
-class SubmitterMidway(Submitter):
-    """Submitter for Midway cluster, using utilix.batchq.submit_job. The default batchq arguments
-    are defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
+class SubmitterSlurm(Submitter):
+    """Submitter for slurm cluster, using utilix.batchq.submit_job. The default batchq arguments are
+    defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
     configuration file.
 
     Keyword Args:
-        midway_configurations (dict): The configurations for utilix.batchq.submit_job.
+        slurm_configurations (dict): The configurations for utilix.batchq.submit_job.
             There can be template_path inside it, indicating the path to the template.
 
     """
@@ -34,11 +35,11 @@ class SubmitterMidway(Submitter):
     max_jobs = 100
 
     def __init__(self, *args, **kwargs):
-        """Initialize the SubmitterMidway class."""
+        """Initialize the SubmitterSlurm class."""
         self.name = self.__class__.__name__
-        self.midway_configurations = kwargs.get("midway_configurations", {})
-        self.template_path = self.midway_configurations.pop("template_path", None)
-        self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.midway_configurations}
+        self.slurm_configurations = kwargs.get("slurm_configurations", {})
+        self.template_path = self.slurm_configurations.pop("template_path", None)
+        self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
         self.log_dir = self.outputfolder

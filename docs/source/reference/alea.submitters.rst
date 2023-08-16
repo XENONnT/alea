@@ -4,6 +4,14 @@ alea.submitters package
 Submodules
 ----------
 
+alea.submitters.htcondor module
+-------------------------------
+
+.. automodule:: alea.submitters.htcondor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 alea.submitters.local module
 ----------------------------
 
@@ -12,18 +20,10 @@ alea.submitters.local module
    :undoc-members:
    :show-inheritance:
 
-alea.submitters.midway module
------------------------------
+alea.submitters.slurm module
+----------------------------
 
-.. automodule:: alea.submitters.midway
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-alea.submitters.osg module
---------------------------
-
-.. automodule:: alea.submitters.osg
+.. automodule:: alea.submitters.slurm
    :members:
    :undoc-members:
    :show-inheritance:

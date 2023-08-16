@@ -1,5 +1,5 @@
 from .local import *
 
-from .midway import *
+from .slurm import *
 
-from .osg import *
+from .htcondor import *

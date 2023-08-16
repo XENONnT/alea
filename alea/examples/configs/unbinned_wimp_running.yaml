@@ -53,13 +53,13 @@ computation_options:
         toydata_file: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
       }
 
-midway_configurations:
+slurm_configurations:
   template_path: null
   hours: 1.5
   mem_per_cpu: 8000
   container: "xenonnt-development.simg"
   partition: "xenon1t"
-osg_configurations:
+htcondor_configurations:
   template_path: null
   request_memory: "8000Mb"
   singularity_container: null

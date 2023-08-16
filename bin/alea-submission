@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 
-from alea.submitters import SubmitterLocal, SubmitterMidway, SubmitterOSG, NeymanConstructor
+from alea.submitters import SubmitterLocal, SubmitterSlurm, SubmitterHTCondor, NeymanConstructor
 
 
 def main():
@@ -22,8 +22,10 @@ def main():
     # Exclusive groups on submission destination
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--local", action="store_true", help="Executes the defined jobs locally")
-    group.add_argument("--midway", action="store_true", help="Prepare submission for Midway")
-    group.add_argument("--osg", action="store_true", help="Write out files for submission to OSG")
+    group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
+    group.add_argument(
+        "--htcondor", action="store_true", help="Write out files for submission to htcondor"
+    )
     # Optional arguments
     parser.add_argument(
         "--debug",
@@ -39,15 +41,15 @@ def main():
     )
     parsed_args = parser.parse_args()
 
-    if sum([parsed_args.midway, parsed_args.osg, parsed_args.local]) != 1:
+    if sum([parsed_args.slurm, parsed_args.htcondor, parsed_args.local]) != 1:
         raise ValueError(
-            "You can only and must choose one of the following: --midway, --osg, --local"
+            "You can only and must choose one of the following: --slurm, --htcondor, --local"
         )
 
-    if parsed_args.midway:
-        destination = "midway"
-    elif parsed_args.osg:
-        destination = "osg"
+    if parsed_args.slurm:
+        destination = "slurm"
+    elif parsed_args.htcondor:
+        destination = "htcondor"
     elif parsed_args.local:
         destination = "local"
     kwargs = {
@@ -63,8 +65,8 @@ def main():
             raise ValueError("Threshold computation can only be done locally.")
 
     submitter_classes = {
-        "midway": SubmitterMidway,
-        "osg": SubmitterOSG,
+        "slurm": SubmitterSlurm,
+        "htcondor": SubmitterHTCondor,
         "local": SubmitterLocal if parsed_args.computation != "threshold" else NeymanConstructor,
     }
 

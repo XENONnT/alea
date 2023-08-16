@@ -8,12 +8,25 @@ from pydoc import locate
 from typing import Tuple
 import logging
 
-import numpy as np
+# These imports are needed to evaluate strings
+import numpy  # noqa: F401
+import numpy as np  # noqa: F401
+from scipy import stats  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 
 
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
+
+
+def evaluate_numpy_scipy_expression(value: str):
+    """Evaluate numpy(np) and scipy.stats expression."""
+    if value.startswith("stats."):
+        return eval(value)
+    elif value.startswith("np.") or value.startswith("numpy."):
+        return eval(value)
+    else:
+        raise ValueError(f"Expression {value} not understood.")
 
 
 def get_analysis_space(analysis_space: dict) -> list:
@@ -23,7 +36,7 @@ def get_analysis_space(analysis_space: dict) -> list:
     for element in analysis_space:
         for key, value in element.items():
             if isinstance(value, str) and value.startswith("np."):
-                eval_element = (key, eval(value))
+                eval_element = (key, evaluate_numpy_scipy_expression(value))
             elif isinstance(value, str):
                 eval_element = (key, np.fromstring(value, dtype=float, sep=" "))
             elif isinstance(value, list):
@@ -55,12 +68,23 @@ def adapt_likelihood_config_for_blueice(
         likelihood_config_copy["analysis_space"]
     )
 
-    likelihood_config_copy["default_source_class"] = locate(
-        likelihood_config_copy["default_source_class"]
-    )
+    if "default_source_class" in likelihood_config_copy:
+        likelihood_config_copy["default_source_class"] = locate(
+            likelihood_config_copy["default_source_class"]
+        )
 
     for source in likelihood_config_copy["sources"]:
-        source["templatename"] = get_file_path(source["template_filename"], template_folder_list)
+        if "template_filename" in source:
+            source["templatename"] = get_file_path(
+                source["template_filename"], template_folder_list
+            )
+        if "class" in source:
+            source["class"] = locate(source["class"])
+        if "template_filenames" in source:
+            source["templatenames"] = [
+                get_file_path(template_filename, template_folder_list)
+                for template_filename in source["template_filenames"]
+            ]
     return likelihood_config_copy
 
 

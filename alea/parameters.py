@@ -2,10 +2,6 @@ import warnings
 from typing import Any, Dict, List, Tuple, Iterator, Optional, Union, cast
 import pandas as pd
 
-# These imports are needed to evaluate the uncertainty string
-import numpy  # noqa: F401
-import scipy  # noqa: F401
-
 from alea.utils import within_limits, clip_limits
 
 
@@ -54,8 +50,8 @@ class Parameter:
         self.nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
-        self.uncertainty = uncertainty
         self.relative_uncertainty = relative_uncertainty
+        self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds

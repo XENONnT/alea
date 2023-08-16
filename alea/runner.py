@@ -312,7 +312,14 @@ class Runner:
         return result_names, result_dtype
 
     def _get_hypotheses(self):
-        """Get generate values list from hypotheses."""
+        """Get generate values list from hypotheses.
+
+        Caution:
+            When free hypothesis is provided, it should be the first hypothesis.
+            Free hypothesis means that all parameters are free to fit, it will
+            not use common_hypothesis!
+
+        """
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
         if len(hypotheses) == 0:
@@ -323,7 +330,10 @@ class Runner:
             raise ValueError("free hypothesis should be the first hypothesis!")
 
         for hypothesis in hypotheses:
-            if hypothesis == "null":
+            # translate hypothesis
+            if hypothesis == "free":
+                hypothesis = {}
+            elif hypothesis == "null":
                 # there is no signal component
                 hypothesis = {self.poi: 0.0}
             elif hypothesis == "true":
@@ -335,10 +345,14 @@ class Runner:
                 hypothesis = {
                     self.poi: self.generate_values.get(self.poi),
                 }
-            elif hypothesis == "free":
-                hypothesis = {}
 
-            array = deepcopy(self.common_hypothesis)
+            # if free hypothesis, will not use common_hypothesis
+            if hypothesis != "free":
+                array = deepcopy(self.common_hypothesis)
+            else:
+                array = {}
+
+            # update hypothesis
             array.update(hypothesis)
             if not all([isinstance(v, (float, int)) for v in array.values()]):
                 raise ValueError(

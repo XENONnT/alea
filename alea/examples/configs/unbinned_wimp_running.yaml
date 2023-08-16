@@ -14,7 +14,7 @@ computation_options:
     in_common:
       {
         hypotheses: ["free", "zero", "true"],
-        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         toydata_mode: "generate",
@@ -30,7 +30,7 @@ computation_options:
     in_common:
       {
         hypotheses: ["free", "zero", "true"],
-        output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         limit_threshold: "thresholds.json",
@@ -44,13 +44,13 @@ computation_options:
         poi_expectation: 0.,
         wimp_mass: 50,
         hypotheses: ["free", "zero", "true"],
-        output_file: "toymc_sensi_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_filename: "toymc_sensi_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         compute_confidence_interval: True,
         limit_threshold: "thresholds.h5",
         toydata_mode: "generate_and_write",
-        toydata_file: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        toydata_filename: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
       }
 
 slurm_configurations:

@@ -285,7 +285,7 @@ class Submitter:
             - Finally, it generates the submission script for each combination.
 
         Yields:
-            (str, str): the submission script and name output_file
+            (str, str): the submission script and name output_filename
 
         """
 
@@ -296,7 +296,7 @@ class Submitter:
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
-                for name in ["output_file", "toydata_file", "limit_threshold"]:
+                for name in ["output_filename", "toydata_filename", "limit_threshold"]:
                     if i_args.get(name, None) is not None:
                         # Note: here the later format will overwrite the previous one,
                         # so generate_values have the highest priority.
@@ -321,7 +321,7 @@ class Submitter:
 
                 script = "alea-run_toymc " + " ".join(map(shlex.quote, script.split(" ")))
 
-                yield script, i_args["output_file"]
+                yield script, i_args["output_filename"]
 
     @staticmethod
     def update_n_batch(runner_args):
@@ -340,7 +340,7 @@ class Submitter:
 
     @staticmethod
     def update_output_toydata(runner_args, outputfolder: str):
-        for f in ["output_file", "toydata_file"]:
+        for f in ["output_filename", "toydata_filename"]:
             if (f in runner_args) and (runner_args[f] is not None):
                 if "n_batch" in runner_args:
                     runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))

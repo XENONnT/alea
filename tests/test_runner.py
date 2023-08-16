@@ -23,8 +23,8 @@ class TestRunner(TestCase):
     def setUp(cls):
         """Initialise the Runner instance."""
         cls.running_config = load_yaml("unbinned_wimp_running.yaml")
-        cls.toydata_file = "simple_data.h5"
-        cls.output_file = "test_toymc.h5"
+        cls.toydata_filename = "simple_data.h5"
+        cls.output_filename = "test_toymc.h5"
         cls.n_mc = 3
 
     def set_gaussian_runner(self, toydata_mode="generate_and_store"):
@@ -39,8 +39,8 @@ class TestRunner(TestCase):
             parameter_definition=gaussian_model_parameter_definition,
             compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
             toydata_mode=toydata_mode,
-            toydata_file=self.toydata_file,
-            output_file=self.output_file,
+            toydata_filename=self.toydata_filename,
+            output_filename=self.output_filename,
         )
 
     def set_blueice_runner(self, toydata_mode="generate_and_store"):
@@ -55,8 +55,8 @@ class TestRunner(TestCase):
             statistical_model_config=self.running_config["statistical_model_config"],
             compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
             toydata_mode=toydata_mode,
-            toydata_file=self.toydata_file,
-            output_file=self.output_file,
+            toydata_filename=self.toydata_filename,
+            output_filename=self.output_filename,
         )
 
     def test_runners(self):
@@ -66,21 +66,21 @@ class TestRunner(TestCase):
             # test toydata_mode generate_and_store
             set_runner()
             self.runner.run()
-            remove(self.output_file)
+            remove(self.output_filename)
 
             # test toydata_mode read
             set_runner(toydata_mode="read")
             self.runner.run()
-            remove(self.toydata_file)
+            remove(self.toydata_filename)
 
             # check confidence interval computation
             if COMPUTE_CONFIDENCE_INTERVAL:
-                results = toyfiles_to_numpy(self.runner._output_file)
+                results = toyfiles_to_numpy(self.runner._output_filename)
                 mask = np.any(np.isnan(results["free"]["dl"]))
                 mask &= np.any(np.isnan(results["free"]["ul"]))
                 if mask:
                     raise ValueError("Confidence interval computation failed!")
-            remove(self.output_file)
+            remove(self.output_filename)
 
     def test_init_signatures(self):
         """Test the signatures of the Runner.__init__"""

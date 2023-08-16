@@ -93,7 +93,7 @@ class SubmitterSlurm(Submitter):
         """
         _jobname = kwargs.pop("jobname", self.name.lower())
         batchq_kwargs = {}
-        for job, (script, output_file) in enumerate(self.computation_tickets_generator()):
+        for job, (script, output_filename) in enumerate(self.computation_tickets_generator()):
             if self.debug:
                 print(script)
                 if job > 0:
@@ -102,7 +102,7 @@ class SubmitterSlurm(Submitter):
                 self.logging.info("Too many jobs. Sleeping for 30s.")
                 time.sleep(30)
             batchq_kwargs["jobname"] = f"{_jobname}_{job:03d}"
-            if output_file is not None:
-                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{output_file}.log")
+            if output_filename is not None:
+                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{output_filename}.log")
             self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
             self._submit(script, **batchq_kwargs)

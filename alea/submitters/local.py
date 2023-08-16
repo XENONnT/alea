@@ -136,11 +136,11 @@ class NeymanConstructor(SubmitterLocal):
             }
 
             # read the likelihood ratio
-            output_file = runner_args["output_file"]
-            # add a * to the output_file to read all the files
-            fpat_split = os.path.splitext(output_file)
-            output_file = fpat_split[0] + "*" + fpat_split[1]
-            results = toyfiles_to_numpy(output_file.format(**needed_kwargs))
+            output_filename = runner_args["output_filename"]
+            # add a * to the output_filename to read all the files
+            fpat_split = os.path.splitext(output_filename)
+            output_filename = fpat_split[0] + "*" + fpat_split[1]
+            results = toyfiles_to_numpy(output_filename.format(**needed_kwargs))
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)

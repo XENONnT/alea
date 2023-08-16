@@ -32,10 +32,10 @@ class Runner:
         nominal_values (dict): nominal values of parameters
         _compute_confidence_interval (bool): whether compute confidence interval
         _n_mc (int): number of Monte Carlo
-        _toydata_file (str): toydata filename
+        _toydata_filename (str): toydata filename
         _toydata_mode (str): toydata mode, 'read', 'generate', 'generate_and_store', 'no_toydata'
         _metadata (dict): metadata, if None, it is set to {}
-        _output_file (str): output filename
+        _output_filename (str): output filename
         _result_names (list): list of result names
         _result_dtype (list): list of result dtypes
         _hypotheses_values (list): list of values for hypotheses
@@ -63,9 +63,9 @@ class Runner:
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
         toydata_mode (str, optional (default='generate_and_write')):
             toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
-        toydata_file (str, optional (default=None)): toydata filename
+        toydata_filename (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
-        output_file (str, optional (default='test_toymc.h5')): output filename
+        output_filename (str, optional (default='test_toymc.h5')): output filename
         metadata (dict, optional (default=None)): metadata to be saved in output file
 
     """
@@ -87,9 +87,9 @@ class Runner:
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
         toydata_mode: str = "generate_and_write",
-        toydata_file: str = "test_toydata_file.h5",
+        toydata_filename: str = "test_toydata_filename.h5",
         only_toydata: bool = False,
-        output_file: str = "test_output_file.h5",
+        output_filename: str = "test_output_filename.h5",
         metadata: Optional[dict] = None,
     ):
         """Initialize statistical model, parameters list, and generate values list."""
@@ -145,9 +145,9 @@ class Runner:
         self.generate_values = generate_values if generate_values else {}
         self._compute_confidence_interval = compute_confidence_interval
         self._n_mc = n_mc
-        self._toydata_file = toydata_file
+        self._toydata_filename = toydata_filename
         self._toydata_mode = toydata_mode
-        self._output_file = output_file
+        self._output_filename = output_filename
         self.only_toydata = only_toydata
         self._metadata = metadata if metadata else {}
 
@@ -381,9 +381,9 @@ class Runner:
         array_metadatas = [{"hypotheses_values": ea} for ea in self._hypotheses_values]
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
 
-        print(f"Saving {self._output_file}")
+        print(f"Saving {self._output_filename}")
         numpy_to_toyfile(
-            self._output_file,
+            self._output_filename,
             numpy_arrays_and_names=numpy_arrays_and_names,
             metadata=metadata,
             array_metadatas=array_metadatas,
@@ -391,7 +391,7 @@ class Runner:
 
     def read_toydata(self):
         """Read toydata from file."""
-        toydata, toydata_names = toydata_from_file(self._toydata_file)
+        toydata, toydata_names = toydata_from_file(self._toydata_filename)
         return toydata, toydata_names
 
     def store_toydata(self, toydata, toydata_names):
@@ -400,8 +400,8 @@ class Runner:
         If toydata is a list of dict, convert it to a list of list.
 
         """
-        print(f"Saving {self._toydata_file}")
-        self.model.store_data(self._toydata_file, toydata, toydata_names)
+        print(f"Saving {self._toydata_filename}")
+        self.model.store_data(self._toydata_filename, toydata, toydata_names)
 
     def data_generator(self):
         """Generate, save or read toydata."""

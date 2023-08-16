@@ -88,9 +88,9 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            toydata_file = "simple_data.h5"
-            model.store_data(toydata_file, [data])
-            remove(toydata_file)
+            toydata_filename = "simple_data.h5"
+            model.store_data(toydata_filename, [data])
+            remove(toydata_filename)
             self.assertEqual(len(data), n + 2)
             if not (("ancillary_measurements" in data) and ("generate_values" in data)):
                 raise ValueError(

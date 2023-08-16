@@ -9,9 +9,8 @@ class TestTemplateSource(TestCase):
 
     def test_init_templates(self):
         """Test whether we can initialize template sources."""
-        parameter_definition = load_yaml("unbinned_wimp_statistical_model.yaml")[
-            "parameter_definition"
-        ]
-        likelihood_config = load_yaml("test_template_source.yaml")["likelihood_config"]
+        model_configs = load_yaml("unbinned_wimp_statistical_model_template_source_test.yaml")
+        parameter_definition = model_configs["parameter_definition"]
+        likelihood_config = model_configs["likelihood_config"]
         model = BlueiceExtendedModel(parameter_definition, likelihood_config)
         model.nominal_expectation_values

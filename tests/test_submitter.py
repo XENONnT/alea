@@ -3,7 +3,8 @@ import shutil
 import pytest
 from unittest import TestCase
 
-from alea.submitters import Submitter, SubmitterLocal
+from alea.submitter import Submitter
+from alea.submitters.local import SubmitterLocal
 
 
 @pytest.mark.usefixtures("rm_cache")

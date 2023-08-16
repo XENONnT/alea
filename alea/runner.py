@@ -332,33 +332,35 @@ class Runner:
         for hypothesis in hypotheses:
             # translate hypothesis
             if hypothesis == "free":
-                hypothesis = {}
+                # if free hypothesis, will not use common_hypothesis
+                h = {}
             elif hypothesis == "null":
-                # there is no signal component
-                hypothesis = {self.poi: 0.0}
+                # there is no poi
+                h = deepcopy(self.common_hypothesis)
+                h.update({self.poi: 0.0})
             elif hypothesis == "true":
-                # the true signal component is used
+                # the true poi is used
                 if self.poi not in self.generate_values:
                     raise ValueError(
                         f"{self.poi} should be provided in generate_values",
                     )
-                hypothesis = {
-                    self.poi: self.generate_values.get(self.poi),
-                }
-
-            # if free hypothesis, will not use common_hypothesis
-            if hypothesis != "free":
-                array = deepcopy(self.common_hypothesis)
-            else:
-                array = {}
-
-            # update hypothesis
-            array.update(hypothesis)
-            if not all([isinstance(v, (float, int)) for v in array.values()]):
-                raise ValueError(
-                    "hypothesis should be a dict of float! " f"But {array} is provided."
+                h = deepcopy(self.common_hypothesis)
+                h.update(
+                    {
+                        self.poi: self.generate_values.get(self.poi),
+                    }
                 )
-            hypotheses_values.append(array)
+            else:
+                if not isinstance(hypothesis, dict):
+                    raise ValueError(
+                        "If str hypothesis is not 'free', 'null' or 'true', " "it should be a dict!"
+                    )
+                h = deepcopy(self.common_hypothesis)
+                h.update(hypothesis)
+
+            if not all([isinstance(v, (float, int)) for v in h.values()]):
+                raise ValueError("hypothesis should be a dict of float! " f"But {h} is provided.")
+            hypotheses_values.append(h)
         return hypotheses_values
 
     def write_output(self, results):

@@ -58,23 +58,73 @@ class NeymanConstructor(SubmitterLocal):
 
     """
 
+    allowed_special_args = ["free_name", "true_name", "confidence_levels"]
+
     def submit(
         self,
         free_name: str = "free",
         true_name: str = "true",
         confidence_levels: List[float] = [0.8, 0.9, 0.95],
     ):
-        """Read the likelihood ratio from the output files and calculate the Neyman threshold.
+        """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
+        threshold will be saved into a json file. The threshold will be sorted based on the elements
+        of poi.
 
         Args:
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
 
+        Example:
+            >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))
+            {
+                "oyldh6bczx": {
+                    "hashed_keys": {
+                        "poi": "wimp_rate_multiplier",
+                        "nominal_values": {
+                            "wimp_mass": 0,
+                            "livetime": 0.0
+                        },
+                        "generate_values": {},
+                        "confidence_level": 0.9
+                    },
+                    "wimp_rate_multiplier": [
+                        0.0,
+                        1.0,
+                        2.0
+                    ],
+                    "threshold": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "poi_expectation": [
+                        null,
+                        null,
+                        null
+                    ]
+                },
+            }
+
         """
+
+        # overwrite the free_name, true_name and confidence_levels from the runner_args
+        runner_args = next(self.merged_arguments_generator())
+        if "free_name" in runner_args:
+            free_name = runner_args["free_name"]
+            self.logging.info(f"Overwrite free_name to {free_name}.")
+        if "true_name" in runner_args:
+            true_name = runner_args["true_name"]
+            self.logging.info(f"Overwrite true_name to {true_name}.")
+        if "confidence_levels" in runner_args:
+            confidence_levels = runner_args["confidence_levels"]
+            self.logging.info(f"Overwrite confidence_levels to {confidence_levels}.")
+
+        # initialize the runner
         script = next(self.computation_tickets_generator())[0]
         runner = self.initialized_runner(script, pop_limit_threshold=True)
 
+        # calculate the threshold, iterate over the output files
         threshold = cast(Dict[str, Any], {})
         for runner_args in self.merged_arguments_generator():
             # prepare the needed nominal_values and generate_values
@@ -115,6 +165,7 @@ class NeymanConstructor(SubmitterLocal):
             nominal_values.pop(self.poi, None)
             nominal_values.pop("poi_expectation", None)
 
+            # calculate the threshold given different confidence levels
             for confidence_level in confidence_levels:
                 q_llr = np.percentile(llrs, 100.0 * confidence_level).item()
                 hashed_keys = {

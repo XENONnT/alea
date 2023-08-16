@@ -58,6 +58,7 @@ class Submitter:
 
     config_file_path: str
     template_path: str
+    allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
     def __init__(
@@ -268,7 +269,7 @@ class Submitter:
             # update template_path and limit_threshold in statistical_model_args if needed
             self.update_statistical_model_args(runner_args, self.template_path)
             # check if all arguments are supported
-            self.check_redunant_arguments(runner_args)
+            self.check_redunant_arguments(runner_args, self.allowed_special_args)
 
             yield runner_args
 
@@ -417,9 +418,9 @@ class Submitter:
             )
 
     @staticmethod
-    def check_redunant_arguments(runner_args):
+    def check_redunant_arguments(runner_args, allowed_special_args: List[str] = []):
         signatures = inspect.signature(Runner.__init__)
-        args = list(signatures.parameters.keys())[1:] + ["n_batch"]
+        args = list(signatures.parameters.keys())[1:] + ["n_batch"] + allowed_special_args
         intended_args = set(runner_args.keys())
         allowed_args = set(args)
         if not intended_args.issubset(allowed_args):
@@ -430,7 +431,7 @@ class Submitter:
                 f"{intended_args - allowed_args}."
             )
 
-    def submit(self):
+    def submit(self, *arg, **kwargs):
         """Submit the jobs to the destinations."""
         raise NotImplementedError("You must write a submit function your submitter class")
 

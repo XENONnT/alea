@@ -35,6 +35,15 @@ def evaluate_numpy_scipy_expression(value: str):
         raise ValueError(f"Expression {value} not understood.")
 
 
+def evaluate_numpy_scipy_expression_in_dict(d: dict):
+    """Evaluate numpy(np) and scipy.stats expression in a dict."""
+    d_copy = deepcopy(d)
+    for k, v in d_copy.items():
+        if isinstance(v, str):
+            d_copy[k] = evaluate_numpy_scipy_expression(v).tolist()
+    return d_copy
+
+
 def get_analysis_space(analysis_space: dict) -> list:
     """Convert analysis_space to a list of tuples with evaluated values."""
     eval_analysis_space = []
@@ -296,6 +305,8 @@ def can_expand_grid(variations: dict) -> bool:
         True
 
     """
+
+    # check if all values are lists or no values is list
     is_list = [isinstance(value, list) for value in variations.values()]
     if {True, False}.issubset(is_list):
         raise ValueError(
@@ -323,6 +334,10 @@ def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str
 
     result = cast(List[Union[dict, str]], [])
     for v in variations:
+        # convert str to list first
+        if isinstance(v, dict):
+            v = evaluate_numpy_scipy_expression_in_dict(v)
+        # expand to grid if necessary
         if isinstance(v, dict) and can_expand_grid(v):
             result += convert_to_vary(v)
         else:
@@ -341,12 +356,15 @@ def convert_variations(variations: dict, iteration) -> list:
         list: a list of dict
 
     """
+
+    # evaluate numpy and scipy expression in variations
+    variations = evaluate_numpy_scipy_expression_in_dict(variations)
+
+    # expand to grid if necessary
     for k, v in variations.items():
-        if isinstance(v, str):
-            variations[k] = evaluate_numpy_scipy_expression(v).tolist()
-        if not isinstance(variations[k], list):
+        if not isinstance(v, list):
             raise ValueError(f"variations {k} must be a list, not {v} with {type(v)}")
-        variations[k] = expand_grid_dict(variations[k])
+        variations[k] = expand_grid_dict(v)
     result = [dict(zip(variations, t)) for t in iteration(*variations.values())]
     if result:
         return result

@@ -63,7 +63,7 @@ parameter_definition:
   er_band_shift:
     nominal_value: 0
     ptype: shape
-    uncertainty: null  # stats.uniform(loc=0, scale=2)
+    uncertainty: null  # stats.uniform(loc=-2, scale=4)
     # relative_uncertainty: false
     fittable: true
     blueice_anchors:

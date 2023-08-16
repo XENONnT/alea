@@ -385,7 +385,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         if efficiency_name not in source["parameters"]:
             raise ValueError(
-                f"The efficiency_name for source {source['name']:s}" " is not in its parameter list"
+                f"The efficiency_name for source {source['name']:s} is not in its parameter list"
             )
         efficiency_parameter = self.parameters[efficiency_name]
 

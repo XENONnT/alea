@@ -209,7 +209,7 @@ class Submitter:
             elif value == "False":
                 return False
             else:
-                raise ValueError(f"Unknown value type: {value}, " "it can only be True or False")
+                raise ValueError(f"Unknown value type: {value}, it can only be True or False")
         elif can_assign_to_typing(dict, annotation) or can_assign_to_typing(list, annotation):
             # the replacement is needed because the json.dumps adds spaces
             return loads(value)

@@ -28,7 +28,7 @@ You are now ready to use alea!
 ## Getting started
 The best way to get started is to check out the [documentation](https://alea.readthedocs.io/en/latest/) and have a look at our [tutorial notebooks](https://github.com/XENONnT/alea/tree/main/notebooks). To explore the notebooks interactively, you can use [Binder](https://mybinder.org/v2/gh/XENONnT/alea/HEAD?labpath=notebooks).
 
-## Ackgnowledgements
+## Acknowledgements
 `alea` is a public package inherited the spirits of previously private XENON likelihood definition and inference construction code `binference` that based on the blueice repo https://github.com/JelleAalbers/blueice.
 
 Binference was developed for XENON1T WIMP searches by Knut Dundas Morå, and for the first XENONnT results by Robert Hammann, Knut Dundas Morå and Tim Wolf.

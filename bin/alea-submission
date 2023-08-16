@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 
-from alea.submitters import SubmitterLocal, SubmitterSlurm, SubmitterHTCondor, NeymanConstructor
-
 
 def main():
     parser = ArgumentParser("Submitter script for toyMCs in alea")
@@ -41,17 +39,30 @@ def main():
     )
     parsed_args = parser.parse_args()
 
-    if sum([parsed_args.slurm, parsed_args.htcondor, parsed_args.local]) != 1:
+    if parsed_args.computation == "threshold":
+        if not parsed_args.local:
+            raise ValueError("Threshold computation can only be done locally.")
+
+    if parsed_args.local:
+        from alea.submitters.local import SubmitterLocal, NeymanConstructor
+
+        submitter_class = (
+            SubmitterLocal if parsed_args.computation != "threshold" else NeymanConstructor
+        )
+    elif parsed_args.slurm:
+        from alea.submitters.slurm import SubmitterSlurm
+
+        submitter_class = SubmitterSlurm
+    elif parsed_args.htcondor:
+        from alea.submitters.htcondor import SubmitterHTCondor
+
+        submitter_class = SubmitterHTCondor
+    else:
         raise ValueError(
-            "You can only and must choose one of the following: --slurm, --htcondor, --local"
+            "No submission destination specified. "
+            "Please specify one of the following: --local, --slurm, --htcondor"
         )
 
-    if parsed_args.slurm:
-        destination = "slurm"
-    elif parsed_args.htcondor:
-        destination = "htcondor"
-    elif parsed_args.local:
-        destination = "local"
     kwargs = {
         "computation": parsed_args.computation,
         "debug": parsed_args.debug,
@@ -60,17 +71,7 @@ def main():
     if parsed_args.outputfolder:
         kwargs["outputfolder"] = parsed_args.outputfolder
 
-    if parsed_args.computation == "threshold":
-        if destination != "local":
-            raise ValueError("Threshold computation can only be done locally.")
-
-    submitter_classes = {
-        "slurm": SubmitterSlurm,
-        "htcondor": SubmitterHTCondor,
-        "local": SubmitterLocal if parsed_args.computation != "threshold" else NeymanConstructor,
-    }
-
-    submitter = submitter_classes[destination].from_config(parsed_args.running_config, **kwargs)
+    submitter = submitter_class.from_config(parsed_args.running_config, **kwargs)
 
     submitter.submit()
 

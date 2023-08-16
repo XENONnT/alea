@@ -14,8 +14,6 @@ from .runner import *
 
 from .submitter import *
 
-from .submitters import *
-
 from .utils import *
 
 from .examples import *

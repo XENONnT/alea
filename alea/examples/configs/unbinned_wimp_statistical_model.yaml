@@ -6,11 +6,13 @@ parameter_definition:
 
   livetime_sr0:
     nominal_value: 0.2
+    ptype: livetime
     fittable: false
     description: Livetime of SR0 in years
 
   livetime_sr1:
     nominal_value: 1.0
+    ptype: livetime
     fittable: false
     description: Livetime of SR1 in years
 

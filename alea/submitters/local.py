@@ -127,6 +127,21 @@ class NeymanConstructor(SubmitterLocal):
         # calculate the threshold, iterate over the output files
         threshold = cast(Dict[str, Any], {})
         for runner_args in self.merged_arguments_generator():
+            # check if the free_name, true_name and confidence_levels are consistent
+            message = (
+                " is not consistent in one of your runner arguments, "
+                "please only specify it in in_common."
+            )
+            if runner_args.pop("free_name", free_name) != free_name:
+                raise ValueError("free_name" + message)
+            if runner_args.pop("true_name", true_name) != true_name:
+                raise ValueError("true_name" + message)
+            new_confidence_levels = runner_args.pop("confidence_levels", confidence_levels)
+            mask = any([n_c != c for n_c, c in zip(new_confidence_levels, confidence_levels)])
+            mask |= len(new_confidence_levels) != len(confidence_levels)
+            if mask:
+                raise ValueError("confidence_levels" + message)
+
             # prepare the needed nominal_values and generate_values
             nominal_values = runner_args["nominal_values"]
             generate_values = runner_args["generate_values"]

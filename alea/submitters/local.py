@@ -120,6 +120,13 @@ class NeymanConstructor(SubmitterLocal):
             confidence_levels = runner_args["confidence_levels"]
             self.logging.info(f"Overwrite confidence_levels to {confidence_levels}.")
 
+        # extract limit_threshold from the statistical_model_args
+        limit_threshold = runner_args["statistical_model_args"].get("limit_threshold", None)
+        if limit_threshold is None:
+            raise ValueError("Please specify the limit_threshold at in_common.")
+        if os.path.splitext(limit_threshold)[-1] != ".json":
+            raise ValueError("The limit_threshold file should be a json file.")
+
         # initialize the runner
         script = next(self.computation_tickets_generator())[0]
         runner = self.initialized_runner(script, pop_limit_threshold=True)
@@ -212,8 +219,6 @@ class NeymanConstructor(SubmitterLocal):
             threshold[k]["poi_expectation"] = [x[2] for x in sorted_pairs]
 
         # save the threshold into a json file
-        statistical_model_args = runner_args["statistical_model_args"]
-        if os.path.splitext(statistical_model_args["limit_threshold"])[-1] != ".json":
-            raise ValueError("The limit_threshold file should be a json file.")
-        with open(statistical_model_args["limit_threshold"], mode="w") as f:
+        with open(limit_threshold, mode="w") as f:
             json.dump(threshold, f, indent=4)
+        print(f"Saving {limit_threshold}")

@@ -393,10 +393,9 @@ class Submitter:
     @staticmethod
     def update_limit_threshold(runner_args, outputfolder: str):
         if "limit_threshold" in runner_args:
-            if not os.path.exists(runner_args["limit_threshold"]):
-                runner_args["limit_threshold"] = os.path.join(
-                    outputfolder, runner_args["limit_threshold"]
-                )
+            runner_args["limit_threshold"] = os.path.join(
+                outputfolder, runner_args["limit_threshold"]
+            )
 
     @staticmethod
     def update_statistical_model_args(

@@ -83,12 +83,23 @@ def adapt_likelihood_config_for_blueice(
         likelihood_config_copy["analysis_space"]
     )
 
-    likelihood_config_copy["default_source_class"] = locate(
-        likelihood_config_copy["default_source_class"]
-    )
+    if "default_source_class" in likelihood_config_copy:
+        likelihood_config_copy["default_source_class"] = locate(
+            likelihood_config_copy["default_source_class"]
+        )
 
     for source in likelihood_config_copy["sources"]:
-        source["templatename"] = get_file_path(source["template_filename"], template_folder_list)
+        if "template_filename" in source:
+            source["templatename"] = get_file_path(
+                source["template_filename"], template_folder_list
+            )
+        if "class" in source:
+            source["class"] = locate(source["class"])
+        if "template_filenames" in source:
+            source["templatenames"] = [
+                get_file_path(template_filename, template_folder_list)
+                for template_filename in source["template_filenames"]
+            ]
     return likelihood_config_copy
 
 

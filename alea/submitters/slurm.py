@@ -13,7 +13,6 @@ BATCHQ_DEFAULT_ARGUMENTS = {
     "hours": 1,  # in the unit of hours
     "mem_per_cpu": 2000,  # in the unit of Mb
     "container": "xenonnt-development.simg",
-    "bind": ("/dali", "/project", "/project2"),
     "partition": "xenon1t",
     "qos": "xenon1t",
     "cpus_per_task": 1,

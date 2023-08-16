@@ -27,12 +27,12 @@ class TestRunner(TestCase):
         cls.output_file = "test_toymc.h5"
         cls.n_mc = 3
 
-    def set_gaussian_runner(self, toydata_mode="generate_and_write"):
+    def set_gaussian_runner(self, toydata_mode="generate_and_store"):
         """Set a new runner instance with GaussianModel."""
         self.runner = Runner(
             statistical_model="alea.examples.gaussian_model.GaussianModel",
             poi="mu",
-            hypotheses=["free", "null", "true"],
+            hypotheses=["free", "zero", "true"],
             n_mc=self.n_mc,
             generate_values={"mu": 1.0},
             nominal_values={"sigma": 1.0},
@@ -43,7 +43,7 @@ class TestRunner(TestCase):
             output_file=self.output_file,
         )
 
-    def set_blueice_runner(self, toydata_mode="generate_and_write"):
+    def set_blueice_runner(self, toydata_mode="generate_and_store"):
         """Set a new runner instance with BlueiceExtendedModel."""
         parameter_zvc = self.running_config["computation_options"]["discovery_power"]
         self.runner = Runner(
@@ -63,7 +63,7 @@ class TestRunner(TestCase):
         """Test of the simulate_and_fit and write_output method."""
         set_runners = [self.set_gaussian_runner, self.set_blueice_runner]
         for set_runner in set_runners:
-            # test toydata_mode generate_and_write
+            # test toydata_mode generate_and_store
             set_runner()
             self.runner.run()
             remove(self.output_file)

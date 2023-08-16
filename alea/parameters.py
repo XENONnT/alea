@@ -1,5 +1,6 @@
 import warnings
 from typing import Any, Dict, List, Tuple, Iterator, Optional, Union, cast
+import pandas as pd
 
 from alea.utils import within_limits, clip_limits, evaluate_numpy_scipy_expression
 
@@ -19,9 +20,12 @@ class Parameter:
         relative_uncertainty (bool, optional (default=None)):
             Indicates if the uncertainty is relative to the nominal_value.
         blueice_anchors (list, optional (default=None)): Anchors for blueice template morphing.
-        fit_limits (tuple, optional (default=None)): The limits for fitting the parameter.
-        parameter_interval_bounds (tuple, optional (default=None)):
-            Limits for computing confidence intervals
+            Blueice will load the template for the provided values and then interpolate
+            for any value in between.
+        fit_limits (Tuple[float, float], optional (default=None)):
+            The limits for fitting the parameter.
+        parameter_interval_bounds (Tuple[float, float], optional (default=None)):
+            Limits for computing confidence intervals.
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
         description (str, optional (default=None)): A description of the parameter.
 
@@ -213,6 +217,26 @@ class Parameters:
         _repr = f"{self.__class__.__module__}.{self.__class__.__qualname__}"
         _repr += f"({parameter_str})"
         return _repr
+
+    def __str__(self) -> str:
+        """Return an overview table of all parameters."""
+        par_list = []
+        for p in self:
+            par_dict = {}
+            for k, v in p.__dict__.items():
+                # replace hidden attributes with non-hidden properties
+                if k.startswith("_"):
+                    par_dict[k[1:]] = v
+                else:
+                    par_dict[k] = v
+            par_list.append(par_dict)
+
+        df = pd.DataFrame(par_list)
+        # make name column the index
+        df.set_index("name", inplace=True)
+        df.index.name = None
+
+        return df.to_string()
 
     def add_parameter(self, parameter: Parameter) -> None:
         """Adds a Parameter object to the Parameters collection.

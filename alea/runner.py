@@ -33,7 +33,7 @@ class Runner:
         _compute_confidence_interval (bool): whether compute confidence interval
         _n_mc (int): number of Monte Carlo
         _toydata_file (str): toydata filename
-        _toydata_mode (str): toydata mode, 'read', 'generate', 'generate_and_write', 'no_toydata'
+        _toydata_mode (str): toydata mode, 'read', 'generate', 'generate_and_store', 'no_toydata'
         _metadata (dict): metadata, if None, it is set to {}
         _output_file (str): output filename
         _result_names (list): list of result names
@@ -47,7 +47,7 @@ class Runner:
         n_mc (int): number of Monte Carlo
         common_hypothesis (dict, optional (default=None)):
             common hypothesis, the values are copied to each hypothesis
-        generate_values (dict, optional (default=None)):
+        generate_values (Dict[str, float], optional (default=None)):
             generate values of toydata. If None, toydata depend on statistical model.
         nominal_values (dict, optional (default=None)):
             nominal values of parameters. If None, nothing will be assigned to model.
@@ -62,7 +62,7 @@ class Runner:
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
         toydata_mode (str, optional (default='generate_and_write')):
-            toydata mode, choice from 'read', 'generate', 'generate_and_write', 'no_toydata'
+            toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
         toydata_file (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
         output_file (str, optional (default='test_toymc.h5')): output filename
@@ -320,6 +320,7 @@ class Runner:
             not use common_hypothesis!
 
         """
+        allowed_hypothesis_strs = ["zero", "true", "free"]
         hypotheses_values = []
         hypotheses = deepcopy(self.hypotheses)
         if len(hypotheses) == 0:
@@ -334,7 +335,7 @@ class Runner:
             if hypothesis == "free":
                 # if free hypothesis, will not use common_hypothesis
                 h = {}
-            elif hypothesis == "null":
+            elif hypothesis == "zero":
                 # there is no poi
                 h = deepcopy(self.common_hypothesis)
                 h.update({self.poi: 0.0})
@@ -353,7 +354,7 @@ class Runner:
             else:
                 if not isinstance(hypothesis, dict):
                     raise ValueError(
-                        "If str hypothesis is not 'free', 'null' or 'true', " "it should be a dict!"
+                        f"If str hypothesis is not {allowed_hypothesis_strs}, it should be a dict!"
                     )
                 h = deepcopy(self.common_hypothesis)
                 h.update(hypothesis)
@@ -369,7 +370,7 @@ class Runner:
 
         result_names = [f"{i:d}" for i in range(len(self._hypotheses_values))]
         for i, ea in enumerate(self.hypotheses):
-            if isinstance(ea, str) and (ea in {"free", "null", "true"}):
+            if isinstance(ea, str) and (ea in {"free", "zero", "true"}):
                 result_names[i] = ea
 
         metadata["date"] = datetime.now().strftime("%Y%m%d_%H:%M:%S")
@@ -393,7 +394,7 @@ class Runner:
         toydata, toydata_names = toydata_from_file(self._toydata_file)
         return toydata, toydata_names
 
-    def write_toydata(self, toydata, toydata_names):
+    def store_toydata(self, toydata, toydata_names):
         """Write toydata to file.
 
         If toydata is a list of dict, convert it to a list of list.
@@ -408,7 +409,7 @@ class Runner:
         if self._toydata_mode not in {
             "read",
             "generate",
-            "generate_and_write",
+            "generate_and_store",
             "no_toydata",
         }:
             raise ValueError(f"Unknown toydata mode: {self._toydata_mode}")
@@ -435,9 +436,9 @@ class Runner:
             toydata_names = None
         # generate toydata
         for i_mc in range(self._n_mc):
-            if self._toydata_mode == "generate" or self._toydata_mode == "generate_and_write":
+            if self._toydata_mode == "generate" or self._toydata_mode == "generate_and_store":
                 data = self.model.generate_data(**self.generate_values)
-                if self._toydata_mode == "generate_and_write":
+                if self._toydata_mode == "generate_and_store":
                     # append toydata
                     toydata.append(data)
             elif self._toydata_mode == "read":
@@ -446,8 +447,8 @@ class Runner:
                 data = None
             yield data
         # save toydata
-        if self._toydata_mode == "generate_and_write":
-            self.write_toydata(toydata, toydata_names)
+        if self._toydata_mode == "generate_and_store":
+            self.store_toydata(toydata, toydata_names)
 
     def simulate(self):
         """Only generate toydata."""

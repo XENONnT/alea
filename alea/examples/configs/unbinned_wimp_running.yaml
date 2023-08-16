@@ -13,7 +13,7 @@ computation_options:
       }
     in_common:
       {
-        hypotheses: ["free", "null", "true"],
+        hypotheses: ["free", "zero", "true"],
         output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
@@ -29,7 +29,7 @@ computation_options:
       }
     in_common:
       {
-        hypotheses: ["free", "null", "true"],
+        hypotheses: ["free", "zero", "true"],
         output_file: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
@@ -43,7 +43,7 @@ computation_options:
       {
         poi_expectation: 0.,
         wimp_mass: 50,
-        hypotheses: ["free", "null", "true"],
+        hypotheses: ["free", "zero", "true"],
         output_file: "toymc_sensi_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,

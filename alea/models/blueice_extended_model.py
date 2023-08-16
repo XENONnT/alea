@@ -3,7 +3,6 @@ from copy import deepcopy
 from pydoc import locate
 from typing import Dict, Callable, Union, cast
 
-import yaml
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
@@ -12,7 +11,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list
+from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -70,8 +69,7 @@ class BlueiceExtendedModel(StatisticalModel):
             BlueiceExtendedModel: Statistical model.
 
         """
-        with open(config_file_path, "r") as f:
-            config = yaml.safe_load(f)
+        config = load_yaml(config_file_path)
         return cls(**config)
 
     @property
@@ -98,13 +96,33 @@ class BlueiceExtendedModel(StatisticalModel):
             data = dict(zip(self.likelihood_names + ["generate_values"], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
-                ll_term = self._likelihood.likelihood_list[i]
+                ll_term = self.likelihood_list[i]
                 if dataset_name != ll_term.pdf_base_config["name"]:
                     raise ValueError("Likelihood names do not match.")
                 ll_term.set_data(d)
 
         self._data = data
         self.is_data_set = True
+
+    def get_source_name_list(self, likelihood_name: str) -> list:
+        """Return a list of source names for a given likelihood term. The order is the same as used
+        in the `source` column of the data, so this can be used to map the indices provided in the
+        data to a source name.
+
+        Args:
+            likelihood_name (str): Name of the likelihood.
+
+        Returns:
+            list: List of source names.
+
+        """
+        ll_index = self.likelihood_names.index(likelihood_name)
+        return self.likelihood_list[ll_index].source_name_list
+
+    @property
+    def likelihood_list(self) -> List:
+        """Return a list of likelihood terms."""
+        return self._likelihood.likelihood_list
 
     def get_expectation_values(self, **kwargs) -> dict:
         """Return total expectation values (summed over all likelihood terms with the same name)
@@ -256,7 +274,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         # last one is AncillaryLikelihood
-        return [BlueiceDataGenerator(ll_term) for ll_term in self._likelihood.likelihood_list[:-1]]
+        return [BlueiceDataGenerator(ll_term) for ll_term in self.likelihood_list[:-1]]
 
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
@@ -311,7 +329,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         ancillary_measurements = {}
-        anc_ll = self._likelihood.likelihood_list[-1]
+        anc_ll = self.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
             parameter_meas = gen.rvs()

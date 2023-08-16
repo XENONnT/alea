@@ -2,142 +2,194 @@ import json
 import warnings
 import logging
 
-import blueice
 import numpy as np
 from scipy.interpolate import interp1d
+from blueice import HistogramPdfSource
 from inference_interface import template_to_multihist
+
+from alea.utils import get_file_path
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
 
 
-class TemplateSource(blueice.HistogramPdfSource):
-    """A source that constructs a  from a template histogram :param templatename: root file to open.
+class TemplateSource(HistogramPdfSource):
+    """A source defined with a template histogram. The parameters are set in self.config.
+    "templatename", "histname", "analysis_space" must be in self.config.
 
-    :param histname: Histogram name. :param named_parameters: list of config setting names to pass
-    to .format on histname and filename. :param in_events_per_bin: if True, histogram is taken to be
-    in events per day / bin, if False or absent, taken to be events per day / bin volume :param
-    histogram_multiplier: multiply histogram by this number :param log10_bins: List of axis numbers.
-    If True, bin edges on this axis in the root file are log10() of the actual bin edges.
+    Attributes:
+        config (dict): The configuration of the source.
+        dtype (list): The data type of the source.
+        _bin_volumes (numpy.ndarray): The bin volumes of the source.
+        _n_events_histogram (multihist.MultiHistBase):
+            The histogram of the number of events of the source.
+        events_per_day (float): The number of events per day of the source.
+        _pdf_histogram (multihist.MultiHistBase):
+            The histogram of the probability density function of the source.
+
+    Args:
+        config (dict): The configuration of the source.
+        templatename: Hdf5 file to open.
+        histname: Histogram name.
+        named_parameters (list):
+            List of config setting names to pass to .format on histname and filename.
+        normalise_template (bool): Normalise the template histogram.
+        in_events_per_bin (bool):
+            If True, histogram is in events per day / bin.
+            If False or absent, histogram is already pdf.
+        histogram_scale_factor (float): Multiply histogram by this number
+        convert_to_uniform (bool): Convert the histogram to a uniform per bin distribution.
+        log10_bins (list):
+            List of axis numbers.
+            If True, bin edges on this axis in the hdf5 file are log10() of the actual bin edges.
 
     """
 
+    def _check_binning(self, h, histogram_info):
+        """Check if the histogram"s bin edges are the same to analysis_space.
+
+        Args:
+            h (multihist.MultiHistBase): The histogram to check.
+            histogram_info (str): Information of the histogram.
+
+        """
+        # Deal with people who have log10"d their bins
+        for axis_i in self.config.get("log10_bins", []):
+            h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
+
+        # Check if the histogram bin edges are correct
+        analysis_space = self.config["analysis_space"]
+        for axis_i, (_, expected_bin_edges) in enumerate(analysis_space):
+            expected_bin_edges = np.array(expected_bin_edges)
+            seen_bin_edges = h.bin_edges[axis_i]
+            # If 1D, hist1d returns bin_edges straight, not as list
+            if len(analysis_space) == 1:
+                seen_bin_edges = h.bin_edges
+            logging.debug("axis_i: " + str(axis_i))
+            logging.debug("expected_bin_edges: " + str(expected_bin_edges))
+            logging.debug("seen_bin_edges: " + str(seen_bin_edges))
+            logging.debug("h.bin_edges type" + str(h.bin_edges))
+            if len(seen_bin_edges) != len(expected_bin_edges):
+                raise ValueError(
+                    f"Axis {axis_i:d} of histogram {histogram_info} "
+                    f"has {len(seen_bin_edges)} bin edges, but expected {expected_bin_edges}."
+                )
+            try:
+                np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=2)
+            except AssertionError:
+                warnings.warn(
+                    f"Axis {axis_i:d} of histogram {histogram_info} "
+                    f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
+                    "Since length matches, setting it expected values..."
+                )
+                h.bin_edges[axis_i] = expected_bin_edges
+
+    @property
+    def format_named_parameters(self):
+        """Get the named parameters in the config to dictionary format."""
+        format_named_parameters = {
+            k: self.config[k] for k in self.config.get("named_parameters", [])
+        }
+        return format_named_parameters
+
     def build_histogram(self):
-        format_dict = {k: self.config[k] for k in self.config.get("named_parameters", [])}
-        logging.debug("loading template")
-        templatename = self.config["templatename"].format(**format_dict)
-        histname = self.config["histname"].format(**format_dict)
-
-        slice_args = self.config.get("slice_args", {})
-        if isinstance(slice_args, dict):
-            slice_args = [slice_args]
-
+        """Build the histogram of the source."""
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+        histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
+        if np.min(h.histogram) < 0:
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
 
         if self.config.get("normalise_template", False):
             h /= h.n
-            if not self.config.get("in_events_per_bin", True):
-                h.histogram *= h.bin_volumes()
+        if not self.config.get("in_events_per_bin", True):
+            h.histogram *= h.bin_volumes()
+
+        h = self.apply_slice_args(h)
+
+        # Fix the bin sizes
+        if can_check_binning:
+            histogram_info = f"{histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
+
+        self.set_dtype()
+        self.set_pdf_histogram(h)
+
+    def apply_slice_args(self, h, slice_args=None):
+        """Apply slice arguments to the histogram.
+
+        Args:
+            h (multihist.MultiHistBase): The histogram to apply the slice arguments to.
+            slice_args (dict): The slice arguments to apply.
+                The sum_axis, slice_axis, and slice_axis_limits are supported.
+
+        """
+        if slice_args is None:
+            slice_args = self.config.get("slice_args", {})
+            if isinstance(slice_args, dict):
+                slice_args = [slice_args]
 
         for sa in slice_args:
+            sum_axis = sa.get("sum_axis", None)
             slice_axis = sa.get("slice_axis", None)
-            # Decide if you wish to sum the histogram into lower dimensions or
-            sum_axis = sa.get("sum_axis", False)
-            collapse_axis = sa.get("collapse_axis", None)
-            collapse_slices = sa.get("collapse_slices", None)
             if slice_axis is not None:
-                slice_axis_number = h.get_axis_number(slice_axis)
-                bes = h.bin_edges[slice_axis_number]
-                slice_axis_limits = sa.get("slice_axis_limits", [bes[0], bes[-1]])
-                if sum_axis:
-                    logging.debug(
-                        f"Slice and sum over axis {slice_axis} from "
-                        f"{slice_axis_limits[0]} to {slice_axis_limits[1]}"
-                    )
-                    axis_names = h.axis_names_without(slice_axis)
-                    h = h.slicesum(
-                        axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                    )
-                    h.axis_names = axis_names
-                else:
-                    logging.debug(f"Normalization before slicing: {h.n}.")
-                    logging.debug(
-                        f"Slice over axis {slice_axis} from {slice_axis_limits[0]} to "
-                        f"{slice_axis_limits[1]}"
-                    )
-                    h = h.slice(
-                        axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                    )
-                    logging.debug(f"Normalization after slicing: {h.n}.")
+                # When slice_axis is None, slice_axis_limits is not used
+                bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
+                slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
+            # sum and/or slice the histogram
+            if (sum_axis is not None) and (slice_axis is not None):
+                logging.debug(
+                    f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} "
+                    f"to {slice_axis_limits[1]}"
+                )
+                h = h.slicesum(
+                    start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis
+                )
+            elif sum_axis is not None:
+                logging.debug(f"Sum over axis {sum_axis}")
+                h = h.sum(axis=sum_axis)
+            elif slice_axis is not None:
+                logging.debug(
+                    f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
+                    f"to {slice_axis_limits[1]}"
+                )
+                logging.debug(f"Normalization before slicing: {h.n}.")
+                h = h.slice(start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis)
+                logging.debug(f"Normalization after slicing: {h.n}.")
+        return h
 
-            if collapse_axis is not None:
-                if collapse_slices is None:
-                    raise ValueError("To collapse you must supply collapse_slices")
-                h = h.collapse_bins(collapse_slices, axis=collapse_axis)
-
+    def set_dtype(self):
+        """Set the data type of the source."""
         self.dtype = []
         for n, _ in self.config["analysis_space"]:
             self.dtype.append((n, float))
         self.dtype.append(("source", int))
 
-        # Fix the bin sizes
-        if can_check_binning:
-            # Deal with people who have log10'd their bins
-            for axis_i in self.config.get("log10_bins", []):
-                h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
-
-            # Check if the histogram bin edges are correct
-            for axis_i, (_, expected_bin_edges) in enumerate(self.config["analysis_space"]):
-                expected_bin_edges = np.array(expected_bin_edges)
-                seen_bin_edges = h.bin_edges[axis_i]
-                # If 1D, hist1d returns bin_edges straight, not as list
-                if len(self.config["analysis_space"]) == 1:
-                    seen_bin_edges = h.bin_edges
-                logging.debug("axis_i: " + str(axis_i))
-                logging.debug("expected_bin_edges: " + str(expected_bin_edges))
-                logging.debug("seen_bin_edges: " + str(seen_bin_edges))
-                logging.debug("h.bin_edges type" + str(h.bin_edges))
-                if len(seen_bin_edges) != len(expected_bin_edges):
-                    raise ValueError(
-                        "Axis %d of histogram %s in root file %s has %d bin edges, but expected %d"
-                        % (
-                            axis_i,
-                            histname,
-                            templatename,
-                            len(seen_bin_edges),
-                            len(expected_bin_edges),
-                        )
-                    )
-                try:
-                    np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=2)
-                except AssertionError:
-                    warnings.warn(
-                        "Axis %d of histogram %s in root file %s has bin edges %s, "
-                        "but expected %s. Since length matches, setting it expected values..."
-                        % (axis_i, histname, templatename, seen_bin_edges, expected_bin_edges)
-                    )
-                    h.bin_edges[axis_i] = expected_bin_edges
-
-        self._bin_volumes = h.bin_volumes()  # TODO: make alias
-        # Shouldn't be in HistogramSource... anyway
+    def set_pdf_histogram(self, h):
+        """Set the histogram of the probability density function of the source."""
+        self._bin_volumes = h.bin_volumes()
+        # Should not be in HistogramSource... anyway
         self._n_events_histogram = h.similar_blank_histogram()
 
-        h *= self.config.get("histogram_scale_factor", 1)
+        histogram_scale_factor = self.config.get("histogram_scale_factor", 1)
+        h *= histogram_scale_factor
         logging.debug(
-            f"Multiplying histogram with histogram_scale_factor "
-            f"{self.config.get('histogram_scale_factor', 1)}. "
+            f"Multiplying histogram with histogram_scale_factor {histogram_scale_factor}. "
             f"Histogram is now normalised to {h.n}."
         )
 
-        # Convert h to density...
-        if self.config.get("in_events_per_bin"):
-            h.histogram /= h.bin_volumes()
-        self.events_per_day = (h.histogram * self._bin_volumes).sum()
+        self.events_per_day = h.n
         logging.debug(f"events_per_day: {self.events_per_day}")
 
+        # Convert h to density...
+        if self.config.get("in_events_per_bin", True):
+            h.histogram /= self._bin_volumes
+
         # ... and finally to probability density
-        if 0 < self.events_per_day:
+        if self.events_per_day > 0:
             h.histogram /= self.events_per_day
+        else:
+            raise ValueError("Sum of histogram is zero.")
 
         if self.config.get("convert_to_uniform", False):
             h.histogram = 1.0 / self._bin_volumes
@@ -145,85 +197,75 @@ class TemplateSource(blueice.HistogramPdfSource):
         self._pdf_histogram = h
         logging.debug(f"Setting _pdf_histogram normalised to {h.n}.")
 
-        if np.min(self._pdf_histogram.histogram) < 0:
-            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
-
     def simulate(self, n_events):
-        dtype = []
-        for n, _ in self.config["analysis_space"]:
-            dtype.append((n, float))
-        dtype.append(("source", int))
-        ret = np.zeros(n_events, dtype=dtype)
-        # t = self._pdf_histogram.get_random(n_events)
+        """Simulate events from the source.
+
+        Args:
+            n_events (int): The number of events to simulate.
+
+        Returns:
+            numpy.ndarray: The simulated events.
+
+        """
+        ret = np.zeros(n_events, dtype=self.dtype)
         h = self._pdf_histogram * self._bin_volumes
         t = h.get_random(n_events)
-        for i, (n, _) in enumerate(self.config.get("analysis_space")):
+        for i, (n, _) in enumerate(self.config["analysis_space"]):
             ret[n] = t[:, i]
         return ret
 
 
-class CombinedSource(blueice.HistogramPdfSource):
-    """Source that inherits structure from TH2DSource by Jelle, but takes in lists of histogram
-    names.
+class CombinedSource(TemplateSource):
+    """Source that is a weighted sums of histograms. Useful e.g. for safeguard. The first histogram
+    is the base histogram, and the rest are added to it with weights. The weights can be set as
+    shape parameters in the config.
 
-    :param weights: weights :param histnames: list of filenames containing the histograms :param
-    templatenames: list of names of histograms within the h5 files :param named_parameters : list of
-    names of weights to be applied to histograms. Must be 1 shorter than histnames, templatenames
-    :param histogram_parameters: names of parameters that should be put in the h5/histogram names,
+    Args:
+        weights: Weights of the 2nd to the last histograms.
+        histnames: List of filenames containing the histograms.
+        templatenames: List of names of histograms within the hdf5 files.
 
     """
 
     def build_histogram(self):
-        weight_names = self.config.get("weight_names")
-        weights = [self.config.get(weight_name, 0) for weight_name in weight_names]
-        histograms = []
-        format_dict = {k: self.config[k] for k in self.config.get("named_parameters", [])}
+        """Build the histogram of the source."""
+        if not self.config.get("in_events_per_bin", True):
+            raise ValueError("CombinedSource does not support in_events_per_bin=False")
+        # Check if all the necessary parameters, like weights are specified
+        if "weight_names" not in self.config:
+            raise ValueError("weight_names must be specified")
+        find_weight = [weight_name in self.config for weight_name in self.config["weight_names"]]
+        if not all(find_weight):
+            missing_weight = self.config["weight_names"][find_weight]
+            raise ValueError(f"All weight_names must be specified, but {missing_weight} are not. ")
+        weights = [self.config[weight_name] for weight_name in self.config["weight_names"]]
         histnames = self.config["histnames"]
         templatenames = self.config["templatenames"]
+        if len(histnames) != len(templatenames):
+            raise ValueError("histnames and templatenames must be the same length")
+        if len(weights) + 1 != len(templatenames):
+            raise ValueError("weights must be 1 shorter than histnames, templatenames")
 
         slice_args = self.config.get("slice_args", {})
         if isinstance(slice_args, dict):
             slice_args = [slice_args]
-        if isinstance(slice_args[0], dict):
-            slice_argss = []
-            for n in histnames:
-                slice_argss.append(slice_args)
+        if all(isinstance(sa, dict) for sa in slice_args):
+            # Recognize as a single slice_args for all histograms
+            slice_argss = [slice_args] * len(histnames)
         else:
+            # Recognize as a list of slice_args for each histogram
             slice_argss = slice_args
 
+        histograms = []
         slice_fractions = []
-
         for histname, templatename, slice_args in zip(histnames, templatenames, slice_argss):
-            templatename = templatename.format(**format_dict)
-            histname = histname.format(**format_dict)
+            templatename = templatename.format(**self.format_named_parameters)
+            histname = histname.format(**self.format_named_parameters)
             h = template_to_multihist(templatename, histname)
             slice_fraction = 1.0 / h.n
             if h.n == 0.0:
                 slice_fraction = 0.0
-            for sa in slice_args:
-                slice_axis = sa.get("slice_axis", None)
-                # Decide if you wish to sum the histogram into lower dimensions or
-                sum_axis = sa.get("sum_axis", False)
-
-                slice_axis_limits = sa.get("slice_axis_limits", [0, 0])
-                collapse_axis = sa.get("collapse_axis", None)
-                collapse_slices = sa.get("collapse_slices", None)
-                if slice_axis is not None:
-                    if sum_axis:
-                        axis_names = h.axis_names_without(slice_axis)
-                        h = h.slicesum(
-                            axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                        )
-                        h.axis_names = axis_names
-                    else:
-                        h = h.slice(
-                            axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                        )
-
-                if collapse_axis is not None:
-                    if collapse_slices is None:
-                        raise ValueError("To collapse you must supply collapse_slices")
-                    h = h.collapse_bins(collapse_slices, axis=collapse_axis)
+            h = self.apply_slice_args(h, slice_args)
             slice_fraction *= h.n
             slice_fractions.append(slice_fraction)
 
@@ -233,12 +275,7 @@ class CombinedSource(blueice.HistogramPdfSource):
             else:
                 h /= h.n
             histograms.append(h)
-
-        assert len(weights) + 1 == len(histograms)
-
-        # Here a common normalisation is performed (normalisation to bin widths comes later)
-        # for histogram in histograms:
-        #     histogram/=histogram.n
+        logging.debug("slice fractions are", slice_fractions)
 
         for i in range(len(weights)):
             h_comp = histograms[0].similar_blank_histogram()
@@ -247,231 +284,98 @@ class CombinedSource(blueice.HistogramPdfSource):
             for j, bincs in enumerate(h.bin_centers()):
                 hsliced = h_comp.get_axis_bin_index(bincs[0], j)
                 hsliceu = h_comp.get_axis_bin_index(bincs[-1], j) + 1
-                hslices.append(slice(hsliced, hsliceu))
-            h_comp[hslices] += h.histogram  # TODO check here what norm I want.
+                hslices.append(slice(hsliced, hsliceu, 1))
+            h_comp[tuple(hslices)] += h.histogram
             histograms[0] += h_comp * weights[i]
+        h = histograms[0]
+
+        logging.debug("Setting zero for NaNs and Infs in combined template.")
+        h.histogram[np.isinf(h.histogram)] = 0.0
+        h.histogram[np.isnan(h.histogram)] = 0.0
+        h.histogram[h.histogram < 0] = 0.0
 
         # Set pdf values that are below 0 to zero:
-        histograms[0].histogram[np.isinf(histograms[0].histogram)] = 0.0
-        histograms[0].histogram[np.isnan(histograms[0].histogram)] = 0.0
-        histograms[0].histogram[histograms[0].histogram < 0] = 0.0
-
-        logging.debug("composite, histograms.n", histograms[0].n)
-        if 0 < histograms[0].n:
-            h = histograms[0] / histograms[0].n
-        else:
-            h = histograms[0]
-            h.histogram = np.ones(h.histogram.shape)
-        self._bin_volumes = h.bin_volumes()  # TODO: make alias
-        # Shouldn't be in HistogramSource... anyway
-        self._n_events_histogram = h.similar_blank_histogram()
-
+        if np.min(h.histogram) < 0:
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
         # Fix the bin sizes
         if can_check_binning:
-            # Deal with people who have log10'd their bins
-            for axis_i in self.config.get("log10_bins", []):
-                h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
+            histogram_info = f"combined template {histnames} in hdf5 file {templatenames}"
+            self._check_binning(h, histogram_info)
 
-            # Check if the histogram bin edges are correct
-            for axis_i, (_, expected_bin_edges) in enumerate(self.config["analysis_space"]):
-                expected_bin_edges = np.array(expected_bin_edges)
-                seen_bin_edges = h.bin_edges[axis_i]
-                logging.debug("in axis_i check", axis_i)
-                logging.debug("expected", expected_bin_edges)
-                logging.debug("seen", seen_bin_edges)
-                logging.debug("h.bin_edges type", type(h.bin_edges))
-                if len(seen_bin_edges) != len(expected_bin_edges):
-                    raise ValueError(
-                        "Axis %d of histogram %s in h5 file %s has %d bin edges, but expected %d"
-                        % (
-                            axis_i,
-                            histname,
-                            templatename,
-                            len(seen_bin_edges),
-                            len(expected_bin_edges),
-                        )
-                    )
-                try:
-                    np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=4)
-                except AssertionError:
-                    warnings.warn(
-                        "Axis %d of histogram %s in h5 file %s has bin edges %s, "
-                        "but expected %s. Since length matches, setting it expected values..."
-                        % (axis_i, histname, templatename, seen_bin_edges, expected_bin_edges)
-                    )
-                    h.bin_edges[axis_i] = expected_bin_edges
-
-        h *= self.config.get("histogram_multiplier", 1)
-        logging.debug("slice fractions are", slice_fractions)
-        h *= slice_fractions[0]
-
-        # Convert h to density...
-        logging.debug("hist sum", np.sum(h.histogram))
-        if self.config.get("in_events_per_bin"):
-            h.histogram /= h.bin_volumes()
-        self.events_per_day = (h.histogram * h.bin_volumes()).sum()
-        logging.debug("init events per day", self.events_per_day)
-
-        # ... and finally to probability density
-        if 0 < self.events_per_day:
-            h.histogram /= self.events_per_day
-        else:
-            h.histogram = np.ones(h.histogram.shape)
-        logging.debug("_pdf_histogram sum", h.n)
-        self._pdf_histogram = h
-
-    def simulate(self, n_events):
-        dtype = []
-        for n, _ in self.config["analysis_space"]:
-            dtype.append((n, float))
-        dtype.append(("source", int))
-        ret = np.zeros(n_events, dtype=dtype)
-        # t = self._pdf_histogram.get_random(n_events)
-        h = self._pdf_histogram * self._bin_volumes
-        t = h.get_random(n_events)
-        for i, (n, _) in enumerate(self.config.get("analysis_space")):
-            ret[n] = t[:, i]
-        return ret
+        self.set_dtype()
+        self.set_pdf_histogram(h)
 
 
-class SpectrumTemplateSource(blueice.HistogramPdfSource):
-    """
-    :param spectrum_name: name of bbf json-like spectrum _OR_ function that can be called
-    templatename #3D histogram (Etrue, S1, S2) to open
-    :param histname: histogram name
-    :param named_parameters: list of config settings to pass to .format on histname and filename
+class SpectrumTemplateSource(TemplateSource):
+    """Reweighted template source by 1D spectrum. The first axis of the template is assumed to be
+    reweighted.
+
+    Args:
+        spectrum_name:
+            Name of bbf json-like spectrum file
+
     """
 
     @staticmethod
-    def _get_json_spectrum(fn):
+    def _get_json_spectrum(filename):
         """Translates bbf-style JSON files to spectra.
 
-        units are keV and /kev*day*kg
+        Args:
+            filename (str): Name of the JSON file.
+
+        Todo:
+            Define the format of the JSON file clearly.
 
         """
-        contents = json.load(open(fn, "r"))
-        logging.debug(contents["description"])
-        esyst = contents["coordinate_system"][0][1]
-        ret = interp1d(np.linspace(*esyst), contents["map"], bounds_error=False, fill_value=0.0)
+        with open(get_file_path(filename), "r") as f:
+            contents = json.load(f)
+        if "description" in contents:
+            logging.debug(contents["description"])
+        if "coordinate_system" not in contents:
+            raise ValueError("Coordinate system not in JSON file.")
+        if "map" not in contents:
+            raise ValueError("Map not in JSON file.")
+        ret = interp1d(
+            contents["coordinate_system"], contents["map"], bounds_error=False, fill_value=0.0
+        )
         return ret
 
     def build_histogram(self):
-        logging.debug("building a hist")
-        format_dict = {k: self.config[k] for k in self.config.get("named_parameters", [])}
-        templatename = self.config["templatename"].format(**format_dict)
-        histname = self.config["histname"].format(**format_dict)
-
-        spectrum = self.config["spectrum"]
-        if isinstance(spectrum, str):
-            spectrum = self._get_json_spectrum(spectrum.format(**format_dict))
-
-        slice_args = self.config.get("slice_args", {})
-        if isinstance(slice_args, dict):
-            slice_args = [slice_args]
-
+        """Build the histogram of the source."""
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+        histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
 
-        # Perform E-scaling
-        ebins = h.bin_edges[0]
-        ecenters = 0.5 * (ebins[1::] + ebins[0:-1])
-        ediffs = ebins[1::] - ebins[0:-1]
-        h.histogram = h.histogram * (spectrum(ecenters) * ediffs)[:, None, None]
-        h = h.sum(axis=0)  # Remove energy-axis
-        logging.debug("source", "mu ", h.n)
+        if "spectrum_name" not in self.config:
+            raise ValueError("spectrum_name not in config")
+        spectrum = self._get_json_spectrum(
+            self.config["spectrum_name"].format(**self.format_named_parameters)
+        )
 
-        for sa in slice_args:
-            slice_axis = sa.get("slice_axis", None)
-            # Decide if you wish to sum the histogram into lower dimensions or
-            sum_axis = sa.get("sum_axis", False)
+        # Perform scaling, the first axis is assumed to be reweighted
+        # The spectrum is assumed to be probability density (in per the unit of first axis).
+        axis = 0
+        # h = h.normalize(axis=axis)
+        bin_edges = h.bin_edges[axis]
+        bin_centers = h.bin_centers(axis=axis)
+        slices = [None] * h.histogram.ndim
+        slices[axis] = slice(None)
+        h.histogram = h.histogram * (spectrum(bin_centers) * np.diff(bin_edges))[tuple(slices)]
 
-            slice_axis_limits = sa.get("slice_axis_limits", [0, 0])
-            collapse_axis = sa.get("collapse_axis", None)
-            collapse_slices = sa.get("collapse_slices", None)
-
-            if slice_axis is not None:
-                if sum_axis:
-                    h = h.slicesum(
-                        axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                    )
-                else:
-                    h = h.slice(
-                        axis=slice_axis, start=slice_axis_limits[0], stop=slice_axis_limits[1]
-                    )
-
-            if collapse_axis is not None:
-                if collapse_slices is None:
-                    raise ValueError("To collapse you must supply collapse_slices")
-                h = h.collapse_bins(collapse_slices, axis=collapse_axis)
-
-        self.dtype = []
-        for n, _ in self.config["analysis_space"]:
-            self.dtype.append((n, float))
-        self.dtype.append(("source", int))
-
-        # Fix the bin sizes
-        if can_check_binning:
-            # Deal with people who have log10'd their bins
-            for axis_i in self.config.get("log10_bins", []):
-                h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
-
-            # Check if the histogram bin edges are correct
-            for axis_i, (_, expected_bin_edges) in enumerate(self.config["analysis_space"]):
-                expected_bin_edges = np.array(expected_bin_edges)
-                seen_bin_edges = h.bin_edges[axis_i]
-                # If 1D, hist1d returns bin_edges straight, not as list
-                if len(self.config["analysis_space"]) == 1:
-                    seen_bin_edges = h.bin_edges
-                if len(seen_bin_edges) != len(expected_bin_edges):
-                    raise ValueError(
-                        "Axis %d of histogram %s in root file %s has %d bin edges, but expected %d"
-                        % (
-                            axis_i,
-                            histname,
-                            templatename,
-                            len(seen_bin_edges),
-                            len(expected_bin_edges),
-                        )
-                    )
-                try:
-                    np.testing.assert_almost_equal(
-                        seen_bin_edges / expected_bin_edges, np.ones_like(seen_bin_edges), decimal=4
-                    )
-                except AssertionError:
-                    warnings.warn(
-                        "Axis %d of histogram %s in root file %s has bin edges %s, "
-                        "but expected %s. Since length matches, setting it expected values..."
-                        % (axis_i, histname, templatename, seen_bin_edges, expected_bin_edges)
-                    )
-                    h.bin_edges[axis_i] = expected_bin_edges
-
-        self._bin_volumes = h.bin_volumes()  # TODO: make alias
-        # Shouldn't be in HistogramSource... anyway
-        self._n_events_histogram = h.similar_blank_histogram()
+        if np.min(h.histogram) < 0:
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
 
         if self.config.get("normalise_template", False):
             h /= h.n
+        if not self.config.get("in_events_per_bin", True):
+            h.histogram *= h.bin_volumes()
 
-        h *= self.config.get("histogram_multiplier", 1)
+        h = self.apply_slice_args(h)
 
-        # Convert h to density...
-        if self.config.get("in_events_per_bin"):
-            h.histogram /= h.bin_volumes()
-        self.events_per_day = (h.histogram * self._bin_volumes).sum()
-        logging.debug("source evt per day is", self.events_per_day)
+        # Fix the bin sizes
+        if can_check_binning:
+            histogram_info = f"reweighted {histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
 
-        # ... and finally to probability density
-        h.histogram /= self.events_per_day
-        self._pdf_histogram = h
-
-    def simulate(self, n_events):
-        dtype = []
-        for n, _ in self.config["analysis_space"]:
-            dtype.append((n, float))
-        dtype.append(("source", int))
-        ret = np.zeros(n_events, dtype=dtype)
-        # t = self._pdf_histogram.get_random(n_events)
-        h = self._pdf_histogram * self._bin_volumes
-        t = h.get_random(n_events)
-        for i, (n, _) in enumerate(self.config.get("analysis_space")):
-            ret[n] = t[:, i]
-        return ret
+        self.set_dtype()
+        self.set_pdf_histogram(h)

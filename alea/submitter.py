@@ -83,6 +83,7 @@ class Submitter:
         loglevel = getattr(logging, loglevel.upper())
         self.logging.setLevel(loglevel)
 
+        # find the path of template, requires users install alea-inference properly
         self.run_toymc = shutil.which("alea-run_toymc")
         if self.run_toymc is None:
             raise RuntimeError(

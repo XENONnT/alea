@@ -468,27 +468,6 @@ def compute_variations(to_zip, to_vary, in_common) -> list:
     return combined
 
 
-class NumpyJSONEncoder(json.JSONEncoder):
-    """Special json encoder for numpy types
-    Edited from mpl3d: mpld3/_display.py
-    """
-
-    def default(self, obj):
-        try:
-            iterable = iter(obj)
-        except TypeError:
-            pass
-        else:
-            return [self.default(item) for item in iterable]
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
-
-
 def hashablize(obj):
     """Convert a container hierarchy into one that can be hashed.
 
@@ -520,7 +499,7 @@ def deterministic_hash(thing, length=10):
 
     """
     hashable = hashablize(thing)
-    jsonned = json.dumps(hashable, cls=NumpyJSONEncoder)
+    jsonned = json.dumps(hashable)
     # disable bandit
     digest = sha256(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()

@@ -2,6 +2,7 @@ import os
 import logging
 import inspect
 import shlex
+import shutil
 from argparse import ArgumentParser
 from copy import deepcopy
 from json import dumps, loads
@@ -81,6 +82,13 @@ class Submitter:
             )
         loglevel = getattr(logging, loglevel.upper())
         self.logging.setLevel(loglevel)
+
+        self.run_toymc = shutil.which("alea-run_toymc")
+        if self.run_toymc is None:
+            raise RuntimeError(
+                "alea-run_toymc is not found, "
+                "please make sure you have installed alea correctly."
+            )
 
         self.statistical_model = statistical_model
         self.statistical_model_config = statistical_model_config
@@ -319,7 +327,12 @@ class Submitter:
                     script_array.append(self.arg_to_str(i_args[arg], annotation))
                 script = " ".join(script_array)
 
-                script = "alea-run_toymc " + " ".join(map(shlex.quote, script.split(" ")))
+                script = (
+                    "python3 "
+                    + self.run_toymc
+                    + " "
+                    + " ".join(map(shlex.quote, script.split(" ")))
+                )
 
                 yield script, i_args["output_filename"]
 
@@ -446,7 +459,7 @@ class Submitter:
         """
         signatures = inspect.signature(Runner.__init__)
         args = list(signatures.parameters.keys())[1:]
-        parser = ArgumentParser(description="Command line running of run_toymcs")
+        parser = ArgumentParser(description="Command line running of alea-run_toymc")
 
         # skip the first one because it is self(Runner itself)
         for arg in args:

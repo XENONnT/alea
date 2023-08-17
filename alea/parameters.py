@@ -324,6 +324,16 @@ class Parameters:
         for name, value in nominal_values.items():
             self.parameters[name].nominal_value = value
 
+    def set_fit_guesses(self, **fit_guesses):
+        """Set the fit guesses for parameters.
+
+        Keyword Args:
+            fit_guesses (dict): A dict of parameter names and values.
+
+        """
+        for name, value in fit_guesses.items():
+            self.parameters[name].fit_guess = value
+
     def __call__(
         self, return_fittable: Optional[bool] = False, **kwargs: Optional[Dict]
     ) -> Dict[str, float]:

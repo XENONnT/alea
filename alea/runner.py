@@ -437,7 +437,10 @@ class Runner:
         # generate toydata
         for i_mc in range(self._n_mc):
             if self._toydata_mode == "generate" or self._toydata_mode == "generate_and_store":
+                # generate toydata
                 data = self.model.generate_data(**self.generate_values)
+                # set fit guesses as generate values
+                self.model.set_fit_guesses(**self.generate_values)
                 if self._toydata_mode == "generate_and_store":
                     # append toydata
                     toydata.append(data)

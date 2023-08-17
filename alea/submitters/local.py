@@ -190,6 +190,11 @@ class NeymanConstructor(SubmitterLocal):
             # calculate the threshold given different confidence levels
             for confidence_level in confidence_levels:
                 q_llr = np.percentile(llrs, 100.0 * confidence_level).item()
+                if q_llr < 0.0:
+                    self.logging.warning(
+                        f"The threshold is negative ({q_llr}) for confidence_level "
+                        f"{confidence_level}, there might be a problem in your fitting."
+                    )
                 hashed_keys = {
                     "poi": self.poi,
                     "nominal_values": nominal_values,

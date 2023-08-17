@@ -240,6 +240,15 @@ class StatisticalModel:
         """
         self.parameters.set_nominal_values(**nominal_values)
 
+    def set_fit_guesses(self, **fit_guesses):
+        """Set the fit guesses for parameters.
+
+        Keyword Args:
+            fit_guesses (dict): A dict of parameter names and values.
+
+        """
+        self.parameters.set_fit_guesses(**fit_guesses)
+
     def get_expectation_values(self, **parameter_values):
         """Get the expectation values of the measurement.
 

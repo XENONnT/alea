@@ -1,14 +1,13 @@
-import json
-import warnings
 import logging
 from typing import List, Dict, Optional, Union
 
 import numpy as np
 from scipy.interpolate import interp1d
 from blueice import HistogramPdfSource
+from multihist import Hist1d
 from inference_interface import template_to_multihist
 
-from alea.utils import get_file_path
+from alea.utils import load_json
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
@@ -58,14 +57,21 @@ class TemplateSource(HistogramPdfSource):
         for axis_i in self.config.get("log10_bins", []):
             h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
 
-        # Check if the histogram bin edges are correct
         analysis_space = self.config["analysis_space"]
+        if len(analysis_space) != h.histogram.ndim:
+            raise ValueError(
+                f"Analysis space {analysis_space} has {len(analysis_space)} axes, "
+                f"but histogram {histogram_info} has {h.histogram.ndim} axes."
+            )
+
+        # Check if the histogram bin edges are correct
         for axis_i, (_, expected_bin_edges) in enumerate(analysis_space):
             expected_bin_edges = np.array(expected_bin_edges)
-            seen_bin_edges = h.bin_edges[axis_i]
             # If 1D, hist1d returns bin_edges straight, not as list
-            if len(analysis_space) == 1:
+            if isinstance(h, Hist1d):
                 seen_bin_edges = h.bin_edges
+            else:
+                seen_bin_edges = h.bin_edges[axis_i]
             logging.debug("axis_i: " + str(axis_i))
             logging.debug("expected_bin_edges: " + str(expected_bin_edges))
             logging.debug("seen_bin_edges: " + str(seen_bin_edges))
@@ -78,7 +84,7 @@ class TemplateSource(HistogramPdfSource):
             try:
                 np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=2)
             except AssertionError:
-                warnings.warn(
+                logging.warn(
                     f"Axis {axis_i:d} of histogram {histogram_info} "
                     f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
                     "Since length matches, setting it expected values..."
@@ -159,7 +165,6 @@ class TemplateSource(HistogramPdfSource):
                 h = h.slicesum(
                     start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis
                 )
-                h = h.sum(axis=slice_axis)
             else:
                 logging.debug(
                     f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
@@ -168,6 +173,14 @@ class TemplateSource(HistogramPdfSource):
                 logging.debug(f"Normalization before slicing: {h.n}.")
                 h = h.slice(start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis)
                 logging.debug(f"Normalization after slicing: {h.n}.")
+
+        # manully convert Hist1d to Histdd
+        if isinstance(h, Hist1d):
+            if self.config["pdf_interpolation_method"] != "piecewise":
+                raise ValueError(
+                    "pdf_interpolation_method must be piecewise for 1D histograms. "
+                    "This is required by blueice."
+                )
         return h
 
     def set_dtype(self):
@@ -339,8 +352,7 @@ class SpectrumTemplateSource(TemplateSource):
             Define the format of the JSON file clearly.
 
         """
-        with open(get_file_path(filename), "r") as f:
-            contents = json.load(f)
+        contents = load_json(filename)
         if "description" in contents:
             logging.debug(contents["description"])
         if "coordinate_system" not in contents:

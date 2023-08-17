@@ -44,7 +44,7 @@ def evaluate_numpy_scipy_expression_in_dict(d: dict):
     return d_copy
 
 
-def get_analysis_space(analysis_space: dict) -> list:
+def get_analysis_space(analysis_space: list) -> list:
     """Convert analysis_space to a list of tuples with evaluated values."""
     eval_analysis_space = []
 
@@ -53,7 +53,10 @@ def get_analysis_space(analysis_space: dict) -> list:
             if isinstance(value, str) and value.startswith("np."):
                 eval_element = (key, evaluate_numpy_scipy_expression(value))
             elif isinstance(value, str):
-                eval_element = (key, np.fromstring(value, dtype=float, sep=" "))
+                if "," in value:
+                    eval_element = (key, np.fromstring(value, dtype=float, sep=","))
+                else:
+                    eval_element = (key, np.fromstring(value, dtype=float, sep=" "))
             elif isinstance(value, list):
                 eval_element = (key, np.array(value))
             else:
@@ -147,9 +150,11 @@ def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]
     Returns:
         str: asterisked string
 
-    Example:
+    Examples:
+        >>> formatted_to_asterisked("a_{a:.2f}_b_{b:d}")
+        "a_*_b_*"
         >>> formatted_to_asterisked("a_{a:.2f}_b_{b:d}", wildcards="a")
-        "a_{a:.2f}_b_{b:d}"
+        "a_*_b_{b:d}"
 
     """
     # find all wildcards if wildcards is None
@@ -338,8 +343,15 @@ def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str
         variations (list): variations to be expanded
 
     Example:
-        >>> expand_grid_dict(['free', {'a': [1, 2], 'b': [3, 4]}])
-        ['free', {'a': 1, 'b': 3}, {'a': 1, 'b': 4}, {'a': 2, 'b': 3}, {'a': 2, 'b': 4}]
+        >>> expand_grid_dict(["free", {"a": 1, "b": 3}, {"a": [1, 2], "b": [3, 4]}])
+        [
+            "free",
+            {"a": 1, "b": 3},
+            {"a": 1, "b": 3},
+            {"a": 1, "b": 4},
+            {"a": 2, "b": 3},
+            {"a": 2, "b": 4},
+        ]
 
     """
 

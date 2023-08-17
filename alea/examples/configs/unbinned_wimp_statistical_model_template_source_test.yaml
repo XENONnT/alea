@@ -66,7 +66,6 @@ parameter_definition:
     description: ER band shape parameter (shifts the ER band up and down)
 
 likelihood_config:
-  template_folder: null  # will try to find the templates in alea
   likelihood_terms:
     # SR2
     - name: sr2
@@ -106,12 +105,14 @@ likelihood_config:
     - name: sr3
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      pdf_interpolation_method: piecewise
       analysis_space:
         - cs1: np.linspace(0, 100, 51)
-        - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
       livetime_parameter: livetime_sr3
-      slice_args: {}
+      slice_args:
+      - slice_axis: 1
+        sum_axis: true
       sources:
       - name: er
         histname: er_template

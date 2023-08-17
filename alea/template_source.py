@@ -1,6 +1,7 @@
 import json
 import warnings
 import logging
+from typing import List, Dict, Optional, Union
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -45,7 +46,7 @@ class TemplateSource(HistogramPdfSource):
 
     """
 
-    def _check_binning(self, h, histogram_info):
+    def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.
 
         Args:
@@ -115,7 +116,7 @@ class TemplateSource(HistogramPdfSource):
         self.set_dtype()
         self.set_pdf_histogram(h)
 
-    def apply_slice_args(self, h, slice_args=None):
+    def apply_slice_args(self, h, slice_args: Optional[Union[List[Dict], Dict]] = None):
         """Apply slice arguments to the histogram.
 
         Args:
@@ -124,20 +125,33 @@ class TemplateSource(HistogramPdfSource):
                 The sum_axis, slice_axis, and slice_axis_limits are supported.
 
         """
+
+        # if slice_args is not specified, use the one in the config
         if slice_args is None:
-            slice_args = self.config.get("slice_args", {})
-            if isinstance(slice_args, dict):
-                slice_args = [slice_args]
+            slice_args = self.config.get("slice_args", [{}])
+        # if slice_args is a dict, convert it to a list
+        if isinstance(slice_args, dict):
+            slice_args = [slice_args]
+        # if slice_args is empty, return
+        if (slice_args is None) or (len(slice_args) == 0) or (slice_args == [{}]):
+            return h
+        # check if slice_args is a list of dicts, and if each dict has slice_axis
+        if not isinstance(slice_args, list):
+            raise ValueError("slice_args must be a list or a dict")
+        if any(not isinstance(sa, dict) for sa in slice_args):
+            raise ValueError("slice_args must be a list of dicts")
+        if any("slice_axis" not in sa for sa in slice_args):
+            raise ValueError("slice_axis must be specified in slice_args")
 
         for sa in slice_args:
-            sum_axis = sa.get("sum_axis", None)
-            slice_axis = sa.get("slice_axis", None)
-            if slice_axis is not None:
-                # When slice_axis is None, slice_axis_limits is not used
-                bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
-                slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
-            # sum and/or slice the histogram
-            if (sum_axis is not None) and (slice_axis is not None):
+            # read slice_axis, sum_axis, and slice_axis_limits from slice_args
+            slice_axis = sa["slice_axis"]
+            sum_axis = sa.get("sum_axis", False)
+            bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
+            slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
+
+            # slice and/or sum over axis
+            if sum_axis:
                 logging.debug(
                     f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} "
                     f"to {slice_axis_limits[1]}"
@@ -145,10 +159,8 @@ class TemplateSource(HistogramPdfSource):
                 h = h.slicesum(
                     start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis
                 )
-            elif sum_axis is not None:
-                logging.debug(f"Sum over axis {sum_axis}")
-                h = h.sum(axis=sum_axis)
-            elif slice_axis is not None:
+                h = h.sum(axis=slice_axis)
+            else:
                 logging.debug(
                     f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
                     f"to {slice_axis_limits[1]}"
@@ -197,7 +209,7 @@ class TemplateSource(HistogramPdfSource):
         self._pdf_histogram = h
         logging.debug(f"Setting _pdf_histogram normalised to {h.n}.")
 
-    def simulate(self, n_events):
+    def simulate(self, n_events: int):
         """Simulate events from the source.
 
         Args:
@@ -317,7 +329,7 @@ class SpectrumTemplateSource(TemplateSource):
     """
 
     @staticmethod
-    def _get_json_spectrum(filename):
+    def _get_json_spectrum(filename: str):
         """Translates bbf-style JSON files to spectra.
 
         Args:

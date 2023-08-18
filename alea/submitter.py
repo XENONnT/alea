@@ -88,7 +88,7 @@ class Submitter:
         if self.run_toymc is None:
             raise RuntimeError(
                 "alea-run_toymc is not found, "
-                "please make sure you have installed alea correctly."
+                "please make sure you have installed alea-inference correctly."
             )
 
         self.statistical_model = statistical_model
@@ -282,6 +282,23 @@ class Submitter:
 
             yield runner_args
 
+    def filename_kwargs(self, runner_args: dict) -> dict:
+        """Get the filename_kwargs from runner_args.
+
+        Args:
+            runner_args (dict): the arguments of Runner
+
+        Returns:
+            dict: the keyword arguments for the filename
+
+        """
+        needed_kwargs = {
+            "i_batch": runner_args["i_batch"],
+            **runner_args["nominal_values"],
+            **runner_args["generate_values"],
+        }
+        return needed_kwargs
+
     def computation_tickets_generator(self):
         """Get the submission script for the current configuration. It generates the submission
         script for each combination of the computation options.
@@ -309,11 +326,7 @@ class Submitter:
                     if i_args.get(name, None) is not None:
                         # Note: here the later format will overwrite the previous one,
                         # so generate_values have the highest priority.
-                        needed_kwargs = {
-                            "i_batch": i_args["i_batch"],
-                            **i_args["nominal_values"],
-                            **i_args["generate_values"],
-                        }
+                        needed_kwargs = self.filename_kwargs(i_args)
                         try:
                             i_args[name] = i_args[name].format(**needed_kwargs)
                         except KeyError:

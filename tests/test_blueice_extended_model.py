@@ -18,8 +18,9 @@ class TestBlueiceExtendedModel(TestCase):
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
         ]
-        n = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
-        cls.n_likelihood_terms = n
+        ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
+        cls.n_likelihood_terms = ns
+        cls.toydata_filename = "simple_data.h5"
         cls.set_new_models(cls)
 
     def set_new_models(self):
@@ -88,9 +89,8 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            toydata_filename = "simple_data.h5"
-            model.store_data(toydata_filename, [data])
-            remove(toydata_filename)
+            model.store_data(self.toydata_filename, [data])
+            remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
             if not (("ancillary_measurements" in data) and ("generate_values" in data)):
                 raise ValueError(
@@ -141,6 +141,13 @@ class TestBlueiceExtendedModel(TestCase):
             fit_result_fixed, _ = model.fit(**model.parameters())
             for p in model.parameters:
                 self.assertEqual(p.nominal_value, fit_result_fixed[p.name])
+
+    def test_store_real_data(self):
+        """Test of the store_real_data method."""
+        for model, n in zip(self.models, self.n_likelihood_terms):
+            data = model.generate_data()
+            model.store_real_data(self.toydata_filename, list(data.values())[:n])
+            remove(self.toydata_filename)
 
 
 class TestCustomAncillaryLikelihood(TestCase):

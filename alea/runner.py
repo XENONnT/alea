@@ -75,7 +75,7 @@ class Runner:
         statistical_model: str = "alea.examples.gaussian_model.GaussianModel",
         poi: str = "mu",
         hypotheses: list = ["free"],
-        n_mc: int = 3,
+        n_mc: int = 1,
         common_hypothesis: Optional[dict] = None,
         generate_values: Optional[Dict[str, float]] = None,
         nominal_values: Optional[dict] = None,

@@ -405,6 +405,40 @@ class BlueiceExtendedModel(StatisticalModel):
             )
         ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
 
+    def store_real_data(self, file_name: str, real_data_list: list, metadata=None):
+        """Store real data in a file with toydata format.
+
+        Args:
+            file_name (str): Name of the file.
+            real_data_list (list): List of np.array of real data.
+
+        """
+        # check if real_data_list has the correct length
+        if len(real_data_list) != len(self.likelihood_names) - 1:
+            raise ValueError(
+                f"real_data_list must have length {len(self.likelihood_names) - 1} "
+                f"according to the number of likelihood terms in the model, "
+                f"but has length {len(real_data_list)}."
+            )
+        # check if the dtypes of the real data match the dtypes of the data generators
+        expected_dtypes = [np.dtype(gen.dtype) for gen in self.data_generators]
+        if any([r_d.dtype != e_d for r_d, e_d in zip(real_data_list, expected_dtypes)]):
+            raise ValueError(
+                "The dtypes of the real data do not match the dtypes of the data generators."
+            )
+        # mimic the generate_values
+        _generate_values = self.parameters()
+        generate_values = dict_to_structured_array(_generate_values)
+        # mimic the ancillary_measurements
+        ancillary_keys = self.parameters.with_uncertainty.names
+        _ancillary_measurements = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
+        ancillary_measurements = dict_to_structured_array(_ancillary_measurements)
+        # combine all data
+        data_name_list = self.likelihood_names + ["generate_values"]
+        data_list = real_data_list + [ancillary_measurements, generate_values]
+        real_data = [dict(zip(data_name_list, data_list))]
+        self.store_data(file_name, real_data, metadata=metadata)
+
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     """Custom ancillary likelihood that can be used to add constraint terms for parameters of the

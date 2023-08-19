@@ -471,16 +471,22 @@ class Runner:
             self.model.data = data
             fit_results = []
             for hypothesis_values in self._hypotheses_values:
-                # hypothesis_values should only be a fittable subset of parameters
-                if set(hypothesis_values.keys()) - set(self.model.parameters.fittable):
-                    raise ValueError(
-                        f"The hypothesis {hypothesis_values} "
-                        f"should be a subset of the fittable parameters "
-                        f"{self.model.parameters.fittable} in the statistical model."
-                    )
                 fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result["ll"] = max_llh
+
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):
+                    # hypothesis_values should only be a fittable subset of parameters
+                    non_fittable = set(hypothesis_values.keys()) - set(
+                        self.model.parameters.fittable
+                    )
+                    if non_fittable:
+                        raise ValueError(
+                            f"The hypothesis {hypothesis_values} "
+                            f"should only be a subset of the fittable parameters "
+                            f"{self.model.parameters.fittable} in the statistical model. "
+                            f"Because the non-fittable parameters {non_fittable} are fixed "
+                            f"to nominal values in 'free' hypothesis."
+                        )
                     dl, ul = self.model.confidence_interval(
                         poi_name=self.poi,
                         best_fit_args=self._hypotheses_values[0],

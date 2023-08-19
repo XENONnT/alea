@@ -6,11 +6,10 @@ import warnings
 
 from tqdm import tqdm
 import numpy as np
-from scipy.interpolate import interp1d
 from inference_interface import toydata_from_file, numpy_to_toyfile
 
 from alea.model import StatisticalModel
-from alea.utils import load_yaml, load_json, confidence_interval_critical_value, deterministic_hash
+from alea.utils import load_yaml
 
 
 class Runner:
@@ -123,9 +122,12 @@ class Runner:
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
         # find confidence_interval_threshold function for the model
+        from alea.submitters.local import NeymanConstructor
+
         statistical_model_args[
             "confidence_interval_threshold"
-        ] = self.get_confidence_interval_threshold(
+        ] = NeymanConstructor.get_confidence_interval_threshold(
+            self.poi,
             statistical_model_args,
             generate_values,
             nominal_values,
@@ -184,60 +186,6 @@ class Runner:
                 "common_hypothesis should be a dict of float! " f"But {value} is provided."
             )
         self._common_hypothesis = value
-
-    def get_confidence_interval_threshold(
-        self,
-        statistical_model_args,
-        generate_values,
-        nominal_values,
-        confidence_interval_kind,
-        confidence_level,
-    ):
-        """Get confidence interval threshold function from limit_threshold file.
-
-        Args:
-            statistical_model_args (dict): arguments for statistical model
-            generate_values (dict): generate values of toydata,
-                it can contain "poi_expectation"
-            nominal_values (dict): nominal values of parameters
-            confidence_level (float): confidence level
-
-        """
-        if "limit_threshold" not in statistical_model_args:
-            return None
-
-        # keys for hashing, should be in limit_threshold
-        hashed_keys = {
-            "poi": self.poi,
-            "nominal_values": deepcopy(nominal_values) if nominal_values else {},
-            "generate_values": deepcopy(generate_values) if generate_values else {},
-            "confidence_level": confidence_level,
-        }
-
-        # make sure no poi and poi_expectation in the hashed_keys
-        hashed_keys["generate_values"].pop(self.poi, None)
-        hashed_keys["generate_values"].pop("poi_expectation", None)
-        hashed_keys["nominal_values"].pop(self.poi, None)
-        hashed_keys["nominal_values"].pop("poi_expectation", None)
-        threshold_key = deterministic_hash(hashed_keys)
-        threshold = load_json(statistical_model_args["limit_threshold"])
-
-        if threshold_key not in threshold:
-            raise ValueError(
-                f"limit_threshold file {statistical_model_args['limit_threshold']} "
-                f"does not contain {threshold_key}, Looking for hashed_keys {hashed_keys}!"
-            )
-
-        # if out of bounds, return the asymptotic critical value
-        func = interp1d(
-            threshold[threshold_key][self.poi],
-            threshold[threshold_key]["threshold"],
-            bounds_error=False,
-            fill_value=confidence_interval_critical_value(
-                confidence_interval_kind, confidence_level
-            ),
-        )
-        return func
 
     @staticmethod
     def runner_arguments():

@@ -442,6 +442,10 @@ class Submitter:
             runner_args["statistical_model_args"]["limit_threshold"] = runner_args.pop(
                 "limit_threshold"
             )
+        if "limit_threshold_interpolation" in runner_args:
+            runner_args["statistical_model_args"][
+                "limit_threshold_interpolation"
+            ] = runner_args.pop("limit_threshold_interpolation")
 
     @staticmethod
     def check_redunant_arguments(runner_args, allowed_special_args: List[str] = []):

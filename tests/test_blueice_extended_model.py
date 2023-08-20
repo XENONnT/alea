@@ -101,6 +101,18 @@ class TestBlueiceExtendedModel(TestCase):
                     continue
                 elif "source" not in v.dtype.names:
                     raise ValueError("Data does not contain source information.")
+            try:
+                error_raised = True
+                model.data = data
+                model.data["ancillary_measurements"] = None
+                error_raised = False
+            except Exception:
+                print("Error correctly raised when directly instantiating StatisticalModel")
+            else:
+                if not error_raised:
+                    raise RuntimeError(
+                        "Should raise error when directly instantiating StatisticalModel"
+                    )
 
     def test_likelihood(self):
         """Test of the _likelihood attribute."""

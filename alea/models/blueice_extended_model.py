@@ -11,6 +11,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
+from alea.utils import ReadOnlyDict
 from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 
@@ -89,6 +90,13 @@ class BlueiceExtendedModel(StatisticalModel):
             data (dict or list): Data of the statistical model.
                 If data is a list, it must be a list of length len(self.likelihood_names) + 1.
 
+        Raises:
+            ValueError: If data is not a list of length len(self.likelihood_names) + 1.
+
+        Caution:
+            The self._data is read-only, so you can not change the data after it is set.
+            In order to change the data, you have to set the data again, using self.data = ***.
+
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
@@ -103,7 +111,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     raise ValueError("Likelihood names do not match.")
                 ll_term.set_data(d)
 
-        self._data = data
+        self._data = ReadOnlyDict(data)
         self.is_data_set = True
 
     @property

@@ -25,6 +25,21 @@ logging.basicConfig(level=logging.INFO)
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
 
 
+class ReadOnlyDict(dict):
+    """A read-only dict."""
+
+    # Prevent changes
+    def __setitem__(self, key, value):
+        raise TypeError(
+            "This dictionary is read-only, please initialize a new one in order to change it."
+        )
+
+    def __delitem__(self, key):
+        raise TypeError(
+            "This dictionary is read-only, please initialize a new one in order to change it."
+        )
+
+
 def evaluate_numpy_scipy_expression(value: str):
     """Evaluate numpy(np) and scipy.stats expression."""
     if value.startswith("stats."):

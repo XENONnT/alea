@@ -241,25 +241,25 @@ class NeymanConstructor(SubmitterLocal):
     def build_interpolator(
         poi,
         threshold,
-        _generate_values,
-        _nominal_values,
+        generate_values,
+        nominal_values,
         confidence_level,
     ):
         """Build interpolator from the limit_threshold file.
 
         Args:
             poi (str): parameter of interest
-            _generate_values (dict): generate values assumed to be in the limit_threshold file,
+            generate_values (dict): generate values assumed to be in the limit_threshold file,
                 but is actually hypothesis
-            _nominal_values (dict): nominal values of parameters
+            nominal_values (dict): nominal values of parameters
             confidence_level (float): confidence level
             threshold (dict): threshold read directly from limit_threshold file
 
         """
-        names = list(_generate_values.keys())
+        names = list(generate_values.keys())
         inputs = threshold.values()
         # filter out the inputs with different nominal_values
-        inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == _nominal_values]
+        inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == nominal_values]
         # filter out the inputs with different confidence_level
         inputs = [i for i in inputs if i["hashed_keys"]["confidence_level"] == confidence_level]
         # filter out the inputs with different generate_values keys
@@ -270,7 +270,7 @@ class NeymanConstructor(SubmitterLocal):
         if len(inputs) == 0:
             raise ValueError(
                 f"limit_threshold file does not contain "
-                f"any threshold for nominal_values {_nominal_values} "
+                f"any threshold for nominal_values {nominal_values} "
                 f"confidence_level {confidence_level}, and generate_values keys {names}!"
             )
 
@@ -278,7 +278,7 @@ class NeymanConstructor(SubmitterLocal):
         poi_values = inputs[0][poi]
         if any([set(i[poi]) != set(poi_values) for i in inputs]):
             raise ValueError(
-                f"poi {poi} lists with nominal_values {_nominal_values} and "
+                f"poi {poi} lists with nominal_values {nominal_values} and "
                 f"confidence_level {confidence_level} "
                 "are not all the same in the limit_threshold file!"
             )
@@ -295,7 +295,7 @@ class NeymanConstructor(SubmitterLocal):
         # check if the poi_values have the same length in the limit_threshold file
         if any([len(i[poi]) != len(poi_values) for i in inputs]):
             raise ValueError(
-                f"poi {poi} lists with nominal_values {_nominal_values} and "
+                f"poi {poi} lists with nominal_values {nominal_values} and "
                 f"confidence_level {confidence_level} "
                 "do not the same length in the limit_threshold file!"
             )
@@ -304,7 +304,7 @@ class NeymanConstructor(SubmitterLocal):
         if len(inputs) != size:
             raise ValueError(
                 f"limit_threshold file does not contain "
-                f"enough threshold for nominal_values {_nominal_values} "
+                f"enough threshold for nominal_values {nominal_values} "
                 f"confidence_level {confidence_level}, and generate_values keys {names}!"
             )
         # build the values array for interpolator
@@ -325,12 +325,13 @@ class NeymanConstructor(SubmitterLocal):
     @staticmethod
     def get_confidence_interval_thresholds(
         poi,
-        statistical_model_args,
         hypotheses,
         hypotheses_values,
+        limit_threshold,
         nominal_values,
         confidence_interval_kind,
         confidence_level,
+        limit_threshold_interpolation,
     ):
         """Get confidence interval threshold function from limit_threshold file. If the
         limit_threshold file does not contain the threshold, it will interpolate the threshold from
@@ -339,18 +340,20 @@ class NeymanConstructor(SubmitterLocal):
 
         Args:
             poi (str): parameter of interest
-            statistical_model_args (dict): arguments for statistical model
             hypotheses (list): hypotheses for statistical model, might contain str
             hypotheses_values (list): hypotheses values for statistical model,
                 only contains Dict[str, float]
+            limit_threshold (str): path to the limit_threshold file
             nominal_values (dict): nominal values of parameters
             confidence_level (float): confidence level
+            limit_threshold_interpolation (bool): whether to interpolate the threshold from the
+                existing threshold, if the limit_threshold file does not contain the threshold
 
         """
-        if "limit_threshold" not in statistical_model_args:
+
+        if limit_threshold is None:
             return [None] * len(hypotheses)
 
-        limit_threshold = statistical_model_args["limit_threshold"]
         threshold = load_json(limit_threshold)
 
         hypothesis_names = [set(h.keys()) for h in hypotheses if isinstance(h, dict)]
@@ -363,7 +366,7 @@ class NeymanConstructor(SubmitterLocal):
         func_list = []
         for i_hypo in range(len(hypotheses)):
             # if hypothesis is str, just append None
-            if isinstance(hypotheses[i_hypo]):
+            if isinstance(hypotheses[i_hypo], str):
                 func_list.append(None)
                 continue
 
@@ -386,13 +389,10 @@ class NeymanConstructor(SubmitterLocal):
             hashed_keys["nominal_values"].pop("poi_expectation", None)
             threshold_key = deterministic_hash(hashed_keys)
 
-            limit_threshold_interpolation = statistical_model_args.get(
-                "limit_threshold_interpolation", False
-            )
             if (threshold_key not in threshold) and (not limit_threshold_interpolation):
                 raise ValueError(
                     f"Looking for hashed_keys {hashed_keys}, but limit_threshold file "
-                    f"{statistical_model_args['limit_threshold']} does not contain "
+                    f"{limit_threshold} does not contain "
                     f"{threshold_key}! Please check the limit_threshold file or set "
                     f"limit_threshold_interpolation as true!"
                 )
@@ -417,8 +417,8 @@ class NeymanConstructor(SubmitterLocal):
                     raise ValueError(
                         f"Interpolation failed for hypothesis. "
                         f"Maybe the limit_threshold file does not contain enough threshold, "
-                        f"so that {_generate_values} is out of bounds, "
-                        f"please check the limit_threshold file!"
+                        f"so that {_generate_values} is out of bounds. "
+                        f"Please check the limit_threshold file!"
                     )
 
             # if out of bounds, return the asymptotic critical value

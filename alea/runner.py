@@ -150,12 +150,13 @@ class Runner:
 
         self.confidence_interval_thresholds = NeymanConstructor.get_confidence_interval_thresholds(
             self.poi,
-            statistical_model_args,
             self.hypotheses,
             self._hypotheses_values,
+            statistical_model_args.get("limit_threshold", None),
             nominal_values,
             confidence_interval_kind,
             confidence_level,
+            statistical_model_args.get("limit_threshold_interpolation", False),
         )
 
     @property

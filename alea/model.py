@@ -361,6 +361,7 @@ class StatisticalModel:
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         **kwargs,
     ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
@@ -401,16 +402,26 @@ class StatisticalModel:
             parameter_interval_bounds = clip_limits(value)
 
         # define threshold if none is defined:
-        if self.confidence_interval_threshold is not None:
-            confidence_interval_threshold = self.confidence_interval_threshold
-        else:
-            # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-            critical_value = confidence_interval_critical_value(
-                confidence_interval_kind, confidence_level
-            )
+        if confidence_interval_threshold is None:
+            if self.confidence_interval_threshold is not None:
+                confidence_interval_threshold = self.confidence_interval_threshold
+            else:
+                # use asymptotic thresholds assuming the test statistic is Chi2 distributed
+                critical_value = confidence_interval_critical_value(
+                    confidence_interval_kind, confidence_level
+                )
 
-            def confidence_interval_threshold(_):
-                return critical_value
+                def confidence_interval_threshold(_):
+                    return critical_value
+
+        else:
+            if self.confidence_interval_threshold is not None:
+                raise ValueError(
+                    "You cannot set confidence_interval_threshold twice, "
+                    "once in the constructor and once in the method call"
+                )
+        if not callable(confidence_interval_threshold):
+            raise ValueError("confidence_interval_threshold must be a callable")
 
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
@@ -420,6 +431,7 @@ class StatisticalModel:
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
     ) -> Tuple[float, float]:
@@ -460,6 +472,7 @@ class StatisticalModel:
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
+            confidence_interval_threshold,
             **confidence_interval_args,
         )
         (

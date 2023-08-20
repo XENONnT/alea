@@ -3,6 +3,8 @@ import json
 import shlex
 import subprocess
 import itertools
+import operator
+from functools import reduce
 from copy import deepcopy
 from typing import List, Dict, Any, cast
 
@@ -14,7 +16,6 @@ from alea.runner import Runner
 from alea.submitter import Submitter
 from alea.utils import (
     load_json,
-    within_limits,
     confidence_interval_critical_value,
     deterministic_hash,
 )
@@ -237,10 +238,95 @@ class NeymanConstructor(SubmitterLocal):
         print(f"Saving {limit_threshold}")
 
     @staticmethod
-    def get_confidence_interval_threshold(
+    def build_interpolator(
+        poi,
+        threshold,
+        _generate_values,
+        _nominal_values,
+        confidence_level,
+    ):
+        """Build interpolator from the limit_threshold file.
+
+        Args:
+            poi (str): parameter of interest
+            _generate_values (dict): generate values assumed to be in the limit_threshold file,
+                but is actually hypothesis
+            _nominal_values (dict): nominal values of parameters
+            confidence_level (float): confidence level
+            threshold (dict): threshold read directly from limit_threshold file
+
+        """
+        names = list(_generate_values.keys())
+        inputs = threshold.values()
+        # filter out the inputs with different nominal_values
+        inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == _nominal_values]
+        # filter out the inputs with different confidence_level
+        inputs = [i for i in inputs if i["hashed_keys"]["confidence_level"] == confidence_level]
+        # filter out the inputs with different generate_values keys
+        inputs = [
+            i for i in inputs if set(i["hashed_keys"]["generate_values"].keys()) == set(names)
+        ]
+
+        if len(inputs) == 0:
+            raise ValueError(
+                f"limit_threshold file does not contain "
+                f"any threshold for nominal_values {_nominal_values} "
+                f"confidence_level {confidence_level}, and generate_values keys {names}!"
+            )
+
+        # get poi list
+        poi_values = inputs[0][poi]
+        if any([set(i[poi]) != set(poi_values) for i in inputs]):
+            raise ValueError(
+                f"poi {poi} lists with nominal_values {_nominal_values} and "
+                f"confidence_level {confidence_level} "
+                "are not all the same in the limit_threshold file!"
+            )
+
+        # in the following code, we assume the generate_values are the same in the limit_threshold
+        # and names, points, bounds, within have same length, each element corresponds to one name
+
+        # deduce dimension of interpolator and collect all threshold into values
+        points = []
+        for n in names:
+            points.append(
+                np.unique([i["hashed_keys"]["generate_values"][n] for i in inputs]).tolist()
+            )
+        # check if the poi_values have the same length in the limit_threshold file
+        if any([len(i[poi]) != len(poi_values) for i in inputs]):
+            raise ValueError(
+                f"poi {poi} lists with nominal_values {_nominal_values} and "
+                f"confidence_level {confidence_level} "
+                "do not the same length in the limit_threshold file!"
+            )
+        # check if limit_threshold file contains enough threshold
+        size = reduce(operator.mul, [len(p) for p in points])
+        if len(inputs) != size:
+            raise ValueError(
+                f"limit_threshold file does not contain "
+                f"enough threshold for nominal_values {_nominal_values} "
+                f"confidence_level {confidence_level}, and generate_values keys {names}!"
+            )
+        # build the values array for interpolator
+        values = np.empty((*[len(p) for p in points], len(poi_values)), dtype=float)
+        for p in itertools.product(*points):
+            indices = [pi.index(pii) for pii, pi in zip(p, points)]
+            values[indices] = [
+                i["threshold"]
+                for i in inputs
+                if i["hashed_keys"]["generate_values"] == dict(zip(names, p))
+            ]
+
+        interpolator = RegularGridInterpolator(
+            points + [poi_values], values, method="linear", bounds_error=True
+        )
+        return interpolator
+
+    @staticmethod
+    def get_confidence_interval_thresholds(
         poi,
         statistical_model_args,
-        generate_values,
+        hypotheses,
         nominal_values,
         confidence_interval_kind,
         confidence_level,
@@ -253,116 +339,97 @@ class NeymanConstructor(SubmitterLocal):
         Args:
             poi (str): parameter of interest
             statistical_model_args (dict): arguments for statistical model
-            generate_values (dict): generate values of toydata,
-                it can contain "poi_expectation"
+            hypotheses (list): hypotheses for statistical model
             nominal_values (dict): nominal values of parameters
             confidence_level (float): confidence level
 
         """
         if "limit_threshold" not in statistical_model_args:
-            return None
+            return [None] * len(hypotheses)
 
-        # keys for hashing, should be in limit_threshold
-        _nominal_values = deepcopy(nominal_values) if nominal_values else {}
-        _generate_values = deepcopy(generate_values) if generate_values else {}
-        hashed_keys = {
-            "poi": poi,
-            "nominal_values": deepcopy(_nominal_values),
-            "generate_values": deepcopy(_generate_values),
-            "confidence_level": confidence_level,
-        }
-
-        # make sure no poi and poi_expectation in the hashed_keys
-        hashed_keys["generate_values"].pop(poi, None)
-        hashed_keys["generate_values"].pop("poi_expectation", None)
-        hashed_keys["nominal_values"].pop(poi, None)
-        hashed_keys["nominal_values"].pop("poi_expectation", None)
-        threshold_key = deterministic_hash(hashed_keys)
         limit_threshold = statistical_model_args["limit_threshold"]
         threshold = load_json(limit_threshold)
 
-        limit_threshold_interpolation = statistical_model_args.get(
-            "limit_threshold_interpolation", False
-        )
-        if (threshold_key not in threshold) and (not limit_threshold_interpolation):
+        func_list = []
+        allowed_hypothesis_strs = ["zero", "true", "free"]
+        hypothesis_names = [set(h.keys()) for h in hypotheses if isinstance(h, dict)]
+        if any([hn != hypothesis_names[0] for hn in hypothesis_names]):
             raise ValueError(
-                f"limit_threshold file {statistical_model_args['limit_threshold']} "
-                f"does not contain {threshold_key}, Looking for hashed_keys {hashed_keys}! "
-                f"Please check the limit_threshold file or set limit_threshold_interpolation "
-                f"as true!"
+                "When using limit_threshold_interpolation, the keys of hypotheses should be "
+                "the same for all hypotheses(expect str hypotheses)!"
             )
+        for hypothesis in hypotheses:
+            if hypothesis in allowed_hypothesis_strs:
+                func_list.append(None)
+                continue
 
-        if threshold_key in threshold:
-            poi_values = threshold[threshold_key][poi]
-            threshold_values = threshold[threshold_key]["threshold"]
-        else:
-            inputs = threshold.values()
-            # filter out the inputs with different nominal_values
-            nv = hashed_keys["nominal_values"]
-            inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == nv]
-            # filter out the inputs with different confidence_level
-            inputs = [i for i in inputs if i["hashed_keys"]["confidence_level"] == confidence_level]
+            # keys for hashing, should be in limit_threshold
+            _generate_values = deepcopy(hypothesis) if hypothesis else {}
+            _nominal_values = deepcopy(nominal_values) if nominal_values else {}
+            hashed_keys = {
+                "poi": poi,
+                "nominal_values": deepcopy(_nominal_values),
+                "generate_values": deepcopy(_generate_values),
+                "confidence_level": confidence_level,
+            }
 
-            if len(inputs) == 0:
-                raise ValueError(
-                    f"limit_threshold file {limit_threshold} does not contain "
-                    f"the threshold for nominal_values {nv} and confidence_level "
-                    f"{confidence_level}!"
-                )
+            # make sure no poi and poi_expectation in the hashed_keys
+            hashed_keys["generate_values"].pop(poi, None)
+            hashed_keys["generate_values"].pop("poi_expectation", None)
+            hashed_keys["nominal_values"].pop(poi, None)
+            hashed_keys["nominal_values"].pop("poi_expectation", None)
+            threshold_key = deterministic_hash(hashed_keys)
 
-            # get poi list
-            poi_values = inputs[0][poi]
-            if any([set(i[poi]) != set(poi_values) for i in inputs]):
-                raise ValueError(
-                    f"poi list is not the same in the limit_threshold file {limit_threshold}!"
-                )
-
-            # get generate_values list
-            names = list(inputs[0]["hashed_keys"]["generate_values"].keys())
-            if any([set(i["hashed_keys"]["generate_values"].keys()) != set(names) for i in inputs]):
-                raise ValueError(
-                    f"generate_values list is not the same in the "
-                    f"limit_threshold file {limit_threshold}!"
-                )
-
-            # collect all threshold into values
-            points = []
-            for g in names:
-                points.append(
-                    np.unique([i["hashed_keys"]["generate_values"][g] for i in inputs]).tolist()
-                )
-            values = np.empty((*[len(g) for g in points], len(poi_values)), dtype=float)
-            for g in itertools.product(*points):
-                indices = [pi.index(gi) for gi, pi in zip(g, points)]
-                values[indices] = [
-                    i["threshold"]
-                    for i in inputs
-                    if i["hashed_keys"]["generate_values"] == dict(zip(names, g))
-                ]
-
-            # interpolate the threshold
-            bounds = [[min(p), max(p)] for p in points]
-            within = [within_limits(_generate_values[n], b) for n, b in zip(names, bounds)]
-            if not all(within):
-                out_names = [n for n, w in zip(names, within) if not w]
-                out_bounds = [b for b, w in zip(bounds, within) if not w]
-                raise ValueError(
-                    f"generate_values {out_names} are out of bounds "
-                    f"{dict(zip(out_names, out_bounds))}."
-                )
-            interpolator = RegularGridInterpolator(
-                points + [poi_values], values, method="linear", bounds_error=True
+            limit_threshold_interpolation = statistical_model_args.get(
+                "limit_threshold_interpolation", False
             )
-            pts = [[_generate_values[n] for n in names] + [p] for p in poi_values]
-            threshold_values = interpolator(pts)
+            if (threshold_key not in threshold) and (not limit_threshold_interpolation):
+                raise ValueError(
+                    f"Looking for hashed_keys {hashed_keys}, but limit_threshold file "
+                    f"{statistical_model_args['limit_threshold']} does not contain "
+                    f"{threshold_key}! Please check the limit_threshold file or set "
+                    f"limit_threshold_interpolation as true!"
+                )
 
-        # if out of bounds, return the asymptotic critical value
-        func = interp1d(
-            poi_values,
-            threshold_values,
-            bounds_error=False,
-            fill_value=confidence_interval_critical_value(
-                confidence_interval_kind, confidence_level
-            ),
-        )
-        return func
+            # get the poi_values and threshold_values for interp1d
+            interpolator = None
+            if threshold_key in threshold:
+                # if threshold_key in threshold, get the poi_values and threshold_values directly
+                poi_values = threshold[threshold_key][poi]
+                threshold_values = threshold[threshold_key]["threshold"]
+            else:
+                # if not, interpolate the threshold from the existing threshold
+                if interpolator is None:
+                    interpolator = NeymanConstructor.build_interpolator(
+                        poi, threshold, _generate_values, _nominal_values, confidence_level
+                    )
+                    poi_values = interpolator.grid[-1]
+                pts = [list(_generate_values.values()) + [p] for p in poi_values]
+                try:
+                    threshold_values = interpolator(pts)
+                except ValueError:
+                    raise ValueError(
+                        f"Interpolation failed for hypothesis. "
+                        f"Maybe the limit_threshold file does not contain enough threshold, "
+                        f"so that {_generate_values} is out of bounds, "
+                        f"please check the limit_threshold file!"
+                    )
+
+            # if out of bounds, return the asymptotic critical value
+            func = interp1d(
+                poi_values,
+                threshold_values,
+                bounds_error=False,
+                fill_value=confidence_interval_critical_value(
+                    confidence_interval_kind, confidence_level
+                ),
+            )
+            func_list.append(func)
+
+        # check if the length of hypotheses and func_list are the same
+        if len(hypotheses) != len(func_list):
+            raise ValueError(
+                "Something wrong with the length of hypotheses and func_list, "
+                "please check the code!"
+            )
+        return func_list

@@ -121,19 +121,7 @@ class Runner:
         statistical_model_args["nominal_values"] = self.nominal_values
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
-        # find confidence_interval_threshold function for the model
-        from alea.submitters.local import NeymanConstructor
 
-        statistical_model_args[
-            "confidence_interval_threshold"
-        ] = NeymanConstructor.get_confidence_interval_threshold(
-            self.poi,
-            statistical_model_args,
-            generate_values,
-            nominal_values,
-            confidence_interval_kind,
-            confidence_level,
-        )
         # initialize statistical model
         self.model = statistical_model_class(
             parameter_definition=parameter_definition,
@@ -154,6 +142,18 @@ class Runner:
         self._metadata = metadata if metadata else {}
 
         self._result_names, self._result_dtype = self._get_parameter_list()
+
+        # find confidence_interval_thresholds function for the hypotheses
+        from alea.submitters.local import NeymanConstructor
+
+        self.confidence_interval_thresholds = NeymanConstructor.get_confidence_interval_thresholds(
+            self.poi,
+            statistical_model_args,
+            self.hypotheses,
+            nominal_values,
+            confidence_interval_kind,
+            confidence_level,
+        )
 
         self._hypotheses_values = self._get_hypotheses()
 
@@ -418,7 +418,7 @@ class Runner:
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):
             self.model.data = data
             fit_results = []
-            for hypothesis_values in self._hypotheses_values:
+            for i_hypo, hypothesis_values in enumerate(self._hypotheses_values):
                 fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result["ll"] = max_llh
 
@@ -439,6 +439,7 @@ class Runner:
                         poi_name=self.poi,
                         best_fit_args=self._hypotheses_values[0],
                         confidence_interval_args=hypothesis_values,
+                        confidence_interval_threshold=self.confidence_interval_thresholds[i_hypo],
                     )
                 else:
                     dl, ul = np.nan, np.nan

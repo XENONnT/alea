@@ -143,6 +143,8 @@ class Runner:
 
         self._result_names, self._result_dtype = self._get_parameter_list()
 
+        self._hypotheses_values = self._get_hypotheses()
+
         # find confidence_interval_thresholds function for the hypotheses
         from alea.submitters.local import NeymanConstructor
 
@@ -150,12 +152,11 @@ class Runner:
             self.poi,
             statistical_model_args,
             self.hypotheses,
+            self._hypotheses_values,
             nominal_values,
             confidence_interval_kind,
             confidence_level,
         )
-
-        self._hypotheses_values = self._get_hypotheses()
 
     @property
     def generate_values(self) -> Dict[str, float]:
@@ -310,13 +311,21 @@ class Runner:
             if not all([isinstance(v, (float, int)) for v in h.values()]):
                 raise ValueError("hypothesis should be a dict of float! " f"But {h} is provided.")
             hypotheses_values.append(h)
+
+        # check if the length of hypotheses and hypotheses_values are the same
+        if len(hypotheses) != len(hypotheses_values):
+            raise ValueError(
+                "Something wrong with the length of hypotheses and hypotheses_values, "
+                "please check the code!"
+            )
         return hypotheses_values
 
     def write_output(self, results):
         """Write output file with metadata."""
         metadata = deepcopy(self._metadata)
 
-        result_names = [f"{i:d}" for i in range(len(self._hypotheses_values))]
+        n_hypo = len(self._hypotheses_values)
+        result_names = [f"{i:0{len(str(n_hypo))}d}" for i in range(n_hypo)]
         for i, ea in enumerate(self.hypotheses):
             if isinstance(ea, str) and (ea in {"free", "zero", "true"}):
                 result_names[i] = ea

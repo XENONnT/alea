@@ -327,6 +327,7 @@ class NeymanConstructor(SubmitterLocal):
         poi,
         statistical_model_args,
         hypotheses,
+        hypotheses_values,
         nominal_values,
         confidence_interval_kind,
         confidence_level,
@@ -339,7 +340,9 @@ class NeymanConstructor(SubmitterLocal):
         Args:
             poi (str): parameter of interest
             statistical_model_args (dict): arguments for statistical model
-            hypotheses (list): hypotheses for statistical model
+            hypotheses (list): hypotheses for statistical model, might contain str
+            hypotheses_values (list): hypotheses values for statistical model,
+                only contains Dict[str, float]
             nominal_values (dict): nominal values of parameters
             confidence_level (float): confidence level
 
@@ -350,18 +353,21 @@ class NeymanConstructor(SubmitterLocal):
         limit_threshold = statistical_model_args["limit_threshold"]
         threshold = load_json(limit_threshold)
 
-        func_list = []
-        allowed_hypothesis_strs = ["zero", "true", "free"]
         hypothesis_names = [set(h.keys()) for h in hypotheses if isinstance(h, dict)]
         if any([hn != hypothesis_names[0] for hn in hypothesis_names]):
             raise ValueError(
                 "When using limit_threshold_interpolation, the keys of hypotheses should be "
                 "the same for all hypotheses(expect str hypotheses)!"
             )
-        for hypothesis in hypotheses:
-            if hypothesis in allowed_hypothesis_strs:
+
+        func_list = []
+        for i_hypo in range(len(hypotheses)):
+            # if hypothesis is str, just append None
+            if isinstance(hypotheses[i_hypo]):
                 func_list.append(None)
                 continue
+
+            hypothesis = hypotheses_values[i_hypo]
 
             # keys for hashing, should be in limit_threshold
             _generate_values = deepcopy(hypothesis) if hypothesis else {}

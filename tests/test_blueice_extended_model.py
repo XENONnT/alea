@@ -1,6 +1,7 @@
 from os import remove
 import pytest
 from unittest import TestCase
+from copy import deepcopy
 
 from blueice.likelihood import LogLikelihoodSum
 from alea.utils import load_yaml
@@ -34,6 +35,15 @@ class TestBlueiceExtendedModel(TestCase):
                 )
             )
         self.models = models
+
+    def test_deep_copyable(self):
+        """Test of whether BlueiceExtendedModel instance can be deepcopied."""
+        for model in self.models:
+            try:
+                model.data = model.generate_data()
+                deepcopy(model)
+            except Exception:
+                raise ValueError("BlueiceExtendedModel instance cannot be correctly deepcopied.")
 
     def get_expectation_values(self):
         # normalization of templates

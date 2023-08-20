@@ -25,8 +25,23 @@ logging.basicConfig(level=logging.INFO)
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
 
 
-class ReadOnlyDict(dict):
+class ReadOnlyDict:
     """A read-only dict."""
+
+    def __init__(self, data):
+        self._data = dict(data)
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __contains__(self, key):
+        return key in self._data
+
+    def __repr__(self):
+        return repr(self._data)
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
 
     # Prevent changes
     def __setitem__(self, key, value):

@@ -435,7 +435,7 @@ def convert_to_in_common(in_common: Dict[str, Any]) -> Dict[str, Any]:
 
     """
     for k, v in in_common.items():
-        if isinstance(v, list) and (k != "hypotheses"):
+        if isinstance(v, list) and (k != "hypotheses") and (k != "confidence_levels"):
             raise ValueError(
                 f"except hypotheses, in_common can not contain list, "
                 f"you might need to put {(k, v)} in to_zip or to_vary"

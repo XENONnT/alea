@@ -60,7 +60,7 @@ class Runner:
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
-        toydata_mode (str, optional (default='generate_and_write')):
+        toydata_mode (str, optional (default='generate_and_store')):
             toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
         toydata_filename (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
@@ -85,7 +85,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
-        toydata_mode: str = "generate_and_write",
+        toydata_mode: str = "generate_and_store",
         toydata_filename: str = "test_toydata_filename.h5",
         only_toydata: bool = False,
         output_filename: str = "test_output_filename.h5",
@@ -361,9 +361,9 @@ class Runner:
             "no_toydata",
         }:
             raise ValueError(f"Unknown toydata mode: {self._toydata_mode}")
-        if self.only_toydata and self._toydata_mode != "generate_and_write":
+        if self.only_toydata and self._toydata_mode != "generate_and_store":
             raise ValueError(
-                f"only_toydata is True, you should only generate_and_write, "
+                f"only_toydata is True, you should only generate_and_store, "
                 f"but toydata_mode is {self._toydata_mode}!"
             )
         # check toydata file size

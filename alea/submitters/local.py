@@ -12,7 +12,12 @@ from inference_interface import toyfiles_to_numpy
 
 from alea.runner import Runner
 from alea.submitter import Submitter
-from alea.utils import load_json, confidence_interval_critical_value, deterministic_hash
+from alea.utils import (
+    load_json,
+    within_limits,
+    confidence_interval_critical_value,
+    deterministic_hash,
+)
 
 
 class SubmitterLocal(Submitter):
@@ -258,10 +263,12 @@ class NeymanConstructor(SubmitterLocal):
             return None
 
         # keys for hashing, should be in limit_threshold
+        _nominal_values = deepcopy(nominal_values) if nominal_values else {}
+        _generate_values = deepcopy(generate_values) if generate_values else {}
         hashed_keys = {
             "poi": poi,
-            "nominal_values": deepcopy(nominal_values) if nominal_values else {},
-            "generate_values": deepcopy(generate_values) if generate_values else {},
+            "nominal_values": deepcopy(_nominal_values),
+            "generate_values": deepcopy(_generate_values),
             "confidence_level": confidence_level,
         }
 
@@ -291,13 +298,17 @@ class NeymanConstructor(SubmitterLocal):
         else:
             inputs = threshold.values()
             # filter out the inputs with different nominal_values
-            inputs = [
-                i
-                for i in inputs
-                if i["hashed_keys"]["nominal_values"] == hashed_keys["nominal_values"]
-            ]
+            nv = hashed_keys["nominal_values"]
+            inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == nv]
             # filter out the inputs with different confidence_level
             inputs = [i for i in inputs if i["hashed_keys"]["confidence_level"] == confidence_level]
+
+            if len(inputs) == 0:
+                raise ValueError(
+                    f"limit_threshold file {limit_threshold} does not contain "
+                    f"the threshold for nominal_values {nv} and confidence_level "
+                    f"{confidence_level}!"
+                )
 
             # get poi list
             poi_values = inputs[0][poi]
@@ -330,10 +341,19 @@ class NeymanConstructor(SubmitterLocal):
                 ]
 
             # interpolate the threshold
+            bounds = [[min(p), max(p)] for p in points]
+            within = [within_limits(_generate_values[n], b) for n, b in zip(names, bounds)]
+            if not all(within):
+                out_names = [n for n, w in zip(names, within) if not w]
+                out_bounds = [b for b, w in zip(bounds, within) if not w]
+                raise ValueError(
+                    f"generate_values {out_names} are out of bounds "
+                    f"{dict(zip(out_names, out_bounds))}."
+                )
             interpolator = RegularGridInterpolator(
                 points + [poi_values], values, method="linear", bounds_error=True
             )
-            pts = [list(hashed_keys["generate_values"].values()) + [p] for p in poi_values]
+            pts = [[_generate_values[n] for n in names] + [p] for p in poi_values]
             threshold_values = interpolator(pts)
 
         # if out of bounds, return the asymptotic critical value

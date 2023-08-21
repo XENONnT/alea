@@ -278,7 +278,20 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
 
 
 def confidence_interval_critical_value(confidence_interval_kind: str, confidence_level: float):
-    """Return the critical value for the confidence interval."""
+    """Return the critical value for the confidence interval.
+
+    Args:
+        confidence_interval_kind (str): confidence interval kind, either 'lower', 'upper' or
+            'central'
+        confidence_level (float): confidence level
+
+    Returns:
+        float: critical value
+
+    Caution:
+        The critical value is calculated from chi2 distribution with 1 degree of freedom.
+
+    """
     if confidence_interval_kind in {"lower", "upper"}:
         critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
     elif confidence_interval_kind == "central":

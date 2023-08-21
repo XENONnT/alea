@@ -1,6 +1,7 @@
 import os
 import json
 import shlex
+import warnings
 import subprocess
 import itertools
 import operator
@@ -401,10 +402,13 @@ class NeymanConstructor(SubmitterLocal):
                 # if threshold_key not in threshold,
                 # interpolate the threshold from the existing threshold
                 if len(hashed_keys["generate_values"]) == 0:
-                    raise ValueError(
-                        "If hypothesis does not container any values except poi, "
-                        "the nominal values should be in limit_threshold!"
+                    warnings.warn(
+                        f"If hypothesis {hypothesis} does not container any values except "
+                        f"poi, the nominal values should be in limit_threshold, so that "
+                        f"the threshold can be interpolated from the existing threshold."
                     )
+                    func_list.append(None)
+                    continue
 
                 if interpolator is None:
                     names = list(hashed_keys["generate_values"].keys())

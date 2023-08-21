@@ -175,6 +175,10 @@ class NeymanConstructor(SubmitterLocal):
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)
+            if len(llrs) < 1000:
+                self.logging.warning(
+                    "The number of toys is less than 1000, the threshold might not be accurate!",
+                )
 
             # update poi according to poi_expectation
             if runner.input_poi_expectation:
@@ -250,10 +254,14 @@ class NeymanConstructor(SubmitterLocal):
         Args:
             poi (str): parameter of interest
             generate_values (dict): generate values assumed to be in the limit_threshold file,
-                but is actually hypothesis
+                but is actually hypothesis. It should not contain poi or poi_expectation.
             nominal_values (dict): nominal values of parameters
             confidence_level (float): confidence level
             threshold (dict): threshold read directly from limit_threshold file
+
+        Raises:
+            ValueError: if the limit_threshold file does not contain the thresholds for the
+                generate_values
 
         """
         names = list(generate_values.keys())
@@ -325,7 +333,6 @@ class NeymanConstructor(SubmitterLocal):
     @staticmethod
     def get_confidence_interval_thresholds(
         poi,
-        hypotheses,
         hypotheses_values,
         limit_threshold,
         nominal_values,
@@ -340,7 +347,6 @@ class NeymanConstructor(SubmitterLocal):
 
         Args:
             poi (str): parameter of interest
-            hypotheses (list): hypotheses for statistical model, might contain str
             hypotheses_values (list): hypotheses values for statistical model,
                 only contains Dict[str, float]
             limit_threshold (str): path to the limit_threshold file
@@ -352,29 +358,17 @@ class NeymanConstructor(SubmitterLocal):
         """
 
         if limit_threshold is None:
-            return [None] * len(hypotheses)
+            return [None] * len(hypotheses_values)
 
         threshold = load_json(limit_threshold)
 
-        hypothesis_names = [set(h.keys()) for h in hypotheses if isinstance(h, dict)]
-        if any([hn != hypothesis_names[0] for hn in hypothesis_names]):
-            raise ValueError(
-                "When using limit_threshold_interpolation, the keys of hypotheses should be "
-                "the same for all hypotheses(expect str hypotheses)!"
-            )
-
         func_list = []
-        for i_hypo in range(len(hypotheses)):
-            # if hypothesis is str, just append None
-            if isinstance(hypotheses[i_hypo], str):
-                func_list.append(None)
-                continue
-
+        for i_hypo in range(len(hypotheses_values)):
             hypothesis = hypotheses_values[i_hypo]
 
             # keys for hashing, should be in limit_threshold
-            _generate_values = deepcopy(hypothesis) if hypothesis else {}
             _nominal_values = deepcopy(nominal_values) if nominal_values else {}
+            _generate_values = deepcopy(hypothesis) if hypothesis else {}
             hashed_keys = {
                 "poi": poi,
                 "nominal_values": deepcopy(_nominal_values),
@@ -404,20 +398,41 @@ class NeymanConstructor(SubmitterLocal):
                 poi_values = threshold[threshold_key][poi]
                 threshold_values = threshold[threshold_key]["threshold"]
             else:
-                # if not, interpolate the threshold from the existing threshold
+                # if threshold_key not in threshold,
+                # interpolate the threshold from the existing threshold
+                if len(hashed_keys["generate_values"]) == 0:
+                    raise ValueError(
+                        "If hypothesis does not container any values except poi, "
+                        "the nominal values should be in limit_threshold!"
+                    )
+
                 if interpolator is None:
+                    names = list(hashed_keys["generate_values"].keys())
                     interpolator = NeymanConstructor.build_interpolator(
-                        poi, threshold, _generate_values, _nominal_values, confidence_level
+                        poi,
+                        threshold,
+                        hashed_keys["generate_values"],
+                        hashed_keys["nominal_values"],
+                        confidence_level,
                     )
                     poi_values = interpolator.grid[-1]
-                pts = [list(_generate_values.values()) + [p] for p in poi_values]
+
+                if set(hashed_keys["generate_values"].keys()) != set(names):
+                    raise ValueError(
+                        f"When using limit_threshold_interpolation, "
+                        f"the keys of hypotheses should be "
+                        f"the same for all hypotheses(expect str hypotheses)! "
+                        f"But previously find {set(names)} and now find "
+                        f"{set(hashed_keys['generate_values'].keys())}!"
+                    )
+                pts = [list(hashed_keys["generate_values"].values()) + [p] for p in poi_values]
                 try:
                     threshold_values = interpolator(pts)
                 except ValueError:
                     raise ValueError(
                         f"Interpolation failed for hypothesis. "
                         f"Maybe the limit_threshold file does not contain enough threshold, "
-                        f"so that {_generate_values} is out of bounds. "
+                        f"so that {hashed_keys['generate_values']} is out of bounds. "
                         f"Please check the limit_threshold file!"
                     )
 
@@ -433,7 +448,7 @@ class NeymanConstructor(SubmitterLocal):
             func_list.append(func)
 
         # check if the length of hypotheses and func_list are the same
-        if len(hypotheses) != len(func_list):
+        if len(hypotheses_values) != len(func_list):
             raise ValueError(
                 "Something wrong with the length of hypotheses and func_list, "
                 "please check the code!"

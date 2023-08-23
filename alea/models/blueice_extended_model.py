@@ -181,6 +181,46 @@ class BlueiceExtendedModel(StatisticalModel):
                 ret[n] = ret.get(n, 0) + mu
         return ret
 
+    def _process_blueice_config(self, config, template_folder_list):
+        """Process the blueice config from config."""
+        blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        blueice_config["livetime_days"] = self.parameters[
+            blueice_config["livetime_parameter"]
+        ].nominal_value
+        for p in self.parameters:
+            # adding the nominal rate values will screw things up in blueice!
+            # So here we're just adding the nominal values of all other parameters
+            if p.ptype != "rate":
+                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+
+        # sanity checks
+        for source in config["sources"]:
+            if "name" not in source:
+                raise ValueError("No name specified for source.")
+            if "parameters" not in source:
+                raise ValueError(f"No parameters specified for source {source['name']}.")
+            if set(source.get("named_parameters", [])) - set(source["parameters"]):
+                raise ValueError(
+                    f"Named parameters {source['named_parameters']} are not all in the "
+                    f"parameter list {source['parameters']} of source {source['name']}."
+                )
+
+        # add all parameters to extra_dont_hash for each source unless it is used:
+        for i, source in enumerate(config["sources"]):
+            parameters_to_ignore: List[str] = [
+                p.name
+                for p in self.parameters
+                if (p.ptype == "shape") and (p.name not in source["parameters"])
+            ]
+            # no efficiency affects PDF:
+            parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+            parameters_to_ignore += source.get("extra_dont_hash_settings", [])
+
+            # ignore all shape parameters known to this model not named specifically
+            # in the source:
+            blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+        return blueice_config
+
     def _build_ll_from_config(
         self, likelihood_config: dict, template_path: Optional[str] = None
     ) -> "LogLikelihoodSum":
@@ -201,46 +241,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
+            blueice_config = self._process_blueice_config(config, template_folder_list)
+
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
-
-            blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
-            blueice_config["livetime_days"] = self.parameters[
-                blueice_config["livetime_parameter"]
-            ].nominal_value
-            for p in self.parameters:
-                # adding the nominal rate values will screw things up in blueice!
-                # So here we're just adding the nominal values of all other parameters
-                if p.ptype != "rate":
-                    blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
-
-            for source in config["sources"]:
-                if "name" not in source:
-                    raise ValueError("No name specified for source.")
-                if "parameters" not in source:
-                    raise ValueError(f"No parameters specified for source {source['name']}.")
-                if set(source.get("named_parameters", [])) - set(source["parameters"]):
-                    raise ValueError(
-                        f"Named parameters {source['named_parameters']} are not all in the "
-                        f"parameter list {source['parameters']} of source {source['name']}."
-                    )
-
-            # add all parameters to extra_dont_hash for each source unless it is used:
-            for i, source in enumerate(config["sources"]):
-                parameters_to_ignore: List[str] = [
-                    p.name
-                    for p in self.parameters
-                    if (p.ptype == "shape") and (p.name not in source["parameters"])
-                ]
-                # no efficiency affects PDF:
-                parameters_to_ignore += [
-                    p.name for p in self.parameters if (p.ptype == "efficiency")
-                ]
-                parameters_to_ignore += source.get("extra_dont_hash_settings", [])
-
-                # ignore all shape parameters known to this model not named specifically
-                # in the source:
-                blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
-
             ll = likelihood_class(blueice_config)
 
             for source in config["sources"]:

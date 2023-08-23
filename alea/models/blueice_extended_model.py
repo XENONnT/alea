@@ -323,7 +323,7 @@ class BlueiceExtendedModel(StatisticalModel):
         data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        data["ancillary"] = self._generate_ancillary_measurements(**generate_values_anc)
+        data["ancillary"] = self._generate_ancillary(**generate_values_anc)
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
 
@@ -346,7 +346,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ]
         return dict(zip(self.likelihood_names[:-1], science_data))
 
-    def _generate_ancillary_measurements(self, **generate_values) -> dict:
+    def _generate_ancillary(self, **generate_values) -> dict:
         """Generate data for the ancillary likelihood.
 
         Keyword Args:
@@ -435,8 +435,8 @@ class BlueiceExtendedModel(StatisticalModel):
         generate_values = dict_to_structured_array(_generate_values)
         # mimic the ancillary
         ancillary_keys = self.parameters.with_uncertainty.names
-        _ancillary_measurements = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
-        ancillary = dict_to_structured_array(_ancillary_measurements)
+        _ancillary = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
+        ancillary = dict_to_structured_array(_ancillary)
         # combine all data
         data_name_list = self.likelihood_names + ["generate_values"]
         data_list = real_data_list + [ancillary, generate_values]
@@ -464,7 +464,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
         self.constraint_functions = self._get_constraint_functions()
         super().__init__(
-            func=self.ancillary_measurements_sum,
+            func=self.ancillary_sum,
             parameter_list=parameter_list,
             config=self.parameters.nominal_values,
         )
@@ -498,7 +498,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             )
         self.constraint_functions = self._get_constraint_functions(**d_dict)
 
-    def ancillary_measurements_sum(self, evaluate_at: dict) -> float:
+    def ancillary_sum(self, evaluate_at: dict) -> float:
         """Return the sum of all constraint terms.
 
         Args:

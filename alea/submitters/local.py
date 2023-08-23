@@ -176,6 +176,13 @@ class NeymanConstructor(SubmitterLocal):
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)
+            if llrs.min() < 0.0:
+                self.logging.warning(
+                    f"The lowest log likelihood ratio is negative {llrs.min()}, "
+                    f"total fraction of negative log likelihood ratio is "
+                    f"{(llrs < 0.0).sum() / len(llrs)}, "
+                    f"there might be a problem in your fitting.",
+                )
             if len(llrs) < 1000:
                 self.logging.warning(
                     "The number of toys is less than 1000, the threshold might not be accurate!",

@@ -117,7 +117,7 @@ class BlueiceExtendedModel(StatisticalModel):
     @property
     def not_fittable(self) -> List[str]:
         """A list of parameter names which are not fittable."""
-        return self.livetime_parameter_names + super().not_fittable
+        return self.livetime_parameter_names + super().parameters.not_fittable
 
     def get_source_name_list(self, likelihood_name: str) -> list:
         """Return a list of source names for a given likelihood term. The order is the same as used

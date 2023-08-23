@@ -122,8 +122,8 @@ class Submitter:
         )
 
         # Get fittable and not fittable parameters, for parameters classification later
-        self.parameters_fittable = self.model.fittable + ["poi_expectation"]
-        self.parameters_not_fittable = self.model.not_fittable
+        self.parameters_fittable = self.model.parameters.fittable + ["poi_expectation"]
+        self.parameters_not_fittable = self.model.parameters.not_fittable
 
     @property
     def outputfolder(self) -> Optional[str]:

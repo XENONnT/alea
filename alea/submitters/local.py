@@ -42,7 +42,7 @@ class SubmitterLocal(Submitter):
                 to initialize runner when the limit_threshold does not exist yet.
 
         """
-        kwargs = Submitter.init_runner_from_args_string(shlex.split(script)[2:])
+        kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
         if pop_limit_threshold:
             kwargs["statistical_model_args"].pop("limit_threshold", None)
         runner = Runner(**kwargs)

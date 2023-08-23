@@ -275,7 +275,11 @@ class Runner:
         if len(hypotheses) == 0:
             raise ValueError("hypotheses should not be empty!")
         if "free" not in hypotheses and self._compute_confidence_interval:
-            raise ValueError("free hypothesis is needed for confidence interval calculation!")
+            warnings.warn(
+                f"If free hypothesis is not provided for confidence interval calculation, "
+                f"the first hypothesis {hypotheses[0]} will be used for confidence "
+                f"interval calculation."
+            )
         if "free" in hypotheses and hypotheses.index("free") != 0:
             raise ValueError("free hypothesis should be the first hypothesis!")
 

@@ -465,9 +465,17 @@ class Submitter:
         """Submit the jobs to the destinations."""
         raise NotImplementedError("You must write a submit function your submitter class")
 
+    def all_runner_kwargs(self):
+        """Parse all the runner arguments from the submission script."""
+        kwargs_list = []
+        for _, (script, _) in enumerate(self.computation_tickets_generator()):
+            kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
+            kwargs_list.append(kwargs)
+        return kwargs_list
+
     @staticmethod
-    def init_runner_from_args_string(sys_argv: Optional[List[str]] = None):
-        """Initialize a Runner from string of arguments.
+    def runner_kwargs_from_script(sys_argv: Optional[List[str]] = None):
+        """Parse kwargs of a Runner from a string of arguments(script).
 
         Args:
             sys_argv (list, optional (default=None)): string of arguments, with the format of

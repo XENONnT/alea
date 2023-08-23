@@ -43,3 +43,7 @@ class TestSubmitter(TestCase):
         """Test of submit method."""
         self.submitter.submit()
         shutil.rmtree(self.outputfolder, ignore_errors=False)
+
+    def test_all_runner_kwargs(self):
+        """Test of all_runner_kwargs method."""
+        self.submitter.all_runner_kwargs()

@@ -68,7 +68,7 @@ class Parameter:
     def uncertainty(self) -> Any:
         """Return the uncertainty of the parameter.
 
-        If the uncertainty is a string, it should be evaluated as a numpy or scipy function.
+        If the uncertainty is a string, it will be evaluated as a numpy or scipy function.
 
         """
         if isinstance(self._uncertainty, str):

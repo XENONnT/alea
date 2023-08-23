@@ -54,7 +54,7 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_config, template_path=kwargs.get("template_path", None)
         )
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
-        self.likelihood_names.append("ancillary_measurements")
+        self.likelihood_names.append("ancillary")
         self.livetime_parameter_names = [
             t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]
         ]
@@ -318,16 +318,14 @@ class BlueiceExtendedModel(StatisticalModel):
 
         Returns:
             dict: A dict of data-sets,
-            with key of the likelihood term name, "ancillary_measurements" and "generate_values".
+            with key of the likelihood term name, "ancillary" and "generate_values".
 
         """
         # generate_values are already filtered and filled by the nominal values
         data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        data["ancillary_measurements"] = self._generate_ancillary_measurements(
-            **generate_values_anc
-        )
+        data["ancillary"] = self._generate_ancillary_measurements(**generate_values_anc)
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
 
@@ -360,7 +358,7 @@ class BlueiceExtendedModel(StatisticalModel):
             numpy.array: A numpy structured array of ancillary measurements.
 
         """
-        ancillary_measurements = {}
+        ancillary = {}
         anc_ll = self.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
@@ -372,9 +370,9 @@ class BlueiceExtendedModel(StatisticalModel):
                     parameter_meas = param.fit_limits[0]
                 elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
                     parameter_meas = param.fit_limits[1]
-            ancillary_measurements[name] = parameter_meas
+            ancillary[name] = parameter_meas
 
-        return dict_to_structured_array(ancillary_measurements)
+        return dict_to_structured_array(ancillary)
 
     def _set_efficiency(self, source: dict, ll):
         """Set the efficiency of a source in the blueice ll.
@@ -437,13 +435,13 @@ class BlueiceExtendedModel(StatisticalModel):
         # mimic the generate_values
         _generate_values = self.parameters()
         generate_values = dict_to_structured_array(_generate_values)
-        # mimic the ancillary_measurements
+        # mimic the ancillary
         ancillary_keys = self.parameters.with_uncertainty.names
         _ancillary_measurements = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
-        ancillary_measurements = dict_to_structured_array(_ancillary_measurements)
+        ancillary = dict_to_structured_array(_ancillary_measurements)
         # combine all data
         data_name_list = self.likelihood_names + ["generate_values"]
-        data_list = real_data_list + [ancillary_measurements, generate_values]
+        data_list = real_data_list + [ancillary, generate_values]
         real_data = [dict(zip(data_name_list, data_list))]
         self.store_data(file_name, real_data, metadata=metadata)
 
@@ -472,7 +470,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             parameter_list=parameter_list,
             config=self.parameters.nominal_values,
         )
-        self.pdf_base_config["name"] = "ancillary_measurements"
+        self.pdf_base_config["name"] = "ancillary"
 
     @property
     def constraint_terms(self) -> dict:

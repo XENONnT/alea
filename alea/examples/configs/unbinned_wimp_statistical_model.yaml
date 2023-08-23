@@ -19,16 +19,6 @@ parameter_definition:
     fittable: false
     description: Livetime of SR1 in years
 
-  livetime_sr2:
-    nominal_value: 0.5
-    fittable: false
-    description: Livetime of SR2 in years
-
-  livetime_sr3:
-    nominal_value: 1.0
-    fittable: false
-    description: Livetime of SR3 in years
-
   wimp_rate_multiplier:
     nominal_value: 1.0
     ptype: rate

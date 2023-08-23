@@ -102,19 +102,17 @@ class TestBlueiceExtendedModel(TestCase):
             model.store_data(self.toydata_filename, [data])
             remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
-            if not (("ancillary_measurements" in data) and ("generate_values" in data)):
-                raise ValueError(
-                    "Data does not contain ancillary_measurements and generate_values."
-                )
+            if not (("ancillary" in data) and ("generate_values" in data)):
+                raise ValueError("Data does not contain ancillary and generate_values.")
             for k, v in data.items():
-                if k in {"ancillary_measurements", "generate_values"}:
+                if k in {"ancillary", "generate_values"}:
                     continue
                 elif "source" not in v.dtype.names:
                     raise ValueError("Data does not contain source information.")
             try:
                 error_raised = True
                 model.data = data
-                model.data["ancillary_measurements"] = None
+                model.data["ancillary"] = None
                 error_raised = False
             except Exception:
                 print("Error correctly raised when directly instantiating StatisticalModel")
@@ -170,11 +168,3 @@ class TestBlueiceExtendedModel(TestCase):
             data = model.generate_data()
             model.store_real_data(self.toydata_filename, list(data.values())[:n])
             remove(self.toydata_filename)
-
-
-class TestCustomAncillaryLikelihood(TestCase):
-    """Test of the CustomAncillaryLikelihood class."""
-
-    def test_ancillary_measurements(self):
-        """Test of the ancillary_measurements method."""
-        pass

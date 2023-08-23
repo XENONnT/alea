@@ -228,8 +228,8 @@ class Runner:
         if poi in generate_values:
             raise ValueError(
                 f"You can not specify both {poi} "
-                "along with poi_expectation, "
-                "because {poi} will be updated according to poi_expectation."
+                f"along with poi_expectation, "
+                f"because {poi} will be updated according to poi_expectation."
             )
         if not poi.endswith("_rate_multiplier"):
             raise ValueError(

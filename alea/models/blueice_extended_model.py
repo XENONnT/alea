@@ -439,10 +439,13 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(
                 "The dtypes of the real data do not match the dtypes of the data generators."
             )
-        # mimic the ancillary
-        ancillary_keys = self.parameters.with_uncertainty.names
-        _generate_values = self.parameters()
-        _ancillary = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
+        # set ancillary_measurements to nominal values
+        _ancillary = self.parameters.with_uncertainty.nominal_values
+        if None in _ancillary.values():
+            raise ValueError(
+                "The nominal values of the ancillary measurements are not set. "
+                "Please provide nominal values for all ancillary measurements."
+            )
         ancillary = dict_to_structured_array(_ancillary)
         # combine all data
         data_name_list = self.likelihood_names

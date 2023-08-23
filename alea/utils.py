@@ -511,7 +511,7 @@ def compute_variations(to_zip, to_vary, in_common) -> list:
     return combined
 
 
-def hashablize(obj):
+def make_hashable(obj):
     """Convert a container hierarchy into one that can be hashed.
 
     See http://stackoverflow.com/questions/985294
@@ -524,13 +524,13 @@ def hashablize(obj):
         hash(obj)
     except TypeError:
         if isinstance(obj, dict):
-            return tuple((k, hashablize(v)) for (k, v) in sorted(obj.items()))
+            return tuple((k, make_hashable(v)) for (k, v) in sorted(obj.items()))
         elif isinstance(obj, np.ndarray):
             return tuple(obj.tolist())
         elif hasattr(obj, "__iter__"):
-            return tuple(hashablize(o) for o in obj)
+            return tuple(make_hashable(o) for o in obj)
         else:
-            raise TypeError("Can't hashablize object of type %r" % type(obj))
+            raise TypeError("Can't make_hashable object of type %r" % type(obj))
     else:
         return obj
 
@@ -541,7 +541,7 @@ def deterministic_hash(thing, length=10):
     Edited from strax: strax/utils.py
 
     """
-    hashable = hashablize(thing)
+    hashable = make_hashable(thing)
     jsonned = json.dumps(hashable)
     # disable bandit
     digest = sha256(jsonned.encode("ascii")).digest()

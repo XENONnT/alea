@@ -3,6 +3,8 @@ import pytest
 from unittest import TestCase
 from copy import deepcopy
 
+from inference_interface import toydata_from_file
+
 from blueice.likelihood import LogLikelihoodSum
 from alea.utils import load_yaml
 from alea.models import BlueiceExtendedModel, CustomAncillaryLikelihood
@@ -167,4 +169,7 @@ class TestBlueiceExtendedModel(TestCase):
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
             model.store_real_data(self.toydata_filename, list(data.values())[:n])
+            toydata, _ = toydata_from_file(self.toydata_filename)
+            model.data = toydata[0]
+            model.fit()
             remove(self.toydata_filename)

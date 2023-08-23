@@ -102,8 +102,17 @@ class BlueiceExtendedModel(StatisticalModel):
         # last entry in data are the generate_values
         if isinstance(data, list):
             if len(data) != len(self.likelihood_names) + 1:
-                raise ValueError(f"Data must be a list of length {len(self.likelihood_names) + 1}")
-            data = dict(zip(self.likelihood_names + ["generate_values"], data))
+                if len(data) == len(self.likelihood_names):
+                    warnings.warn(
+                        f"If data is not a list of length {len(self.likelihood_names) + 1}, "
+                        f"only the science data and ancillary will be set."
+                    )
+                else:
+                    raise ValueError(
+                        "You should at least provide data for all likelihood terms, "
+                        "including science data and ancillary."
+                    )
+            data = dict(zip((self.likelihood_names + ["generate_values"])[: len(data)], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self.likelihood_list[i]
@@ -430,18 +439,16 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(
                 "The dtypes of the real data do not match the dtypes of the data generators."
             )
-        # mimic the generate_values
-        _generate_values = self.parameters()
-        generate_values = dict_to_structured_array(_generate_values)
         # mimic the ancillary
         ancillary_keys = self.parameters.with_uncertainty.names
+        _generate_values = self.parameters()
         _ancillary = {k: v for k, v in _generate_values.items() if k in ancillary_keys}
         ancillary = dict_to_structured_array(_ancillary)
         # combine all data
-        data_name_list = self.likelihood_names + ["generate_values"]
-        data_list = real_data_list + [ancillary, generate_values]
+        data_name_list = self.likelihood_names
+        data_list = real_data_list + [ancillary]
         real_data = [dict(zip(data_name_list, data_list))]
-        self.store_data(file_name, real_data, metadata=metadata)
+        self.store_data(file_name, real_data, self.likelihood_names, metadata=metadata)
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):

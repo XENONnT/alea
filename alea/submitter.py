@@ -30,7 +30,7 @@ class Submitter:
         statistical_model (str): the name of the statistical model
         statistical_model_config (str): the configuration file of the statistical model
         poi (str): the parameter of interest
-        computation (dict): the dictionary of the computation,
+        computation_dict (dict): the dictionary of the computation,
             with keys to_zip, to_vary and in_common
         debug (bool): whether to run in debug mode.
             If True, only one job will be submitted or one runner will be returned.
@@ -96,7 +96,7 @@ class Submitter:
         self.poi = poi
         self.outputfolder = outputfolder
 
-        self.computation = computation_options[computation]
+        self.computation_dict = computation_options[computation]
         self.debug = debug
 
         # Find statistical model config file
@@ -239,15 +239,15 @@ class Submitter:
         """Generate the merged arguments for Runner from to_zip, to_vary and in_common."""
         _, default_args, _ = Runner.runner_arguments()
 
-        to_zip = self.computation.get("to_zip", {})
-        to_vary = self.computation.get("to_vary", {})
-        in_common = self.computation.get("in_common", {})
+        to_zip = self.computation_dict.get("to_zip", {})
+        to_vary = self.computation_dict.get("to_vary", {})
+        in_common = self.computation_dict.get("in_common", {})
         allowed_keys = ["to_zip", "to_vary", "in_common"]
-        if set(self.computation.keys()) - set(allowed_keys):
+        if set(self.computation_dict.keys()) - set(allowed_keys):
             raise ValueError(
                 "Keys in computation_options should be to_zip, to_vary or in_common, "
                 "unknown computation options: {}".format(
-                    set(self.computation.keys()) - set(allowed_keys)
+                    set(self.computation_dict.keys()) - set(allowed_keys)
                 )
             )
 

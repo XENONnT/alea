@@ -101,7 +101,7 @@ likelihood_config:
         apply_efficiency: True
         efficiency_name: signal_efficiency
 
-    # SR3
+    # SR3, 1D inference on cS2 space
     - name: sr3
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood

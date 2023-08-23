@@ -7,7 +7,7 @@ from alea.utils import (
     MAX_FLOAT,
     get_analysis_space,
     formatted_to_asterisked,
-    confidence_interval_critical_value,
+    asymptotic_critical_value,
     within_limits,
     clip_limits,
     can_expand_grid,
@@ -34,16 +34,12 @@ class TestUtils(TestCase):
         self.assertEqual(formatted_to_asterisked("a_{a:.2f}_b_{b:d}"), "a_*_b_*")
         self.assertEqual(formatted_to_asterisked("a_{a:.2f}_b_{b:d}", wildcards="a"), "a_*_b_{b:d}")
 
-    def test_confidence_interval_critical_value(self):
-        """Test of the confidence_interval_critical_value function."""
+    def test_asymptotic_critical_value(self):
+        """Test of the asymptotic_critical_value function."""
         confidence_level = 0.9
         critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
-        self.assertEqual(
-            confidence_interval_critical_value("lower", confidence_level), critical_value
-        )
-        self.assertEqual(
-            confidence_interval_critical_value("upper", confidence_level), critical_value
-        )
+        self.assertEqual(asymptotic_critical_value("lower", confidence_level), critical_value)
+        self.assertEqual(asymptotic_critical_value("upper", confidence_level), critical_value)
 
     def test_within_limits(self):
         """Test of the within_limits function."""

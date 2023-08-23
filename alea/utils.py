@@ -277,7 +277,7 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
     return template_folder_list
 
 
-def confidence_interval_critical_value(confidence_interval_kind: str, confidence_level: float):
+def asymptotic_critical_value(confidence_interval_kind: str, confidence_level: float):
     """Return the critical value for the confidence interval.
 
     Args:

@@ -17,7 +17,7 @@ from alea.runner import Runner
 from alea.submitter import Submitter
 from alea.utils import (
     load_json,
-    confidence_interval_critical_value,
+    asymptotic_critical_value,
     deterministic_hash,
 )
 
@@ -445,9 +445,7 @@ class NeymanConstructor(SubmitterLocal):
                 poi_values,
                 threshold_values,
                 bounds_error=False,
-                fill_value=confidence_interval_critical_value(
-                    confidence_interval_kind, confidence_level
-                ),
+                fill_value=asymptotic_critical_value(confidence_interval_kind, confidence_level),
             )
             func_list.append(func)
 

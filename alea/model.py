@@ -11,7 +11,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits, confidence_interval_critical_value
+from alea.utils import within_limits, clip_limits, asymptotic_critical_value
 
 
 class StatisticalModel:
@@ -397,7 +397,7 @@ class StatisticalModel:
                 confidence_interval_threshold = self.confidence_interval_threshold
             else:
                 # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-                critical_value = confidence_interval_critical_value(
+                critical_value = asymptotic_critical_value(
                     confidence_interval_kind, confidence_level
                 )
 

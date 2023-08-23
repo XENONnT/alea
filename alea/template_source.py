@@ -174,7 +174,6 @@ class TemplateSource(HistogramPdfSource):
                 h = h.slice(start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis)
                 logging.debug(f"Normalization after slicing: {h.n}.")
 
-        # manully convert Hist1d to Histdd
         if isinstance(h, Hist1d):
             if self.config["pdf_interpolation_method"] != "piecewise":
                 raise ValueError(

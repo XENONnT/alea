@@ -369,7 +369,7 @@ class Submitter:
     def update_output_toydata(runner_args, outputfolder: str):
         for f in ["output_filename", "toydata_filename"]:
             if (f in runner_args) and (runner_args[f] is not None):
-                if "n_batch" in runner_args:
+                if ("n_batch" in runner_args) and (runner_args["n_batch"] != 1):
                     runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
                 else:
                     runner_args[f] = os.path.join(outputfolder, runner_args[f])

@@ -229,7 +229,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 parameters_to_ignore: List[str] = [
                     p.name
                     for p in self.parameters
-                    if (p.ptype == "shape") and (p.name not in source.get("parameters", []))
+                    if (p.ptype == "shape") and (p.name not in source["parameters"])
                 ]
                 # no efficiency affects PDF:
                 parameters_to_ignore += [

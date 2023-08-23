@@ -236,6 +236,7 @@ class Submitter:
             )
 
     def merged_arguments_generator(self):
+        """Generate the merged arguments for Runner from to_zip, to_vary and in_common."""
         _, default_args, _ = Runner.runner_arguments()
 
         to_zip = self.computation.get("to_zip", {})

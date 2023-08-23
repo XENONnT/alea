@@ -179,6 +179,12 @@ class Submitter:
             return "{:d}".format(value)
         elif can_assign_to_typing(float, annotation):
             # currently we only support 4 digits after the decimal point
+            rounded_value = round(value, 4)
+            if rounded_value != value:
+                logging.warn(
+                    f"Value {value} of {annotation} will be rounded to four "
+                    f"digit precision for the submission script.",
+                )
             return "{:.4f}".format(value)
         elif can_assign_to_typing(bool, annotation):
             return str(value)

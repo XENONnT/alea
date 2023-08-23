@@ -80,7 +80,7 @@ class Submitter:
                 "You cannot instantiate the Submitter class directly, "
                 "you must use a subclass where the submit method are implemented"
             )
-        loglevel = getattr(logging, loglevel.upper())
+        loglevel = getattr(logging, loglevel.upper() if not debug else "DEBUG")
         self.logging.setLevel(loglevel)
 
         # find the path of template, requires users install alea-inference properly

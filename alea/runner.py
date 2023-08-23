@@ -101,13 +101,13 @@ class Runner:
         if statistical_model_config is not None:
             model_config = load_yaml(statistical_model_config)
             if parameter_definition is not None:
-                warnings.warn(
-                    "parameter_definition is overwritten, "
+                raise ValueError(
+                    "parameter_definition is duplicated, "
                     "because statistical_model_config is provided!"
                 )
             if likelihood_config is not None:
-                warnings.warn(
-                    "likelihood_config is overwritten, "
+                raise ValueError(
+                    "likelihood_config is duplicated, "
                     "because statistical_model_config is provided!"
                 )
             parameter_definition = model_config["parameter_definition"]

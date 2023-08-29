@@ -66,7 +66,13 @@ def evaluate_numpy_scipy_expression(value: str):
 
 
 def evaluate_numpy_scipy_expression_in_dict(d: dict):
-    """Evaluate numpy(np) and scipy.stats expression in a dict."""
+    """Evaluate numpy(np) and scipy.stats expression in a dict.
+
+    Example:
+        >>> evaluate_numpy_scipy_expression_in_dict({'a': 'np.arange(0, 2, 1)', 'b': [0, 1]})
+        {'a': [0, 1], 'b': [0, 1]}
+
+    """
     d_copy = deepcopy(d)
     for k, v in d_copy.items():
         if isinstance(v, str):
@@ -386,7 +392,7 @@ def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str
         variations (list): variations to be expanded
 
     Example:
-        >>> expand_grid_dict(["free", {"a": 1, "b": 3}, {"a": [1, 2], "b": [3, 4]}])
+        >>> expand_grid_dict(["free", {"a": 1, "b": 3}, {"a": 'np.arange(1, 3)', "b": [3, 4]}])
         [
             "free",
             {"a": 1, "b": 3},

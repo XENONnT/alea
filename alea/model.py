@@ -162,7 +162,10 @@ class StatisticalModel:
 
         """
         if set(kwargs.keys()) - set(self.parameters.fittable):
-            raise ValueError("You cannot pass non-fittable parameters to generate_data")
+            warnings.warn(
+                "When you pass non-fittable parameters to generate_data, "
+                "you might changed the nominal values of the parameters.",
+            )
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)

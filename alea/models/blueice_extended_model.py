@@ -557,6 +557,10 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     uncertainty *= param.nominal_value
                 func = stats.norm(central_values[name], uncertainty)
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
+                warnings.warn(
+                    f"Uncertainty of {name} is a string-based uncertainty. "
+                    "It is frozen and its argument(s) cannot be changed as ancillary measurement."
+                )
                 func = uncertainty
             else:
                 raise NotImplementedError(

@@ -125,20 +125,6 @@ class Submitter:
         self.parameters_fittable = self.model.parameters.fittable + ["poi_expectation"]
         self.parameters_not_fittable = self.model.parameters.not_fittable
 
-    @property
-    def outputfolder(self) -> Optional[str]:
-        return self._outputfolder
-
-    @outputfolder.setter
-    def outputfolder(self, outputfolder: Optional[str]):
-        if outputfolder is None:
-            # default output folder is the current working directory
-            raise ValueError("outputfolder is not provided")
-        else:
-            self._outputfolder = os.path.abspath(outputfolder)
-        if not os.path.exists(self._outputfolder):
-            os.makedirs(self._outputfolder, exist_ok=True)
-
     @classmethod
     def from_config(cls, config_file_path: str, **kwargs) -> "Submitter":
         """Initializes the submitter from a yaml config file.
@@ -153,6 +139,20 @@ class Submitter:
         config = load_yaml(config_file_path)
         cls.config_file_path = config_file_path
         return cls(**{**config, **kwargs})
+
+    @property
+    def outputfolder(self) -> Optional[str]:
+        return self._outputfolder
+
+    @outputfolder.setter
+    def outputfolder(self, outputfolder: Optional[str]):
+        if outputfolder is None:
+            # default output folder is the current working directory
+            raise ValueError("outputfolder is not provided")
+        else:
+            self._outputfolder = os.path.abspath(outputfolder)
+        if not os.path.exists(self._outputfolder):
+            os.makedirs(self._outputfolder, exist_ok=True)
 
     @staticmethod
     def arg_to_str(value, annotation) -> str:

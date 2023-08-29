@@ -35,17 +35,10 @@ class TestGaussianModel(TestCase):
     def test_data_generation(self):
         """Test generation of data."""
         self.model.data = self.model.generate_data(mu=0)
-        try:
-            error_raised = True
+        with self.assertWarns(
+            Warning, msg="Should raise warning when generate_data with non-fittable parameter"
+        ):
             self.model.generate_data(mu=0, sigma=2)
-            error_raised = False
-        except Exception:
-            print("Error correctly raised when generate_data with non-fittable parameter")
-        else:
-            if not error_raised:
-                raise RuntimeError(
-                    "Should raise error when generate_data with non-fittable parameter"
-                )
 
     def test_data_storage(self):
         """Test storage of data to file and retrieval of data from file."""

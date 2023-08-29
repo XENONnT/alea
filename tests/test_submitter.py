@@ -29,15 +29,10 @@ class TestSubmitter(TestCase):
 
     def test_init(self):
         """Test of __init__ method."""
-        try:
-            error_raised = True
+        with self.assertRaises(
+            RuntimeError, msg="Should raise error when directly instantiating Submitter"
+        ):
             Submitter.from_config(self.config_file_path)
-            error_raised = False
-        except Exception:
-            print("Error correctly raised when directly instantiating Submitter")
-        else:
-            if not error_raised:
-                raise RuntimeError("Should raise error when directly instantiating Submitter")
 
     def test_submit(self):
         """Test of submit method."""

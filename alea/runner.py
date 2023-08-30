@@ -165,13 +165,11 @@ class Runner:
     @generate_values.setter
     def generate_values(self, value: Dict[str, float]) -> None:
         if not all([isinstance(v, (float, int)) for v in value.values()]):
-            raise ValueError(
-                "generate_values should be a dict of float! " f"But {value} is provided."
-            )
+            raise ValueError(f"generate_values should be a dict of float! But {value} is provided.")
         # update poi according to poi_expectation
         if "poi_expectation" in value:
             self.input_poi_expectation = True
-            value = self.update_poi(self.poi, value, self.nominal_values)
+            value = self.update_poi(self.model, self.poi, value, self.nominal_values)
         else:
             self.input_poi_expectation = False
         self._generate_values = value
@@ -184,7 +182,7 @@ class Runner:
     def common_hypothesis(self, value: Dict[str, float]) -> None:
         if not all([isinstance(v, (float, int)) for v in value.values()]):
             raise ValueError(
-                "common_hypothesis should be a dict of float! " f"But {value} is provided."
+                f"common_hypothesis should be a dict of float! But {value} is provided."
             )
         self._common_hypothesis = value
 
@@ -206,8 +204,9 @@ class Runner:
         default_args = dict(zip(args[1:], defaults))
         return args, default_args, annotations
 
+    @staticmethod
     def update_poi(
-        self, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float]
+        model, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float] = {}
     ):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
         provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
@@ -239,7 +238,7 @@ class Runner:
             )
         generate_values_copy = deepcopy(generate_values)
         generate_values_copy.pop("poi_expectation")
-        expectation_values = self.model.get_expectation_values(
+        expectation_values = model.get_expectation_values(
             **{**generate_values_copy, **nominal_values}
         )
         component = poi.replace("_rate_multiplier", "")
@@ -313,7 +312,7 @@ class Runner:
                 h.update(hypothesis)
 
             if not all([isinstance(v, (float, int)) for v in h.values()]):
-                raise ValueError("hypothesis should be a dict of float! " f"But {h} is provided.")
+                raise ValueError(f"hypothesis should be a dict of float! But {h} is provided.")
             hypotheses_values.append(h)
 
         # check if the length of hypotheses and hypotheses_values are the same

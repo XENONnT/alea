@@ -191,7 +191,9 @@ class NeymanConstructor(SubmitterLocal):
             # update poi according to poi_expectation
             if runner.input_poi_expectation:
                 poi_expectation = generate_values.get("poi_expectation")
-                generate_values = runner.update_poi(self.poi, generate_values, nominal_values)
+                generate_values = runner.update_poi(
+                    runner.model, self.poi, generate_values, nominal_values
+                )
             else:
                 expectation_values = runner.model.get_expectation_values(
                     **{**nominal_values, **generate_values}

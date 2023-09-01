@@ -12,3 +12,4 @@ PyYAML
 scipy
 setuptools
 tqdm
+utilix>=0.7.4

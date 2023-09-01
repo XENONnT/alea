@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+from argparse import ArgumentParser
+
+
+def main():
+    parser = ArgumentParser("Submitter script for toyMCs in alea")
+    # Required arguments
+    parser.add_argument("running_config", type=str, help="YAML runner config file")
+    parser.add_argument(
+        "--computation",
+        type=str,
+        required=True,
+        choices=[
+            "discovery_power",
+            "threshold",
+            "sensitivity",
+        ],
+        help="Type of computation, defined in YAML runner config file",
+    )
+    # Exclusive groups on submission destination
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument("--local", action="store_true", help="Executes the defined jobs locally")
+    group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
+    group.add_argument(
+        "--htcondor", action="store_true", help="Write out files for submission to htcondor"
+    )
+    # Optional arguments
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Only 1 job will be prepared and its script will be printed out",
+    )
+    parser.add_argument(
+        "--outputfolder",
+        type=str,
+        required=False,
+        default=None,
+        help="Overwriting the outputfolder, usually defined in runner config file",
+    )
+    parsed_args = parser.parse_args()
+
+    if parsed_args.computation == "threshold":
+        if not parsed_args.local:
+            raise ValueError("Threshold computation can only be done locally.")
+
+    if parsed_args.local:
+        from alea.submitters.local import SubmitterLocal, NeymanConstructor
+
+        submitter_class = (
+            SubmitterLocal if parsed_args.computation != "threshold" else NeymanConstructor
+        )
+    elif parsed_args.slurm:
+        from alea.submitters.slurm import SubmitterSlurm
+
+        submitter_class = SubmitterSlurm
+    elif parsed_args.htcondor:
+        from alea.submitters.htcondor import SubmitterHTCondor
+
+        submitter_class = SubmitterHTCondor
+    else:
+        raise ValueError(
+            "No submission destination specified. "
+            "Please specify one of the following: --local, --slurm, --htcondor"
+        )
+
+    kwargs = {
+        "computation": parsed_args.computation,
+        "debug": parsed_args.debug,
+    }
+    # if outputfolder is provided, overwrite the one in runner config file
+    if parsed_args.outputfolder:
+        kwargs["outputfolder"] = parsed_args.outputfolder
+
+    submitter = submitter_class.from_config(parsed_args.running_config, **kwargs)
+
+    submitter.submit()
+
+
+if __name__ == "__main__":
+    main()

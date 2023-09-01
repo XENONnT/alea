@@ -1,6 +1,9 @@
 from os import remove
 import pytest
 from unittest import TestCase
+from copy import deepcopy
+
+from inference_interface import toydata_from_file
 
 from blueice.likelihood import LogLikelihoodSum
 from alea.utils import load_yaml
@@ -18,8 +21,9 @@ class TestBlueiceExtendedModel(TestCase):
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
         ]
-        n = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
-        cls.n_likelihood_terms = n
+        ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
+        cls.n_likelihood_terms = ns
+        cls.toydata_filename = "simple_data.h5"
         cls.set_new_models(cls)
 
     def set_new_models(self):
@@ -33,6 +37,15 @@ class TestBlueiceExtendedModel(TestCase):
                 )
             )
         self.models = models
+
+    def test_deep_copyable(self):
+        """Test of whether BlueiceExtendedModel instance can be deepcopied."""
+        for model in self.models:
+            try:
+                model.data = model.generate_data()
+                deepcopy(model)
+            except Exception:
+                raise ValueError("BlueiceExtendedModel instance cannot be correctly deepcopied.")
 
     def get_expectation_values(self):
         # normalization of templates
@@ -88,17 +101,21 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            toydata_file = "simple_data.h5"
-            model.store_data(toydata_file, [data])
-            remove(toydata_file)
+            model.store_data(self.toydata_filename, [data])
+            remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
-            if not (("ancillary_likelihood" in data) and ("generate_values" in data)):
-                raise ValueError("Data does not contain ancillary_likelihood and generate_values.")
+            if not (("ancillary" in data) and ("generate_values" in data)):
+                raise ValueError("Data does not contain ancillary and generate_values.")
             for k, v in data.items():
-                if k in {"ancillary_likelihood", "generate_values"}:
+                if k in {"ancillary", "generate_values"}:
                     continue
                 elif "source" not in v.dtype.names:
                     raise ValueError("Data does not contain source information.")
+            with self.assertRaises(
+                TypeError, msg="Should raise error when directly instantiating StatisticalModel"
+            ):
+                model.data = data
+                model.data["ancillary"] = None
 
     def test_likelihood(self):
         """Test of the _likelihood attribute."""
@@ -140,11 +157,12 @@ class TestBlueiceExtendedModel(TestCase):
             for p in model.parameters:
                 self.assertEqual(p.nominal_value, fit_result_fixed[p.name])
 
-
-class TestCustomAncillaryLikelihood(TestCase):
-    """Test of the CustomAncillaryLikelihood class."""
-
-    def test_ancillary_likelihood(self):
-        """Test of the ancillary_likelihood method."""
-        # TODO:
-        pass
+    def test_store_real_data(self):
+        """Test of the store_real_data method."""
+        for model, n in zip(self.models, self.n_likelihood_terms):
+            data = model.generate_data()
+            model.store_real_data(self.toydata_filename, list(data.values())[:n])
+            toydata, _ = toydata_from_file(self.toydata_filename)
+            model.data = toydata[0]
+            model.fit()
+            remove(self.toydata_filename)

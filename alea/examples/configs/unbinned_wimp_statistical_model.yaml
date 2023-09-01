@@ -1,8 +1,11 @@
 parameter_definition:
   wimp_mass:
     nominal_value: 50
+    ptype: shape
     fittable: false
     description: WIMP mass in GeV/c^2
+    blueice_anchors:
+      - 50
 
   livetime_sr0:
     nominal_value: 0.2
@@ -15,16 +18,6 @@ parameter_definition:
     ptype: livetime
     fittable: false
     description: Livetime of SR1 in years
-
-  livetime_sr2:
-    nominal_value: 0.5
-    fittable: false
-    description: Livetime of SR2 in years
-
-  livetime_sr3:
-    nominal_value: 1.0
-    fittable: false
-    description: Livetime of SR3 in years
 
   wimp_rate_multiplier:
     nominal_value: 1.0
@@ -63,7 +56,7 @@ parameter_definition:
   er_band_shift:
     nominal_value: 0
     ptype: shape
-    uncertainty: null  # stats.uniform(loc=-2, scale=4)
+    uncertainty: 'stats.uniform(loc=-2, scale=4)'
     # relative_uncertainty: false
     fittable: true
     blueice_anchors:
@@ -105,10 +98,12 @@ likelihood_config:
       - name: wimp
         histname: wimp_template
         parameters:
-          - wimp_rate_multiplier
           - wimp_mass
+          - wimp_rate_multiplier
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency
 
@@ -136,9 +131,11 @@ likelihood_config:
       - name: wimp
         histname: wimp_template
         parameters:
-          - wimp_rate_multiplier
           - wimp_mass
+          - wimp_rate_multiplier
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency

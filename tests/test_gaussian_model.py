@@ -34,20 +34,24 @@ class TestGaussianModel(TestCase):
 
     def test_data_generation(self):
         """Test generation of data."""
-        self.model.data = self.model.generate_data(mu=0, sigma=2)
+        self.model.data = self.model.generate_data(mu=0)
+        with self.assertWarns(
+            Warning, msg="Should raise warning when generate_data with non-fittable parameter"
+        ):
+            self.model.generate_data(mu=0, sigma=2)
 
     def test_data_storage(self):
         """Test storage of data to file and retrieval of data from file."""
-        toydata_file = "simple_data.h5"
-        self.model.data = self.model.generate_data(mu=0, sigma=2)
-        self.model.store_data(toydata_file, [self.model.data])
-        stored_data = inference_interface.toydata_from_file(toydata_file)
+        toydata_filename = "simple_data.h5"
+        self.model.data = self.model.generate_data(mu=0)
+        self.model.store_data(toydata_filename, [self.model.data])
+        stored_data = inference_interface.toydata_from_file(toydata_filename)
         assert self.model.data == stored_data[0], "Stored data disagrees with data!"
-        remove(toydata_file)
+        remove(toydata_filename)
 
     def test_fit_result(self):
         """Test fitting of data."""
-        self.model.data = self.model.generate_data(mu=0, sigma=2)
+        self.model.data = self.model.generate_data(mu=0)
         hat_meas = self.model.data[0]["hat_mu"].item()
         best_fit, lf = self.model.fit(sigma=2)
         hat_fit = best_fit["mu"]

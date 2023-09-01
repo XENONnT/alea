@@ -1,17 +1,17 @@
 import inspect
 import warnings
+from pydoc import locate
 from copy import deepcopy
 from typing import List, Tuple, Callable, Optional, Union
 
 import numpy as np
-from scipy.stats import chi2
 from scipy.optimize import brentq
 from iminuit import Minuit
 from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits
+from alea.utils import within_limits, clip_limits, asymptotic_critical_value
 
 
 class StatisticalModel:
@@ -96,6 +96,7 @@ class StatisticalModel:
         self._define_parameters(parameter_definition)
 
         self._check_ll_and_generate_data_signature()
+        self.set_nominal_values(**kwargs.get("nominal_values", {}))
 
     def _define_parameters(self, parameter_definition):
         """Initialize the parameters of the model."""
@@ -160,6 +161,11 @@ class StatisticalModel:
             This implementation won't allow you to call generate_data by positional arguments.
 
         """
+        if set(kwargs.keys()) - set(self.parameters.fittable):
+            warnings.warn(
+                "When you pass non-fittable parameters to generate_data, "
+                "you might changed the nominal values of the parameters.",
+            )
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)
@@ -227,6 +233,24 @@ class StatisticalModel:
         if len(_data_list[0]) != len(data_name_list):
             raise ValueError("The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
+
+    def set_nominal_values(self, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        self.parameters.set_nominal_values(**nominal_values)
+
+    def set_fit_guesses(self, **fit_guesses):
+        """Set the fit guesses for parameters.
+
+        Keyword Args:
+            fit_guesses (dict): A dict of parameter names and values.
+
+        """
+        self.parameters.set_fit_guesses(**fit_guesses)
 
     def get_expectation_values(self, **parameter_values):
         """Get the expectation values of the measurement.
@@ -330,6 +354,7 @@ class StatisticalModel:
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         **kwargs,
     ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
@@ -369,37 +394,27 @@ class StatisticalModel:
             parameter_of_interest._check_parameter_interval_bounds(value)
             parameter_interval_bounds = clip_limits(value)
 
-        if parameter_of_interest.ptype == "rate":
-            try:
-                if parameter_of_interest.ptype == "rate" and poi_name.endswith("_rate_multiplier"):
-                    source_name = poi_name.replace("_rate_multiplier", "")
-                else:
-                    source_name = poi_name
-                mu_parameter = self.get_expectation_values(**kwargs)[source_name]
-                # update parameter_interval_bounds because poi is rate_multiplier
-                parameter_interval_bounds = (
-                    parameter_interval_bounds[0] / mu_parameter,
-                    parameter_interval_bounds[1] / mu_parameter,
-                )
-            except NotImplementedError:
-                warnings.warn(
-                    "The statistical model does not have a get_expectation_values model "
-                    "implemented, confidence interval bounds will be set directly."
-                )
-                pass  # no problem, continuing with bounds as set
-
         # define threshold if none is defined:
-        if self.confidence_interval_threshold is not None:
-            confidence_interval_threshold = self.confidence_interval_threshold
-        else:
-            # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-            if confidence_interval_kind in {"lower", "upper"}:
-                critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
-            elif confidence_interval_kind == "central":
-                critical_value = chi2(1).isf(1.0 - confidence_level)
+        if confidence_interval_threshold is None:
+            if self.confidence_interval_threshold is not None:
+                confidence_interval_threshold = self.confidence_interval_threshold
+            else:
+                # use asymptotic thresholds assuming the test statistic is Chi2 distributed
+                critical_value = asymptotic_critical_value(
+                    confidence_interval_kind, confidence_level
+                )
 
-            def confidence_interval_threshold(_):
-                return critical_value
+                def confidence_interval_threshold(_):
+                    return critical_value
+
+        else:
+            if self.confidence_interval_threshold is not None:
+                raise ValueError(
+                    "You cannot set confidence_interval_threshold twice, "
+                    "once in the constructor and once in the method call"
+                )
+        if not callable(confidence_interval_threshold):
+            raise ValueError("confidence_interval_threshold must be a callable")
 
         return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
@@ -409,6 +424,7 @@ class StatisticalModel:
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
     ) -> Tuple[float, float]:
@@ -449,6 +465,7 @@ class StatisticalModel:
             parameter_interval_bounds,
             confidence_level,
             confidence_interval_kind,
+            confidence_interval_threshold,
             **confidence_interval_args,
         )
         (
@@ -505,6 +522,18 @@ class StatisticalModel:
             dl = np.nan
 
         return dl, ul
+
+    @staticmethod
+    def get_model_from_name(statistical_model: str):
+        """Get the statistical model class from a string."""
+        statistical_model_class = locate(statistical_model)
+        if statistical_model_class is None:
+            raise ValueError(f"Could not find {statistical_model}!")
+        if not inspect.isclass(statistical_model_class):
+            raise ValueError(f"{statistical_model_class} is not a class!")
+        if not issubclass(statistical_model_class, StatisticalModel):
+            raise ValueError(f"{statistical_model_class} is not a subclass of StatisticalModel!")
+        return statistical_model_class
 
 
 class MinuitWrap:

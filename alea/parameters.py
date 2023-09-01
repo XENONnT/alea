@@ -2,7 +2,7 @@ import warnings
 from typing import Any, Dict, List, Tuple, Iterator, Optional, Union, cast
 import pandas as pd
 
-from alea.utils import within_limits, clip_limits
+from alea.utils import within_limits, clip_limits, evaluate_numpy_scipy_expression
 
 
 class Parameter:
@@ -40,7 +40,7 @@ class Parameter:
         uncertainty: Optional[Union[float, str]] = None,
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
-        fit_limits: Optional[Tuple[float, float]] = None,
+        fit_limits: Optional[Tuple] = None,
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
@@ -68,23 +68,27 @@ class Parameter:
     def uncertainty(self) -> Any:
         """Return the uncertainty of the parameter.
 
-        If the uncertainty is a string, it can be evaluated as a numpy or scipy function.
+        If the uncertainty is a string, it will be evaluated as a numpy or scipy function.
 
         """
         if isinstance(self._uncertainty, str):
-            # Evaluate the uncertainty if it's a string starting with "scipy." or "numpy."
-            if self._uncertainty.startswith("scipy.") or self._uncertainty.startswith("numpy."):
-                return eval(self._uncertainty)
-            else:
-                raise ValueError(
-                    f"Uncertainty string '{self._uncertainty}'"
-                    " must start with 'scipy.' or 'numpy.'"
-                )
+            return evaluate_numpy_scipy_expression(self._uncertainty)
         else:
             return self._uncertainty
 
     @uncertainty.setter
-    def uncertainty(self, value: Union[float, str]) -> None:
+    def uncertainty(self, value: Optional[Union[float, str]]) -> None:
+        if self.relative_uncertainty and (value is not None):
+            if value and (not isinstance(value, (float, int))):
+                raise ValueError(
+                    f"When relative_uncertainty of {self.name} is True, "
+                    f"uncertainty should be float, not {value}."
+                )
+            if self.nominal_value is None:
+                raise ValueError(
+                    f"When relative_uncertainty of {self.name} is True, "
+                    "nominal_value should be set."
+                )
         self._uncertainty = value
 
     @property
@@ -132,7 +136,7 @@ class Parameter:
         """Check if parameter_interval_bounds is within fit_limits and is not None."""
         if (value is None) or (value[0] is None) or (value[1] is None):
             warnings.warn(
-                f"parameter_interval_bounds not defined for parameter {self.name}. "
+                f"parameter_interval_bounds not completely defined for parameter {self.name}. "
                 "This may cause numerical overflow when calculating confidential interval."
             )
         value = clip_limits(value)
@@ -309,6 +313,26 @@ class Parameters:
         return {
             k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
         }
+
+    def set_nominal_values(self, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        for name, value in nominal_values.items():
+            self.parameters[name].nominal_value = value
+
+    def set_fit_guesses(self, **fit_guesses):
+        """Set the fit guesses for parameters.
+
+        Keyword Args:
+            fit_guesses (dict): A dict of parameter names and values.
+
+        """
+        for name, value in fit_guesses.items():
+            self.parameters[name].fit_guess = value
 
     def __call__(
         self, return_fittable: Optional[bool] = False, **kwargs: Optional[Dict]

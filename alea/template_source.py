@@ -1,13 +1,13 @@
-import json
-import warnings
 import logging
+from typing import List, Dict, Optional, Union
 
 import numpy as np
 from scipy.interpolate import interp1d
 from blueice import HistogramPdfSource
+from multihist import Hist1d
 from inference_interface import template_to_multihist
 
-from alea.utils import get_file_path
+from alea.utils import load_json
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
@@ -45,7 +45,7 @@ class TemplateSource(HistogramPdfSource):
 
     """
 
-    def _check_binning(self, h, histogram_info):
+    def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.
 
         Args:
@@ -57,14 +57,21 @@ class TemplateSource(HistogramPdfSource):
         for axis_i in self.config.get("log10_bins", []):
             h.bin_edges[axis_i] = 10 ** h.bin_edges[axis_i]
 
-        # Check if the histogram bin edges are correct
         analysis_space = self.config["analysis_space"]
+        if len(analysis_space) != h.histogram.ndim:
+            raise ValueError(
+                f"Analysis space {analysis_space} has {len(analysis_space)} axes, "
+                f"but histogram {histogram_info} has {h.histogram.ndim} axes."
+            )
+
+        # Check if the histogram bin edges are correct
         for axis_i, (_, expected_bin_edges) in enumerate(analysis_space):
             expected_bin_edges = np.array(expected_bin_edges)
-            seen_bin_edges = h.bin_edges[axis_i]
             # If 1D, hist1d returns bin_edges straight, not as list
-            if len(analysis_space) == 1:
+            if isinstance(h, Hist1d):
                 seen_bin_edges = h.bin_edges
+            else:
+                seen_bin_edges = h.bin_edges[axis_i]
             logging.debug("axis_i: " + str(axis_i))
             logging.debug("expected_bin_edges: " + str(expected_bin_edges))
             logging.debug("seen_bin_edges: " + str(seen_bin_edges))
@@ -77,7 +84,7 @@ class TemplateSource(HistogramPdfSource):
             try:
                 np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=2)
             except AssertionError:
-                warnings.warn(
+                logging.warn(
                     f"Axis {axis_i:d} of histogram {histogram_info} "
                     f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
                     "Since length matches, setting it expected values..."
@@ -115,7 +122,7 @@ class TemplateSource(HistogramPdfSource):
         self.set_dtype()
         self.set_pdf_histogram(h)
 
-    def apply_slice_args(self, h, slice_args=None):
+    def apply_slice_args(self, h, slice_args: Optional[Union[List[Dict], Dict]] = None):
         """Apply slice arguments to the histogram.
 
         Args:
@@ -124,20 +131,33 @@ class TemplateSource(HistogramPdfSource):
                 The sum_axis, slice_axis, and slice_axis_limits are supported.
 
         """
+
+        # if slice_args is not specified, use the one in the config
         if slice_args is None:
-            slice_args = self.config.get("slice_args", {})
-            if isinstance(slice_args, dict):
-                slice_args = [slice_args]
+            slice_args = self.config.get("slice_args", [{}])
+        # if slice_args is a dict, convert it to a list
+        if isinstance(slice_args, dict):
+            slice_args = [slice_args]
+        # if slice_args is empty, return
+        if (slice_args is None) or (len(slice_args) == 0) or (slice_args == [{}]):
+            return h
+        # check if slice_args is a list of dicts, and if each dict has slice_axis
+        if not isinstance(slice_args, list):
+            raise ValueError("slice_args must be a list or a dict")
+        if any(not isinstance(sa, dict) for sa in slice_args):
+            raise ValueError("slice_args must be a list of dicts")
+        if any("slice_axis" not in sa for sa in slice_args):
+            raise ValueError("slice_axis must be specified in slice_args")
 
         for sa in slice_args:
-            sum_axis = sa.get("sum_axis", None)
-            slice_axis = sa.get("slice_axis", None)
-            if slice_axis is not None:
-                # When slice_axis is None, slice_axis_limits is not used
-                bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
-                slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
-            # sum and/or slice the histogram
-            if (sum_axis is not None) and (slice_axis is not None):
+            # read slice_axis, sum_axis, and slice_axis_limits from slice_args
+            slice_axis = sa["slice_axis"]
+            sum_axis = sa.get("sum_axis", False)
+            bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
+            slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
+
+            # slice and/or sum over axis
+            if sum_axis:
                 logging.debug(
                     f"Slice and sum over axis {slice_axis} from {slice_axis_limits[0]} "
                     f"to {slice_axis_limits[1]}"
@@ -145,10 +165,7 @@ class TemplateSource(HistogramPdfSource):
                 h = h.slicesum(
                     start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis
                 )
-            elif sum_axis is not None:
-                logging.debug(f"Sum over axis {sum_axis}")
-                h = h.sum(axis=sum_axis)
-            elif slice_axis is not None:
+            else:
                 logging.debug(
                     f"Slice over axis {slice_axis} from {slice_axis_limits[0]} "
                     f"to {slice_axis_limits[1]}"
@@ -156,6 +173,13 @@ class TemplateSource(HistogramPdfSource):
                 logging.debug(f"Normalization before slicing: {h.n}.")
                 h = h.slice(start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis)
                 logging.debug(f"Normalization after slicing: {h.n}.")
+
+        if isinstance(h, Hist1d):
+            if self.config["pdf_interpolation_method"] != "piecewise":
+                raise ValueError(
+                    "pdf_interpolation_method must be piecewise for 1D histograms. "
+                    "This is required by blueice."
+                )
         return h
 
     def set_dtype(self):
@@ -197,7 +221,7 @@ class TemplateSource(HistogramPdfSource):
         self._pdf_histogram = h
         logging.debug(f"Setting _pdf_histogram normalised to {h.n}.")
 
-    def simulate(self, n_events):
+    def simulate(self, n_events: int):
         """Simulate events from the source.
 
         Args:
@@ -317,7 +341,7 @@ class SpectrumTemplateSource(TemplateSource):
     """
 
     @staticmethod
-    def _get_json_spectrum(filename):
+    def _get_json_spectrum(filename: str):
         """Translates bbf-style JSON files to spectra.
 
         Args:
@@ -327,8 +351,7 @@ class SpectrumTemplateSource(TemplateSource):
             Define the format of the JSON file clearly.
 
         """
-        with open(get_file_path(filename), "r") as f:
-            contents = json.load(f)
+        contents = load_json(filename)
         if "description" in contents:
             logging.debug(contents["description"])
         if "coordinate_system" not in contents:

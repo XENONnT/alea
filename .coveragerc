@@ -1,4 +1,10 @@
 # .coveragerc to control coverage.py
+[run]
+omit =
+    alea/submitters/local.py
+    alea/submitters/slurm.py
+    alea/submitters/htcondor.py
+
 [report]
 # omit =
 

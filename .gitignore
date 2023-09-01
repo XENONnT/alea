@@ -26,3 +26,4 @@ docs/source/_build
 docs/source/build
 debug.py
 docs/source/reference/release_notes.rst
+.vscode

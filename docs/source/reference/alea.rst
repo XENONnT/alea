@@ -9,6 +9,7 @@ Subpackages
 
    alea.examples
    alea.models
+   alea.submitters
 
 Submodules
 ----------
@@ -41,6 +42,14 @@ alea.simulators module
 ----------------------
 
 .. automodule:: alea.simulators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+alea.submitter module
+---------------------
+
+.. automodule:: alea.submitter
    :members:
    :undoc-members:
    :show-inheritance:

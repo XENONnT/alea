@@ -1,7 +1,7 @@
-from typing import List
+import warnings
+from typing import List, Dict, Callable, Optional, Union, cast
 from copy import deepcopy
 from pydoc import locate
-from typing import Dict, Callable, Union, cast
 
 import numpy as np
 import scipy.stats as stats
@@ -11,6 +11,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
+from alea.utils import ReadOnlyDict
 from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 
@@ -49,9 +50,11 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         super().__init__(parameter_definition=parameter_definition, **kwargs)
-        self._likelihood = self._build_ll_from_config(likelihood_config)
+        self._likelihood = self._build_ll_from_config(
+            likelihood_config, template_path=kwargs.get("template_path", None)
+        )
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
-        self.likelihood_names.append("ancillary_likelihood")
+        self.likelihood_names.append("ancillary")
         self.livetime_parameter_names = [
             t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]
         ]
@@ -59,7 +62,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self.data_generators = self._build_data_generators()
 
     @classmethod
-    def from_config(cls, config_file_path: str) -> "BlueiceExtendedModel":
+    def from_config(cls, config_file_path: str, **kwargs) -> "BlueiceExtendedModel":
         """Initializes the statistical model from a yaml config file.
 
         Args:
@@ -70,7 +73,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         config = load_yaml(config_file_path)
-        return cls(**config)
+        return cls(**{**config, **kwargs})
 
     @property
     def data(self) -> Union[dict, list]:
@@ -87,13 +90,29 @@ class BlueiceExtendedModel(StatisticalModel):
             data (dict or list): Data of the statistical model.
                 If data is a list, it must be a list of length len(self.likelihood_names) + 1.
 
+        Raises:
+            ValueError: If data is not a list of length len(self.likelihood_names) + 1.
+
+        Caution:
+            The self._data is read-only, so you can not change the data after it is set.
+            In order to change the data, you have to set the data again, using self.data = ***.
+
         """
         # iterate through all likelihood terms and set the science data in the blueice ll
         # last entry in data are the generate_values
         if isinstance(data, list):
             if len(data) != len(self.likelihood_names) + 1:
-                raise ValueError(f"Data must be a list of length {len(self.likelihood_names) + 1}")
-            data = dict(zip(self.likelihood_names + ["generate_values"], data))
+                if len(data) == len(self.likelihood_names):
+                    warnings.warn(
+                        f"If data is not a list of length {len(self.likelihood_names) + 1}, "
+                        f"only the science data and ancillary will be set."
+                    )
+                else:
+                    raise ValueError(
+                        "You should at least provide data for all likelihood terms, "
+                        "including science data and ancillary."
+                    )
+            data = dict(zip((self.likelihood_names + ["generate_values"])[: len(data)], data))
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self.likelihood_list[i]
@@ -101,7 +120,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     raise ValueError("Likelihood names do not match.")
                 ll_term.set_data(d)
 
-        self._data = data
+        self._data = ReadOnlyDict(data)
         self.is_data_set = True
 
     def get_source_name_list(self, likelihood_name: str) -> list:
@@ -156,7 +175,7 @@ class BlueiceExtendedModel(StatisticalModel):
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names, livetime_parameter in zip(  # noqa WPS352
+        for ll_term, parameter_names, livetime_parameter in zip(
             self_copy._likelihood.likelihood_list[:-1],
             self_copy._likelihood.likelihood_parameters,
             self_copy.livetime_parameter_names,
@@ -171,7 +190,49 @@ class BlueiceExtendedModel(StatisticalModel):
                 ret[n] = ret.get(n, 0) + mu
         return ret
 
-    def _build_ll_from_config(self, likelihood_config: dict) -> "LogLikelihoodSum":
+    def _process_blueice_config(self, config, template_folder_list):
+        """Process the blueice config from config."""
+        blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        blueice_config["livetime_days"] = self.parameters[
+            blueice_config["livetime_parameter"]
+        ].nominal_value
+        for p in self.parameters:
+            # adding the nominal rate values will screw things up in blueice!
+            # So here we're just adding the nominal values of all other parameters
+            if p.ptype != "rate":
+                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+
+        # sanity checks
+        for source in config["sources"]:
+            if "name" not in source:
+                raise ValueError("No name specified for source.")
+            if "parameters" not in source:
+                raise ValueError(f"No parameters specified for source {source['name']}.")
+            if set(source.get("named_parameters", [])) - set(source["parameters"]):
+                raise ValueError(
+                    f"Named parameters {source['named_parameters']} are not all in the "
+                    f"parameter list {source['parameters']} of source {source['name']}."
+                )
+
+        # add all parameters to extra_dont_hash for each source unless it is used:
+        for i, source in enumerate(config["sources"]):
+            parameters_to_ignore: List[str] = [
+                p.name
+                for p in self.parameters
+                if (p.ptype == "shape") and (p.name not in source["parameters"])
+            ]
+            # no efficiency affects PDF:
+            parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+            parameters_to_ignore += source.get("extra_dont_hash_settings", [])
+
+            # ignore all shape parameters known to this model not named specifically
+            # in the source:
+            blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+        return blueice_config
+
+    def _build_ll_from_config(
+        self, likelihood_config: dict, template_path: Optional[str] = None
+    ) -> "LogLikelihoodSum":
         """Iterate through all likelihood terms and build blueice likelihood instances.
 
         Args:
@@ -183,39 +244,15 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         lls = []
 
-        template_folder_list = get_template_folder_list(likelihood_config)
+        template_folder_list = get_template_folder_list(
+            likelihood_config, extra_template_path=template_path
+        )
 
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
+            blueice_config = self._process_blueice_config(config, template_folder_list)
+
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
-
-            blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
-            blueice_config["livetime_days"] = self.parameters[
-                blueice_config["livetime_parameter"]
-            ].nominal_value
-            for p in self.parameters:
-                # adding the nominal rate values will screw things up in blueice!
-                # So here we're just adding the nominal values of all other parameters
-                if p.ptype != "rate":
-                    blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
-
-            # add all parameters to extra_dont_hash for each source unless it is used:
-            for i, source in enumerate(config["sources"]):
-                parameters_to_ignore: List[str] = [
-                    p.name
-                    for p in self.parameters
-                    if (p.ptype == "shape") and (p.name not in source["parameters"])
-                ]
-                # no efficiency affects PDF:
-                parameters_to_ignore += [
-                    p.name for p in self.parameters if (p.ptype == "efficiency")
-                ]
-                parameters_to_ignore += source.get("extra_dont_hash_settings", [])
-
-                # ignore all shape parameters known to this model not named specifically
-                # in the source:
-                blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
-
             ll = likelihood_class(blueice_config)
 
             for source in config["sources"]:
@@ -288,14 +325,14 @@ class BlueiceExtendedModel(StatisticalModel):
 
         Returns:
             dict: A dict of data-sets,
-            with key of the likelihood term name, "ancillary_likelihood" and "generate_values".
+            with key of the likelihood term name, "ancillary" and "generate_values".
 
         """
         # generate_values are already filtered and filled by the nominal values
         data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
         generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
-        data["ancillary_likelihood"] = self._generate_ancillary_measurements(**generate_values_anc)
+        data["ancillary"] = self._generate_ancillary(**generate_values_anc)
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
 
@@ -318,7 +355,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ]
         return dict(zip(self.likelihood_names[:-1], science_data))
 
-    def _generate_ancillary_measurements(self, **generate_values) -> dict:
+    def _generate_ancillary(self, **generate_values) -> dict:
         """Generate data for the ancillary likelihood.
 
         Keyword Args:
@@ -328,7 +365,7 @@ class BlueiceExtendedModel(StatisticalModel):
             numpy.array: A numpy structured array of ancillary measurements.
 
         """
-        ancillary_measurements = {}
+        ancillary = {}
         anc_ll = self.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
@@ -340,9 +377,9 @@ class BlueiceExtendedModel(StatisticalModel):
                     parameter_meas = param.fit_limits[0]
                 elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
                     parameter_meas = param.fit_limits[1]
-            ancillary_measurements[name] = parameter_meas
+            ancillary[name] = parameter_meas
 
-        return dict_to_structured_array(ancillary_measurements)
+        return dict_to_structured_array(ancillary)
 
     def _set_efficiency(self, source: dict, ll):
         """Set the efficiency of a source in the blueice ll.
@@ -361,7 +398,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         if efficiency_name not in source["parameters"]:
             raise ValueError(
-                f"The efficiency_name for source {source['name']:s}" " is not in its parameter list"
+                f"The efficiency_name for source {source['name']:s} is not in its parameter list"
             )
         efficiency_parameter = self.parameters[efficiency_name]
 
@@ -380,6 +417,41 @@ class BlueiceExtendedModel(StatisticalModel):
                 " must be constrained to be finite"
             )
         ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
+
+    def store_real_data(self, file_name: str, real_data_list: list, metadata=None):
+        """Store real data in a file with toydata format.
+
+        Args:
+            file_name (str): Name of the file.
+            real_data_list (list): List of np.array of real data.
+
+        """
+        # check if real_data_list has the correct length
+        if len(real_data_list) != len(self.likelihood_names) - 1:
+            raise ValueError(
+                f"real_data_list must have length {len(self.likelihood_names) - 1} "
+                f"according to the number of likelihood terms in the model, "
+                f"but has length {len(real_data_list)}."
+            )
+        # check if the dtypes of the real data match the dtypes of the data generators
+        expected_dtypes = [np.dtype(gen.dtype) for gen in self.data_generators]
+        if any([r_d.dtype != e_d for r_d, e_d in zip(real_data_list, expected_dtypes)]):
+            raise ValueError(
+                "The dtypes of the real data do not match the dtypes of the data generators."
+            )
+        # set ancillary_measurements to nominal values
+        _ancillary = self.parameters.with_uncertainty.nominal_values
+        if None in _ancillary.values():
+            raise ValueError(
+                "The nominal values of the ancillary measurements are not set. "
+                "Please provide nominal values for all ancillary measurements."
+            )
+        ancillary = dict_to_structured_array(_ancillary)
+        # combine all data
+        data_name_list = self.likelihood_names
+        data_list = real_data_list + [ancillary]
+        real_data = [dict(zip(data_name_list, data_list))]
+        self.store_data(file_name, real_data, self.likelihood_names, metadata=metadata)
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
@@ -402,11 +474,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
         self.constraint_functions = self._get_constraint_functions()
         super().__init__(
-            func=self.ancillary_likelihood_sum,
+            func=self.ancillary_sum,
             parameter_list=parameter_list,
             config=self.parameters.nominal_values,
         )
-        self.pdf_base_config["name"] = "ancillary_likelihood"
+        self.pdf_base_config["name"] = "ancillary"
 
     @property
     def constraint_terms(self) -> dict:
@@ -430,11 +502,13 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         d_dict = structured_array_to_dict(d)
         if set(d_dict.keys()) != set(self.parameters.names):
             raise ValueError(
-                "The data dict must contain all parameters as keys in CustomAncillaryLikelihood."
+                "The data dict must contain all parameters as keys in CustomAncillaryLikelihood. "
+                f"But {set(d_dict.keys())} is provided and "
+                f"{set(self.parameters.names)} is expected."
             )
         self.constraint_functions = self._get_constraint_functions(**d_dict)
 
-    def ancillary_likelihood_sum(self, evaluate_at: dict) -> float:
+    def ancillary_sum(self, evaluate_at: dict) -> float:
         """Return the sum of all constraint terms.
 
         Args:
@@ -465,12 +539,33 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
         for name, uncertainty in self.parameters.uncertainties.items():
-            param = self.parameters[name]
-            if param.relative_uncertainty:
-                uncertainty *= param.nominal_value
-            if isinstance(uncertainty, float):
+            if isinstance(uncertainty, (float, int)):
+                param = self.parameters[name]
+                if param.relative_uncertainty:
+                    if param.nominal_value is None:
+                        raise ValueError(
+                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                            "but nominal value is None. "
+                            "Please provide a nominal value."
+                        )
+                    if param.nominal_value == 0:
+                        warnings.warn(
+                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                            "but nominal value is 0. "
+                            "This will result in a relative uncertainty of 0."
+                        )
+                    uncertainty *= param.nominal_value
                 func = stats.norm(central_values[name], uncertainty)
+            elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
+                warnings.warn(
+                    f"Uncertainty of {name} is a string-based uncertainty. "
+                    "It is frozen and its argument(s) cannot be changed as ancillary measurement."
+                )
+                func = uncertainty
             else:
-                NotImplementedError("Only float uncertainties are supported at the moment.")
+                raise NotImplementedError(
+                    f"Uncertainty {uncertainty} is not understandable. "
+                    "Only float, int, and scipy.stats distributions are supported."
+                )
             constraint_functions[name] = func
         return constraint_functions

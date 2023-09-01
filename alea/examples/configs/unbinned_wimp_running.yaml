@@ -3,54 +3,64 @@ statistical_model_config: unbinned_wimp_statistical_model.yaml
 
 poi: wimp_rate_multiplier
 
-computation:
+computation_options:
   discovery_power:
-    parameters_to_zip: {}
-    parameters_to_vary:
+    to_zip: {}
+    to_vary:
       {
         poi_expectation: "np.linspace(0, 30, 10)",
-        wimp_mass: [10, 50, 200],
+        wimp_mass: [50],
       }
-    parameters_in_common:
+    in_common:
       {
         hypotheses: ["free", "zero", "true"],
         output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
+        toydata_mode: "generate",
       }
-    toydata_mode: "generate"
 
   threshold:
-    parameters_to_zip: {}
-    parameters_to_vary: {wimp_mass: [10, 50, 200]}
-    parameters_in_common:
+    to_zip: {}
+    to_vary:
+      {
+        poi_expectation: "np.linspace(0, 30, 10)",
+        wimp_mass: [50],
+      }
+    in_common:
       {
         hypotheses: ["free", "zero", "true"],
         output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
+        limit_threshold: "thresholds.json",
       }
-    limit_threshold: "thresholds.h5"
-    toydata_mode: "generate"
-    parameters_as_wildcards: ["poi_expectation", "n_mc", "n_batch"]
 
   sensitivity:
-    parameters_to_zip: {}
-    parameters_to_vary: {poi_expectation: [0.], wimp_mass: [10, 50, 200]}
-    parameters_in_common:
+    to_zip: {}
+    to_vary: {}
+    in_common:
       {
+        poi_expectation: 0.,
+        wimp_mass: 50,
         hypotheses: ["free", "zero", "true"],
-        output_filename: "toymc_power_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
+        output_filename: "toymc_sensi_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
         n_mc: 5000,
         n_batch: 40,
         compute_confidence_interval: True,
-        limit_threshold: "thresholds.h5",
+        limit_threshold: "thresholds.json",
+        toydata_mode: "generate_and_store",
+        toydata_filename: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
       }
-    toydata_mode: "generate"
 
-midway_path: null
-OSG_path: null
-OSG_parameters:
+slurm_configurations:
+  template_path: null
+  hours: 1.5
+  mem_per_cpu: 8000
+  container: "xenonnt-development.simg"
+  partition: "xenon1t"
+htcondor_configurations:
+  template_path: null
   request_memory: "8000Mb"
   singularity_container: null
 

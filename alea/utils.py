@@ -283,25 +283,32 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
     return template_folder_list
 
 
-def asymptotic_critical_value(confidence_interval_kind: str, confidence_level: float):
+def asymptotic_critical_value(
+    confidence_interval_kind: str, confidence_level: float, degree_of_freedom: Optional[int] = None
+):
     """Return the critical value for the confidence interval.
 
     Args:
         confidence_interval_kind (str): confidence interval kind, either 'lower', 'upper' or
             'central'
         confidence_level (float): confidence level
+        degree_of_freedom (int, optional (default=None)): degree of freedom
 
     Returns:
         float: critical value
 
-    Caution:
-        The critical value is calculated from chi2 distribution with 1 degree of freedom.
-
     """
     if confidence_interval_kind in {"lower", "upper"}:
+        if (degree_of_freedom is not None) and (degree_of_freedom != 1):
+            raise ValueError(
+                f"degree_of_freedom must be 1 for {confidence_interval_kind} confidence interval"
+            )
         critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
     elif confidence_interval_kind == "central":
-        critical_value = chi2(1).isf(1.0 - confidence_level)
+        if degree_of_freedom is None:
+            critical_value = chi2(1).isf(1.0 - confidence_level)
+        else:
+            critical_value = chi2(degree_of_freedom).isf(1.0 - confidence_level)
     else:
         raise ValueError(
             f"confidence_interval_kind must be either 'lower', 'upper' or 'central', "

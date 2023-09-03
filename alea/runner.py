@@ -156,6 +156,7 @@ class Runner:
             confidence_interval_kind,
             confidence_level,
             statistical_model_args.get("limit_threshold_interpolation", False),
+            statistical_model_args.get("asymptotic_dof", None),
         )
 
     @property

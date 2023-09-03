@@ -297,6 +297,11 @@ def asymptotic_critical_value(
     Returns:
         float: critical value
 
+    Raises:
+        ValueError: if confidence_interval_kind is not 'lower', 'upper' or 'central'
+        ValueError: if degree_of_freedom is not None and not 1, when confidence_interval_kind is
+            'lower' or 'upper'
+
     """
     if confidence_interval_kind in {"lower", "upper"}:
         if (degree_of_freedom is not None) and (degree_of_freedom != 1):

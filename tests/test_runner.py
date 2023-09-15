@@ -9,7 +9,7 @@ from inference_interface import toyfiles_to_numpy
 from alea.utils import load_yaml
 from alea.runner import Runner
 
-from .test_gaussian_model import gaussian_model_parameter_definition
+from test_gaussian_model import gaussian_model_parameter_definition
 
 
 COMPUTE_CONFIDENCE_INTERVAL = True

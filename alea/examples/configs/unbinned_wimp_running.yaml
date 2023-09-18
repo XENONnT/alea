@@ -49,6 +49,7 @@ computation_options:
         n_batch: 40,
         compute_confidence_interval: True,
         limit_threshold: "thresholds.json",
+        asymptotic_dof: 1,
         toydata_mode: "generate_and_store",
         toydata_filename: "toyfile_wimp_mass_{wimp_mass:d}_poi_expectation_{poi_expectation:.2f}.h5",
       }

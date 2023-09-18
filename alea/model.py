@@ -72,7 +72,7 @@ class StatisticalModel:
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",  # one of central, upper, lower
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
-        asymptotic_dof: Optional[int] = None,
+        asymptotic_dof: Optional[int] = 1,
         data: Optional[Union[dict, list]] = None,
         **kwargs,
     ):
@@ -357,7 +357,7 @@ class StatisticalModel:
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
-        asymptotic_dof: Optional[int] = None,
+        asymptotic_dof: Optional[int] = 1,
         **kwargs,
     ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
@@ -403,18 +403,20 @@ class StatisticalModel:
                 confidence_interval_threshold = self.confidence_interval_threshold
             else:
                 # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-                if asymptotic_dof is None:
+                if asymptotic_dof is not None:
+                    if self.asymptotic_dof is not None:
+                        if asymptotic_dof != self.asymptotic_dof:
+                            warnings.warn(
+                                f"You set asymptotic_dof as {asymptotic_dof}, "
+                                f"which is different from the default value "
+                                f"{self.asymptotic_dof}. Be careful!"
+                            )
+                    degree_of_freedom = asymptotic_dof
+                else:
                     if self.asymptotic_dof is not None:
                         degree_of_freedom = self.asymptotic_dof
                     else:
                         degree_of_freedom = 1
-                else:
-                    if self.asymptotic_dof is not None:
-                        raise ValueError(
-                            "You cannot set asymptotic_dof twice, "
-                            "once in the constructor and once in the method call"
-                        )
-                    degree_of_freedom = asymptotic_dof
                 critical_value = asymptotic_critical_value(
                     confidence_interval_kind, confidence_level, degree_of_freedom
                 )
@@ -442,7 +444,7 @@ class StatisticalModel:
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
-        asymptotic_dof: Optional[int] = None,
+        asymptotic_dof: Optional[int] = 1,
     ) -> Tuple[float, float]:
         """Uses self.fit to compute confidence intervals for a certain named parameter. If the
         parameter is a rate parameter, and the model has expectation values implemented, the bounds

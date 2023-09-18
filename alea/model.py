@@ -357,7 +357,7 @@ class StatisticalModel:
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
-        asymptotic_dof: Optional[int] = 1,
+        asymptotic_dof: Optional[int] = None,
         **kwargs,
     ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
@@ -403,7 +403,12 @@ class StatisticalModel:
                 confidence_interval_threshold = self.confidence_interval_threshold
             else:
                 # use asymptotic thresholds assuming the test statistic is Chi2 distributed
-                if asymptotic_dof is not None:
+                if asymptotic_dof is None:
+                    if self.asymptotic_dof is not None:
+                        degree_of_freedom = self.asymptotic_dof
+                    else:
+                        degree_of_freedom = 1
+                else:
                     if self.asymptotic_dof is not None:
                         if asymptotic_dof != self.asymptotic_dof:
                             warnings.warn(
@@ -412,11 +417,6 @@ class StatisticalModel:
                                 f"{self.asymptotic_dof}. Be careful!"
                             )
                     degree_of_freedom = asymptotic_dof
-                else:
-                    if self.asymptotic_dof is not None:
-                        degree_of_freedom = self.asymptotic_dof
-                    else:
-                        degree_of_freedom = 1
                 critical_value = asymptotic_critical_value(
                     confidence_interval_kind, confidence_level, degree_of_freedom
                 )
@@ -444,7 +444,7 @@ class StatisticalModel:
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
-        asymptotic_dof: Optional[int] = 1,
+        asymptotic_dof: Optional[int] = None,
     ) -> Tuple[float, float]:
         """Uses self.fit to compute confidence intervals for a certain named parameter. If the
         parameter is a rate parameter, and the model has expectation values implemented, the bounds

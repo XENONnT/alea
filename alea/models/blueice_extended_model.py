@@ -91,7 +91,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 If data is a list, it must be a list of length len(self.likelihood_names) + 1.
 
         Raises:
-            ValueError: If data is not a list of length len(self.likelihood_names) + 1.
+            Warning: If data is not a list of length len(self.likelihood_names) + 1.
 
         Caution:
             The self._data is read-only, so you can not change the data after it is set.

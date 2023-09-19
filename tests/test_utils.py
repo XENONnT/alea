@@ -40,6 +40,15 @@ class TestUtils(TestCase):
         critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
         self.assertEqual(asymptotic_critical_value("lower", confidence_level), critical_value)
         self.assertEqual(asymptotic_critical_value("upper", confidence_level), critical_value)
+        with self.assertRaises(ValueError):
+            asymptotic_critical_value("invalid", confidence_level)
+        with self.assertRaises(ValueError):
+            asymptotic_critical_value("lower", confidence_level, 2)
+
+        critical_value_central = chi2(2).isf((1.0 - confidence_level))
+        self.assertEqual(
+            asymptotic_critical_value("central", confidence_level, 2), critical_value_central
+        )
 
     def test_within_limits(self):
         """Test of the within_limits function."""

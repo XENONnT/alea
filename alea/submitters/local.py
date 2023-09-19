@@ -7,7 +7,7 @@ import itertools
 import operator
 from functools import reduce
 from copy import deepcopy
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any, Optional, Callable, cast
 
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
@@ -349,6 +349,7 @@ class NeymanConstructor(SubmitterLocal):
         confidence_interval_kind,
         confidence_level,
         limit_threshold_interpolation,
+        asymptotic_dof: Optional[int] = 1,
     ):
         """Get confidence interval threshold function from limit_threshold file. If the
         limit_threshold file does not contain the threshold, it will interpolate the threshold from
@@ -364,6 +365,8 @@ class NeymanConstructor(SubmitterLocal):
             confidence_level (float): confidence level
             limit_threshold_interpolation (bool): whether to interpolate the threshold from the
                 existing threshold, if the limit_threshold file does not contain the threshold
+            asymptotic_dof (int, optional (default=1)):
+                degrees of freedom for asymptotic critical value
 
         """
 
@@ -372,7 +375,7 @@ class NeymanConstructor(SubmitterLocal):
 
         threshold = load_json(limit_threshold)
 
-        func_list = []
+        func_list: List[Optional[Callable]] = []
         for i_hypo in range(len(hypotheses_values)):
             hypothesis = hypotheses_values[i_hypo]
 
@@ -454,7 +457,9 @@ class NeymanConstructor(SubmitterLocal):
                 poi_values,
                 threshold_values,
                 bounds_error=False,
-                fill_value=asymptotic_critical_value(confidence_interval_kind, confidence_level),
+                fill_value=asymptotic_critical_value(
+                    confidence_interval_kind, confidence_level, asymptotic_dof
+                ),
             )
             func_list.append(func)
 

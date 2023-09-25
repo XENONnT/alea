@@ -58,9 +58,9 @@ If you use alea in your research, please consider citing the software published 
 
 .. toctree::
     :maxdepth: 1
-    :caption: LLH and runner configuration
+    :caption: Statistical model and runner configuration
 
-    configuration/likelihood.rst
+    configuration/model.rst
     configuration/runner.rst
 
 .. toctree::

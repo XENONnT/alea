@@ -8,4 +8,4 @@ The basic functionality is defined in the :class:`alea.model.StatisticalModel` c
 
 A very simple statistical model that can be used to understand the concept is the :class:`alea.examples.gaussian_model.GaussianModel`. It has a Gaussian likelihood and Gaussian data generation function. The model parameters are the mean and the standard deviation of the Gaussian distribution.
 
-The more complex :class:`alea.models.blueice_extended_model.BlueiceExtendedModel` model is based on `blueice <https://github.com/JelleAalbers/blueice>`_ and can handle template-based likelihoods. For more details on the `BlueIceExtendedModel`, please refer to the :doc:`blueice_extended_model/structure` page.
+The more complex :class:`alea.models.blueice_extended_model.BlueiceExtendedModel` model is based on `blueice <https://github.com/JelleAalbers/blueice>`_ and can handle template-based likelihoods. For more details on the `BlueIceExtendedModel`, please refer to the :doc:`/blueice_extended_model/structure` page.

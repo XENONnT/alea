@@ -38,6 +38,10 @@ napoleon_include_special_with_doc = True
 # -- Options for HTML output
 
 html_theme = "sphinx_rtd_theme"
+html_context = {
+    "display_github": True,
+    "github_url": "https://github.com/XENONnT/alea",
+               }
 
 # -- Options for EPUB output
 

@@ -49,6 +49,7 @@ todo_include_todos = True
 
 
 def setup(app):
+    app.add_css_file('custom.css')
     # Hack to import something from this dir. Apparently we're in a weird
     # situation where you get a __name__  is not in globals KeyError
     # if you just try to do a relative import...

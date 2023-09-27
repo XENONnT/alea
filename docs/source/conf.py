@@ -47,9 +47,18 @@ epub_show_urls = "footnote"
 
 todo_include_todos = True
 
+# These folders are copied to the documentation's HTML output
+html_static_path = ['_static']
+
+# These paths are either relative to html_static_path
+# or fully qualified paths (eg. https://...)
+html_css_files = [
+    'css/custom.css',
+]
+
 
 def setup(app):
-    app.add_css_file('custom.css')
+    # app.add_css_file('css/custom.css')
     # Hack to import something from this dir. Apparently we're in a weird
     # situation where you get a __name__  is not in globals KeyError
     # if you just try to do a relative import...

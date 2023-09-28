@@ -23,8 +23,8 @@ class TestRunner(TestCase):
     def setUp(cls):
         """Initialise the Runner instance."""
         cls.running_config = load_yaml("unbinned_wimp_running.yaml")
-        cls.toydata_filename = "simple_data.h5"
-        cls.output_filename = "test_toymc.h5"
+        cls.toydata_filename = "simple_data.ii.h5"
+        cls.output_filename = "test_toymc.ii.h5"
         cls.n_mc = 3
 
     def set_gaussian_runner(self, toydata_mode="generate_and_store"):

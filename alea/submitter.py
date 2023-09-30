@@ -35,6 +35,8 @@ class Submitter:
         debug (bool): whether to run in debug mode.
             If True, only one job will be submitted or one runner will be returned.
             And its script will be printed.
+        resubmit (bool): whether to resubmit the jobs that have not finished.
+            If True, will submit all the jobs, even if the output file exists.
 
     Args:
         statistical_model (str): the name of the statistical model
@@ -361,7 +363,7 @@ class Submitter:
                 if (
                     (output_filename is not None)
                     and os.path.exists(output_filename)
-                    and self.resubmit
+                    and not self.resubmit
                 ):
                     continue
                 else:

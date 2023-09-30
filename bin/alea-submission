@@ -40,7 +40,7 @@ def main():
     parser.add_argument(
         "--resubmit",
         action="store_true",
-        help="Resubmit when the output file does not exist",
+        help="Force resubmit no matter if the output folder exists",
     )
     parsed_args = parser.parse_args()
 

@@ -37,6 +37,11 @@ def main():
         default=None,
         help="Overwriting the outputfolder, usually defined in runner config file",
     )
+    parser.add_argument(
+        "--resubmit",
+        action="store_true",
+        help="Resubmit when the output file does not exist",
+    )
     parsed_args = parser.parse_args()
 
     if parsed_args.computation == "threshold":
@@ -66,6 +71,7 @@ def main():
     kwargs = {
         "computation": parsed_args.computation,
         "debug": parsed_args.debug,
+        "resubmit": parsed_args.resubmit,
     }
     # if outputfolder is provided, overwrite the one in runner config file
     if parsed_args.outputfolder:

@@ -193,9 +193,8 @@ class BlueiceExtendedModel(StatisticalModel):
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
         blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
-        blueice_config["livetime_days"] = self.parameters[
-            blueice_config["livetime_parameter"]
-        ].nominal_value
+        # Setting 1. as a default, the true value will be parsed for every call automatically
+        blueice_config["livetime_days"] = 1.
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters

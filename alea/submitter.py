@@ -99,7 +99,8 @@ class Submitter:
         self.poi = poi
         self.outputfolder = outputfolder
 
-        self.computation_dict = computation_options[computation]
+        self.computation = computation
+        self.computation_dict = computation_options[self.computation]
         self.debug = debug
         self.resubmit = resubmit
 
@@ -364,6 +365,7 @@ class Submitter:
                     (output_filename is not None)
                     and os.path.exists(output_filename)
                     and not self.resubmit
+                    and self.computation != "threshold"
                 ):
                     continue
                 else:

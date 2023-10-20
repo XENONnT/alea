@@ -1,9 +1,5 @@
 atomicwrites
-{% if USE_HTTPS %}
-git+https://github.com/JelleAalbers/blueice
-{% else %}
 git+ssh://git@github.com/JelleAalbers/blueice.git@main#egg=blueice
-{% endif %}
 h5py
 iminuit
 git+ssh://git@github.com/XENONnT/inference_interface.git@main#egg=inference_interface

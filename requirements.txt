@@ -1,8 +1,8 @@
 atomicwrites
-git+git@github.com:JelleAalbers/blueice
+git+ssh://git@github.com/JelleAalbers/blueice.git@main#egg=blueice
 h5py
 iminuit
-git+git@github.com:XENONnT/inference_interface
+git+ssh://git@github.com/XENONnT/inference_interface.git@main#egg=inference_interface
 iminuit>=2.21.0
 matplotlib
 mergedeep

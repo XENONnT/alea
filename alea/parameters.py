@@ -47,7 +47,7 @@ class Parameter:
     ):
         """Initialise a parameter."""
         self.name = name
-        self.nominal_value = nominal_value
+        self._nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
@@ -120,6 +120,25 @@ class Parameter:
     @parameter_interval_bounds.setter
     def parameter_interval_bounds(self, value: Optional[Tuple[float, float]]) -> None:
         self._parameter_interval_bounds = value
+
+    @property
+    def static(self) -> bool:
+        """Return True if the parameter is static."""
+        static = ~self.fittable
+        static &= self.ptype not in ["livetime", "rate"]
+        static &= self.blueice_anchors is None
+        return bool(static)
+
+    @property
+    def nominal_value(self) -> Optional[float]:
+        """Return the nominal value of the parameter."""
+        return self._nominal_value
+
+    @nominal_value.setter
+    def nominal_value(self, value: Optional[float]) -> None:
+        if self.static:
+            raise ValueError(f"{self.name} is a static parameter. You can't change its nominal value.")
+        self._nominal_value = value
 
     def __eq__(self, other: object) -> bool:
         """Return True if all attributes are equal."""
@@ -363,6 +382,8 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
+            if param.static and (new_val != param.nominal_value):
+                raise ValueError(f"Parameter {name} is static. You can't change its value from its nominal value.")
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
         if any(i is None for k, i in values.items()):

@@ -137,7 +137,9 @@ class Parameter:
     @nominal_value.setter
     def nominal_value(self, value: Optional[float]) -> None:
         if self.static and (value != self._nominal_value):
-            raise ValueError(f"{self.name} is a static parameter. You can't change its nominal value (tried to override nominal value {self._nominal_value} with {value}).")
+            raise ValueError(
+                f"{self.name} is a static parameter. You can't change its nominal value (tried to override nominal value {self._nominal_value} with {value})."
+            )
         self._nominal_value = value
 
     def __eq__(self, other: object) -> bool:
@@ -383,7 +385,9 @@ class Parameters:
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
             if param.static and (new_val != param.nominal_value) and (new_val is not None):
-                raise ValueError(f"Parameter {name} is static. You can't change its value from its nominal value (tried to override nominal value {param.nominal_value} with {new_val}).)")
+                raise ValueError(
+                    f"Parameter {name} is static. You can't change its value from its nominal value (tried to override nominal value {param.nominal_value} with {new_val}).)"
+                )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
         if any(i is None for k, i in values.items()):

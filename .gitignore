@@ -25,5 +25,6 @@ docs/build
 docs/source/_build
 docs/source/build
 debug.py
+.DS_Store
 docs/source/reference/release_notes.rst
 .vscode

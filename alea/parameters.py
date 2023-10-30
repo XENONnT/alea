@@ -11,7 +11,7 @@ class Parameter:
     Attributes:
         name (str): The name of the parameter.
         nominal_value (float, optional (default=None)): The nominal value of the parameter.
-        fittable (bool, optional (default=None)):
+        fittable (bool, optional (default=True)):
             Indicates if the parameter is fittable or always fixed.
         ptype (str, optional (default=None)): The ptype of the parameter.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.

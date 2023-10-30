@@ -382,7 +382,7 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
-            if param.static and (new_val != param.nominal_value):
+            if param.static and (new_val != param.nominal_value) and (new_val is not None):
                 raise ValueError(f"Parameter {name} is static. You can't change its value from its nominal value (tried to override nominal value {param.nominal_value} with {new_val}).)")
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value

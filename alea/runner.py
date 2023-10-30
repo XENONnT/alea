@@ -254,10 +254,9 @@ class Runner:
     def _get_parameter_list(self):
         """Get parameter list and result list from statistical model."""
         parameter_list = sorted(self.model.get_parameter_list())
-        # add likelihood, lower limit, and upper limit
-        result_names = parameter_list + ["ll", "dl", "ul"]
-        result_dtype = [(n, float) for n in parameter_list]
-        result_dtype += [(n, float) for n in ["ll", "dl", "ul"]]
+        # add likelihood, lower limit, upper limit, and the migrad valid fit bool
+        result_names = parameter_list + ["ll", "dl", "ul", "valid_fit"]
+        result_dtype = [(n, float) for n in result_names]
         return result_names, result_dtype
 
     def _get_hypotheses(self):
@@ -434,6 +433,7 @@ class Runner:
             for i_hypo, hypothesis_values in enumerate(self._hypotheses_values):
                 fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result["ll"] = max_llh
+                fit_result["valid_fit"] = self.model.minuit_object.valid
 
                 if self._compute_confidence_interval and (self.poi not in hypothesis_values):
                     # hypothesis_values should only be a fittable subset of parameters

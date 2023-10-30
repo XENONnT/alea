@@ -22,7 +22,7 @@
 .. image:: https://results.pre-commit.ci/badge/github/XENONnT/alea/main.svg
    :target: https://results.pre-commit.ci/latest/github/XENONnT/alea/main
 
-   
+
 Alea
 ====
 

@@ -2,10 +2,7 @@
 
 Configuration of statistical models
 ===================================
-
-**UNDER CONSTRUCTION**
-
-The :doc:`BlueIceExtendedModel</blueice_extended_model/structure>` can be fully initialized using a YAML configuration file. In the we'll walk you through the basic structure and how to set up your own model.
+The :doc:`BlueIceExtendedModel</blueice_extended_model/structure>` can be fully initialized using a YAML configuration file. In the following, we'll walk you through the basic structure and how to set up your own model.
 
 The file consists of two parts: The definition of all parameters of the model (``parameter_definition``) and the likelihood configuration (``likelihood_config``).
 This means, the basic structure will look something like this:
@@ -84,6 +81,21 @@ An overview with some examples is provided in the table below.
      - A description of the parameter. This is a long description that may span multiple lines in the table cell.
 
 
+For the BlueIceExtendedModel, the ``ptype`` can be used to optimize performance. The following options are available:
+
+  * ``'rate'``: The parameter is a rate parameter. This means it linearly scales the expectation value of a source in the model.
+  * ``'livetime'``: The parameter is a livetime parameter. Similarly to a rate parameter it linearly scales expectation values, however, it does so for the entire likelihood term it is connected to. Also, in contrast to a rate multiplier, it is almost never a fittable parameter.
+  * ``'shape'``: The parameter is a shape parameter. For blueice likelihoods this means that it is a template morphing parameter. For this, a template is provided at at least two ``blueice_anchor`` values and the template is interpolated for any value in between.
+  * ``'efficiency'``: The parameter is an efficiency parameter. This means that it scales the expectation value of a source in the model for a given livetime and rate parameter.
 
 
-# TODO: write about the special role of livetime parameters and rate multipliers for the BlueIceExtendedModel.
+Likelihood configuration
+------------------------
+
+The likelihood configuration defines individual terms of a summed likelihood.
+Each term is defined as a list of sources (background and signal).
+Importantly, the parameters are linked to the sources and likelihood terms here.
+Also, the template files are specified.
+
+In addition to the likelihood terms in the list, an **ancillary likelihood term** will be added automatically to the summed likelihood.
+It contains all the constraint terms of nuisance parameters, which are defined via the ``uncertainty`` property in the parameter definition.

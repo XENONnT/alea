@@ -177,7 +177,8 @@ class NeymanConstructor(SubmitterLocal):
                     f"The lowest log likelihood ratio is negative {llrs.min():.2e}, "
                     f"total fraction of negative log likelihood ratio is "
                     f"{(llrs < 0.0).sum() / len(llrs):.2f}, "
-                    f"the median if negative log likelihood ratios is {np.median(llrs[llrs < 0.0]):.2e}, "
+                    "the median if negative log likelihood ratios "
+                    f"is {np.median(llrs[llrs < 0.0]):.2e}, "
                     f"there might be a problem in your fitting.",
                 )
             if len(llrs) < 1000:

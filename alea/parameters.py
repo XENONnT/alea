@@ -24,6 +24,8 @@ class Parameter:
             for any value in between.
         fit_limits (Tuple[float, float], optional (default=None)):
             The limits for fitting the parameter.
+        static (bool, optional (default=False)):
+            If True, the parameter is static and cannot be changed from its nominal value.
         parameter_interval_bounds (Tuple[float, float], optional (default=None)):
             Limits for computing confidence intervals.
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
@@ -41,6 +43,7 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
+        static: Optional[bool] = False,
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
@@ -54,6 +57,7 @@ class Parameter:
         self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
+        self.static = static
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess
         self.description = description
@@ -120,14 +124,6 @@ class Parameter:
     @parameter_interval_bounds.setter
     def parameter_interval_bounds(self, value: Optional[Tuple[float, float]]) -> None:
         self._parameter_interval_bounds = value
-
-    @property
-    def static(self) -> bool:
-        """Return True if the parameter is static."""
-        static = ~self.fittable
-        static &= self.ptype not in ["livetime", "rate"]
-        static &= self.blueice_anchors is None
-        return bool(static)
 
     @property
     def nominal_value(self) -> Optional[float]:

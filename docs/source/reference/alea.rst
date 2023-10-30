@@ -14,14 +14,6 @@ Subpackages
 Submodules
 ----------
 
-alea.debug module
------------------
-
-.. automodule:: alea.debug
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 alea.model module
 -----------------
 

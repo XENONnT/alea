@@ -24,12 +24,16 @@ class Parameter:
             for any value in between.
         fit_limits (Tuple[float, float], optional (default=None)):
             The limits for fitting the parameter.
+        static (bool, optional (default=False)):
+            If True, the parameter is static and cannot be changed from its nominal value.
         parameter_interval_bounds (Tuple[float, float], optional (default=None)):
             Limits for computing confidence intervals.
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
         description (str, optional (default=None)): A description of the parameter.
 
     """
+
+    _uncertainty: Optional[Union[float, str]]
 
     def __init__(
         self,
@@ -41,19 +45,21 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
+        static: Optional[bool] = False,
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
     ):
         """Initialise a parameter."""
         self.name = name
-        self.nominal_value = nominal_value
+        self._nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
+        self.static = static
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess
         self.description = description
@@ -120,6 +126,21 @@ class Parameter:
     @parameter_interval_bounds.setter
     def parameter_interval_bounds(self, value: Optional[Tuple[float, float]]) -> None:
         self._parameter_interval_bounds = value
+
+    @property
+    def nominal_value(self) -> Optional[float]:
+        """Return the nominal value of the parameter."""
+        return self._nominal_value
+
+    @nominal_value.setter
+    def nominal_value(self, value: Optional[float]) -> None:
+        if self.static and (value != self._nominal_value):
+            raise ValueError(
+                f"{self.name} is a static parameter. "
+                "You can't change its nominal value "
+                f"(tried to override nominal value {self._nominal_value} with {value})."
+            )
+        self._nominal_value = value
 
     def __eq__(self, other: object) -> bool:
         """Return True if all attributes are equal."""
@@ -314,16 +335,6 @@ class Parameters:
             k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
         }
 
-    def set_nominal_values(self, **nominal_values):
-        """Set the nominal values for parameters.
-
-        Keyword Args:
-            nominal_values (dict): A dict of parameter names and values.
-
-        """
-        for name, value in nominal_values.items():
-            self.parameters[name].nominal_value = value
-
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.
 
@@ -363,6 +374,13 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
+            if param.static and (new_val != param.nominal_value) and (new_val is not None):
+                raise ValueError(
+                    f"Parameter {name} is static. "
+                    "You can't change its value from its nominal value "
+                    f"(tried to override nominal value {param.nominal_value} "
+                    f"with {new_val}).)"
+                )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
         if any(i is None for k, i in values.items()):

@@ -137,6 +137,10 @@ class NeymanConstructor(SubmitterLocal):
         if os.path.splitext(limit_threshold)[-1] != ".json":
             raise ValueError("The limit_threshold file should be a json file.")
 
+        # initialize the runner
+        script = next(self.computation_tickets_generator())[0]
+        runner = self.initialized_runner(script, pop_limit_threshold=True)
+
         # calculate the threshold, iterate over the output files
         threshold = cast(Dict[str, Any], {})
         for runner_args in self.merged_arguments_generator():
@@ -187,15 +191,22 @@ class NeymanConstructor(SubmitterLocal):
                 )
 
             # update poi according to poi_expectation
-            runner_args["statistical_model_args"].pop("limit_threshold", None)
-            runner = Runner(**runner_args)
-            expectation_values = runner.model.get_expectation_values(
-                **{**nominal_values, **generate_values}
-            )
-            # in some rare cases the poi is not a rate multiplier
-            # then the poi_expectation is not in the nominal_expectation_values
-            component = self.poi.replace("_rate_multiplier", "")
-            poi_expectation = expectation_values.get(component, None)
+            if runner.input_poi_expectation:
+                poi_expectation = generate_values.get("poi_expectation")
+                # nominal_values are passed to update_poi to update the poi
+                # like wimp_mass, livetime, etc.
+                generate_values = runner.update_poi(
+                    runner.model, self.poi, generate_values, nominal_values
+                )
+            else:
+                expectation_values = runner.model.get_expectation_values(
+                    **{**nominal_values, **generate_values}
+                )
+                # in some rare cases the poi is not a rate multiplier
+                # then the poi_expectation is not in the expectation_values
+                # in these cases we only assign None to poi_expectation
+                component = self.poi.replace("_rate_multiplier", "")
+                poi_expectation = expectation_values.get(component, None)
             poi_value = generate_values.pop(self.poi)
 
             # make sure no poi and poi_expectation in the hashed_keys
@@ -214,8 +225,8 @@ class NeymanConstructor(SubmitterLocal):
                     )
                 hashed_keys = {
                     "poi": self.poi,
-                    "nominal_values": nominal_values,
-                    "generate_values": generate_values,
+                    "nominal_values": deepcopy(nominal_values),
+                    "generate_values": deepcopy(generate_values),
                     "confidence_level": confidence_level,
                 }
                 threshold_key = deterministic_hash(hashed_keys)

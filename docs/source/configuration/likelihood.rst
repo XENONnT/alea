@@ -1,4 +1,0 @@
-:orphan:
-
-Configuration of likelihoods
-============================

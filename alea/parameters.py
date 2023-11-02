@@ -33,6 +33,8 @@ class Parameter:
 
     """
 
+    _uncertainty: Optional[Union[float, str]]
+
     def __init__(
         self,
         name: str,

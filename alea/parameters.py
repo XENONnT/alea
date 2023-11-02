@@ -335,16 +335,6 @@ class Parameters:
             k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
         }
 
-    def set_nominal_values(self, **nominal_values):
-        """Set the nominal values for parameters.
-
-        Keyword Args:
-            nominal_values (dict): A dict of parameter names and values.
-
-        """
-        for name, value in nominal_values.items():
-            self.parameters[name].nominal_value = value
-
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.
 

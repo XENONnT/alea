@@ -239,15 +239,6 @@ class StatisticalModel:
             raise ValueError("The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
 
-    def set_nominal_values(self, **nominal_values):
-        """Set the nominal values for parameters.
-
-        Keyword Args:
-            nominal_values (dict): A dict of parameter names and values.
-
-        """
-        self.parameters.set_nominal_values(**nominal_values)
-
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.
 

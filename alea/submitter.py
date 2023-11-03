@@ -35,6 +35,8 @@ class Submitter:
         debug (bool): whether to run in debug mode.
             If True, only one job will be submitted or one runner will be returned.
             And its script will be printed.
+        resubmit (bool): whether to resubmit the jobs that have not finished.
+            If True, will submit all the jobs, even if the output file exists.
 
     Args:
         statistical_model (str): the name of the statistical model
@@ -71,6 +73,7 @@ class Submitter:
         computation: str = "discovery_power",
         outputfolder: Optional[str] = None,
         debug: bool = False,
+        resubmit: bool = False,
         loglevel: str = "INFO",
         **kwargs,
     ):
@@ -96,8 +99,10 @@ class Submitter:
         self.poi = poi
         self.outputfolder = outputfolder
 
-        self.computation_dict = computation_options[computation]
+        self.computation = computation
+        self.computation_dict = computation_options[self.computation]
         self.debug = debug
+        self.resubmit = resubmit
 
         # Find statistical model config file
         if not os.path.exists(self.statistical_model_config):
@@ -355,7 +360,16 @@ class Submitter:
                     + " ".join(map(shlex.quote, script.split(" ")))
                 )
 
-                yield script, i_args["output_filename"]
+                output_filename = i_args["output_filename"]
+                if (
+                    (output_filename is not None)
+                    and os.path.exists(output_filename)
+                    and not self.resubmit
+                    and self.computation != "threshold"
+                ):
+                    continue
+                else:
+                    yield script, output_filename
 
     @staticmethod
     def update_n_batch(runner_args):

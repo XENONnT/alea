@@ -143,11 +143,13 @@ class BlueiceExtendedModel(StatisticalModel):
         """Return a list of likelihood terms."""
         return self._likelihood.likelihood_list
 
-    def get_expectation_values(self, **kwargs) -> dict:
+    def get_expectation_values(self, per_likelihood_term=False, **kwargs) -> dict:
         """Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
 
         Args:
+            per_likelihood_term (bool): If True, return expectation values
+                per likelihood term. Otherwise, sum each source over all likelihood terms.
             kwargs: Named parameters
 
         Returns:
@@ -168,18 +170,20 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         generate_values = self.parameters(**kwargs)  # kwarg or nominal value
-        ret = cast(Dict[str, float], {})
+        ret = cast(Dict[str, Dict[str, float]], {})
 
         # calling ll need data to be set
         self_copy = deepcopy(self)
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names, livetime_parameter in zip(
+        for ll_term, ll_name, parameter_names, livetime_parameter in zip(
             self_copy._likelihood.likelihood_list[:-1],
+            self_copy.likelihood_names[:-1],
             self_copy._likelihood.likelihood_parameters,
             self_copy.livetime_parameter_names,
         ):
+            ret[ll_name] = {}
             # WARNING: This silently drops parameters it can't handle!
             call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
             if livetime_parameter is not None:
@@ -187,7 +191,13 @@ class BlueiceExtendedModel(StatisticalModel):
 
             mus = ll_term(full_output=True, **call_args)[1]
             for n, mu in zip(ll_term.source_name_list, mus):
-                ret[n] = ret.get(n, 0) + mu
+                ret[ll_name][n] = mu
+        if not per_likelihood_term:
+            # sum over sources with same names of all likelihood terms
+            all_source_names = [ret[ll_name].keys() for ll_name in ret.keys()]
+            all_source_names = set().union(*all_source_names)
+            ret = {n: sum([ret[ll_name].get(n, 0) for ll_name in ret.keys()]) for n in all_source_names}
+
         return ret
 
     def _process_blueice_config(self, config, template_folder_list):

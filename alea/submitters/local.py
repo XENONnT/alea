@@ -225,8 +225,8 @@ class NeymanConstructor(SubmitterLocal):
                     )
                 hashed_keys = {
                     "poi": self.poi,
-                    "nominal_values": deepcopy(nominal_values),
-                    "generate_values": deepcopy(generate_values),
+                    "nominal_values": nominal_values,
+                    "generate_values": generate_values,
                     "confidence_level": confidence_level,
                 }
                 threshold_key = deterministic_hash(hashed_keys)
@@ -237,7 +237,7 @@ class NeymanConstructor(SubmitterLocal):
                         "threshold": [],
                         "poi_expectation": [],
                     }
-                    threshold[threshold_key] = threshold_value
+                    threshold[threshold_key] = deepcopy(threshold_value)
                 threshold[threshold_key][self.poi].append(poi_value)
                 threshold[threshold_key]["threshold"].append(q_llr)
                 threshold[threshold_key]["poi_expectation"].append(poi_expectation)
@@ -250,6 +250,13 @@ class NeymanConstructor(SubmitterLocal):
             threshold[k][self.poi] = [x[0] for x in sorted_pairs]
             threshold[k]["threshold"] = [x[1] for x in sorted_pairs]
             threshold[k]["poi_expectation"] = [x[2] for x in sorted_pairs]
+
+        for k, v in threshold.items():
+            if k != deterministic_hash(v["hashed_keys"]):
+                raise ValueError(
+                    "Something wrong with the threshold, "
+                    "inconsistency between hash and hashed keys found."
+                )
 
         # save the threshold into a json file
         with open(limit_threshold, mode="w") as f:

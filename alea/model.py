@@ -95,19 +95,16 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
-        nominal_values = kwargs.get("nominal_values", {})
-        self._define_parameters(parameter_definition, nominal_values)
+        self._define_parameters(parameter_definition)
 
         self._check_ll_and_generate_data_signature()
+        self.set_nominal_values(overwrite_static=True, **kwargs.get("nominal_values", {}))
 
-    def _define_parameters(self, parameter_definition, nominal_values=None):
+    def _define_parameters(self, parameter_definition):
         """Initialize the parameters of the model."""
         if parameter_definition is None:
             self.parameters = Parameters()
         elif isinstance(parameter_definition, dict):
-            for name, definition in parameter_definition.items():
-                if name in nominal_values:
-                    definition["nominal_value"] = nominal_values[name]
             self.parameters = Parameters.from_config(parameter_definition)
         elif isinstance(parameter_definition, list):
             self.parameters = Parameters.from_list(parameter_definition)
@@ -238,6 +235,18 @@ class StatisticalModel:
         if len(_data_list[0]) != len(data_name_list):
             raise ValueError("The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
+
+    def set_nominal_values(self, overwrite_static=False, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        self.parameters.set_nominal_values(
+            overwrite_static=overwrite_static,
+            **nominal_values,
+        )
 
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.

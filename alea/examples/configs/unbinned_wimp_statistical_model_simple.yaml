@@ -1,7 +1,10 @@
 parameter_definition:
   wimp_mass:
     nominal_value: 50
+    ptype: shape
     fittable: false
+    blueice_anchors:
+      - 50
     description: WIMP mass in GeV/c^2
 
   livetime:

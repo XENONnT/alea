@@ -1,16 +1,21 @@
 parameter_definition:
   wimp_mass:
     nominal_value: 50
+    ptype: shape
     fittable: false
+    blueice_anchors:
+      - 50
     description: WIMP mass in GeV/c^2
 
   livetime_sr2:
     nominal_value: 0.5
+    ptype: livetime
     fittable: false
     description: Livetime of SR2 in years
 
   livetime_sr3:
     nominal_value: 1.0
+    ptype: livetime
     fittable: false
     description: Livetime of SR3 in years
 

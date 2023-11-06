@@ -13,7 +13,7 @@ class Parameter:
         nominal_value (float, optional (default=None)): The nominal value of the parameter.
         fittable (bool, optional (default=True)):
             Indicates if the parameter is fittable or always fixed.
-        ptype (str, optional (default=None)): The ptype of the parameter.
+        ptype (str, optional (default=shape)): The ptype of the parameter.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.
@@ -40,7 +40,7 @@ class Parameter:
         name: str,
         nominal_value: Optional[float] = None,
         fittable: bool = True,
-        ptype: Optional[str] = None,
+        ptype: str = "shape",
         uncertainty: Optional[Union[float, str]] = None,
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
@@ -54,6 +54,11 @@ class Parameter:
         self.name = name
         self._nominal_value = nominal_value
         self.fittable = fittable
+        if ptype not in ["rate", "shape", "efficiency", "livetime"]:
+            raise ValueError(
+                f"{name}'s ptype {ptype} is not valid.",
+                "it should be one of 'rate', 'shape', 'livetime'.",
+            )
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
@@ -314,6 +319,19 @@ class Parameters:
 
         """
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
+
+    def set_nominal_values(self, overwrite_static=False, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        for name, value in nominal_values.items():
+            if overwrite_static:
+                self.parameters[name]._nominal_value = value
+            else:
+                self.parameters[name].nominal_value = value
 
     @property
     def with_uncertainty(self) -> "Parameters":

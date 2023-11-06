@@ -166,6 +166,7 @@ class NeymanConstructor(SubmitterLocal):
                 **nominal_values,
                 **generate_values,
             }
+            runner.model.set_nominal_values(overwrite_static=True, **nominal_values)
 
             # read the likelihood ratio
             output_filename = runner_args["output_filename"]

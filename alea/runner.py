@@ -1,3 +1,4 @@
+import time
 import inspect
 from copy import deepcopy
 from typing import Optional, Dict, Union
@@ -471,8 +472,15 @@ class Runner:
         If only_toydata is True, only generate toydata.
 
         """
+        global_start = time.time()
+        cpu_global_start = time.process_time()
         if self.only_toydata:
             self.simulate()
         else:
             results = self.simulate_and_fit()
             self.write_output(results)
+        print(
+            "Used real time {0:.02f}s, CPU time {1:.02f}s".format(
+                time.time() - global_start, time.process_time() - cpu_global_start
+            )
+        )

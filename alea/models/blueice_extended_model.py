@@ -194,11 +194,10 @@ class BlueiceExtendedModel(StatisticalModel):
                 ret[ll_name][n] = mu
         if not per_likelihood_term:
             # sum over sources with same names of all likelihood terms
-            all_source_names = [ret[ll_name].keys() for ll_name in ret.keys()]
-            all_source_names = set().union(*all_source_names)
+            all_source_names = {name for sublist in ret.values() for name in sublist}
             ret = {
                 n: sum([ret[ll_name].get(n, 0) for ll_name in ret.keys()]) for n in all_source_names
-            }
+            }  # type: ignore
 
         return ret
 

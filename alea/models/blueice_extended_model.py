@@ -197,13 +197,7 @@ class BlueiceExtendedModel(StatisticalModel):
             all_source_names = [ret[ll_name].keys() for ll_name in ret.keys()]
             all_source_names = set().union(*all_source_names)
             ret = {
-                n: sum(
-                    [
-                        ret[ll_name].get(n, 0)
-                        for ll_name in ret.keys()
-                    ]
-                )
-                for n in all_source_names
+                n: sum([ret[ll_name].get(n, 0) for ll_name in ret.keys()]) for n in all_source_names
             }
 
         return ret

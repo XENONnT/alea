@@ -153,7 +153,8 @@ class BlueiceExtendedModel(StatisticalModel):
             kwargs: Named parameters
 
         Returns:
-            dict: Dictionary of expectation values
+            dict: Dictionary of expectation values. If per_likelihood_term is True, the dictionary
+                has the form {likelihood_name: {source_name: expectation_value, ...}, ...}.
 
         Caution:
             The function silently drops parameters it can't handle!

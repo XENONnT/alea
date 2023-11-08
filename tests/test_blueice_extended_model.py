@@ -97,6 +97,23 @@ class TestBlueiceExtendedModel(TestCase):
             for k, v in expectation_values.items():
                 self.assertEqual(v * scaling_factor, new_expectation_values[k])
 
+    def test_get_expectation_values_per_likelihood_term(self):
+        """Test of the get_expectation_values method with per_likelihood=True."""
+        self.set_new_models()
+        for model in self.models:
+            vals_per = model.get_expectation_values(per_likelihood_term=True)
+            vals_total = model.get_expectation_values(per_likelihood_term=False)
+
+            # Manually sum up the per_likelihood_term expectation values
+            summed_vals = {}
+            for term in vals_per.values():
+                for key, value in term.items():
+                    summed_vals[key] = summed_vals.get(key, 0) + value
+
+            # Check whether the summed values are equal to the total values
+            for key, summed_val in summed_vals.items():
+                self.assertEqual(summed_val, vals_total[key])
+
     def test_generate_data(self):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):

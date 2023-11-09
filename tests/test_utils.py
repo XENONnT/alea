@@ -12,6 +12,7 @@ from alea.utils import (
     clip_limits,
     can_expand_grid,
     expand_grid_dict,
+    convert_to_vary,
     deterministic_hash,
 )
 
@@ -71,6 +72,21 @@ class TestUtils(TestCase):
                 {"a": 1, "b": 4},
                 {"a": 2, "b": 3},
                 {"a": 2, "b": 4},
+            ],
+        )
+
+    def test_convert_to_vary(self):
+        """Test of the convert_to_zip function."""
+        varied = convert_to_vary({"a": [1, 2], "b": [{"c": 3}, {"c": 4}]})
+        self.assertNotEqual(id(varied[0]["b"]), id(varied[2]["b"]))
+        self.assertNotEqual(id(varied[1]["b"]), id(varied[3]["b"]))
+        self.assertEqual(
+            varied,
+            [
+                {"a": 1, "b": {"c": 3}},
+                {"a": 1, "b": {"c": 4}},
+                {"a": 2, "b": {"c": 3}},
+                {"a": 2, "b": {"c": 4}},
             ],
         )
 

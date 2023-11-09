@@ -449,7 +449,7 @@ def convert_variations(variations: dict, iteration) -> list:
         if not isinstance(v, list):
             raise ValueError(f"variations {k} must be a list, not {v} with {type(v)}")
         variations[k] = expand_grid_dict(v)
-    result = [dict(zip(variations, t)) for t in iteration(*variations.values())]
+    result = [dict(zip(variations, deepcopy(t))) for t in iteration(*variations.values())]
     if result:
         return result
     else:

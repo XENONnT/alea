@@ -5,10 +5,12 @@ import warnings
 import subprocess
 import itertools
 import operator
+from glob import glob
 from functools import reduce
 from copy import deepcopy
 from typing import List, Dict, Any, Optional, Callable, cast
 
+import h5py
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 from inference_interface import toyfiles_to_numpy
@@ -68,13 +70,14 @@ class NeymanConstructor(SubmitterLocal):
 
     """
 
-    allowed_special_args = ["free_name", "true_name", "confidence_levels"]
+    allowed_special_args = ["free_name", "true_name", "confidence_levels", "check_poi_expectation"]
 
     def submit(
         self,
         free_name: str = "free",
         true_name: str = "true",
         confidence_levels: List[float] = [0.8, 0.9, 0.95],
+        check_poi_expectation: bool = False,
     ):
         """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
         threshold will be saved into a json file. The threshold will be sorted based on the elements
@@ -84,6 +87,8 @@ class NeymanConstructor(SubmitterLocal):
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
+            check_poi_expectation: whether to check if the poi_expectation is consistent in
+                runner args and model's expectation values
 
         Example:
             >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))
@@ -164,11 +169,45 @@ class NeymanConstructor(SubmitterLocal):
             }
 
             # read the likelihood ratio
-            output_filename = runner_args["output_filename"]
-            # add a * to the output_filename to read all the files
+            output_filename = runner_args["output_filename"].format(**needed_kwargs)
+            # try to add a * to the output_filename to read all the files
             fpat_split = os.path.splitext(output_filename)
-            output_filename = fpat_split[0] + "*" + fpat_split[1]
-            results = toyfiles_to_numpy(output_filename.format(**needed_kwargs))
+            _output_filename = fpat_split[0] + "_*" + fpat_split[1]
+            if len(sorted(glob(_output_filename))) != 0:
+                output_filename = _output_filename
+            output_filename_list = sorted(glob(output_filename))
+            if len(output_filename_list) == 0:
+                raise ValueError(f"Can not find any output file {output_filename}!")
+            # read metadata including generate_values
+            metadata_list = []
+            for _output_filename in output_filename_list:
+                with h5py.File(_output_filename, "r", libver="latest", swmr=True) as ipt:
+                    metadata = dict(
+                        zip(
+                            ipt.attrs.keys(),
+                            [json.loads(ipt.attrs[key]) for key in ipt.attrs.keys()],
+                        )
+                    )
+                metadata.pop("date", None)
+                metadata_list.append(metadata)
+            if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
+                raise ValueError(
+                    "The metadata are not the same for all "
+                    f"the {len(output_filename_list)} output!"
+                )
+            metadata = metadata_list[0]
+            if metadata["poi"] != self.poi:
+                raise ValueError(
+                    f"The poi in the metadata {metadata['poi']} is not "
+                    f"the same as the poi {self.poi}!"
+                )
+            needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
+            poi_expectation = needed_kwargs.get("poi_expectation", None)
+            poi_value = needed_kwargs.get(self.poi, None)
+            if poi_value is None:
+                raise ValueError("Can not find the poi value in the generate_values in metadata!")
+            # read the likelihood ratio
+            results = toyfiles_to_numpy(output_filename)
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)
@@ -179,24 +218,30 @@ class NeymanConstructor(SubmitterLocal):
                     f"{(llrs < 0.0).sum() / len(llrs):.2f}, "
                     "the median if negative log likelihood ratios "
                     f"is {np.median(llrs[llrs < 0.0]):.2e}, "
-                    f"there might be a problem in your fitting.",
+                    f"there might be a problem in your fitting."
                 )
             if len(llrs) < 1000:
                 self.logging.warning(
-                    "The number of toys is less than 1000, the threshold might not be accurate!",
+                    "The number of toys is less than 1000, the threshold might not be accurate!"
                 )
 
-            # update poi according to poi_expectation
-            runner_args["statistical_model_args"].pop("limit_threshold", None)
-            runner = Runner(**runner_args)
-            expectation_values = runner.model.get_expectation_values(
-                **{**nominal_values, **generate_values}
-            )
-            # in some rare cases the poi is not a rate multiplier
-            # then the poi_expectation is not in the nominal_expectation_values
-            component = self.poi.replace("_rate_multiplier", "")
-            poi_expectation = expectation_values.get(component, None)
-            poi_value = generate_values.pop(self.poi)
+            if check_poi_expectation:
+                # check if the poi_expectation is consistent
+                runner_args["statistical_model_args"].pop("limit_threshold", None)
+                runner = Runner(**runner_args)
+                expectation_values = runner.model.get_expectation_values(
+                    **{**nominal_values, **generate_values}
+                )
+                component = self.poi.replace("_rate_multiplier", "")
+                # in some rare cases the poi is not a rate multiplier
+                # then the poi_expectation is not in the nominal_expectation_values
+                _poi_expectation = expectation_values.get(component, None)
+                if None not in [poi_expectation, _poi_expectation]:
+                    if poi_expectation != _poi_expectation:
+                        raise ValueError(
+                            f"The poi_expectation from model {poi_expectation} is not "
+                            f"the same as the poi_expectation from toymc {_poi_expectation}!"
+                        )
 
             # make sure no poi and poi_expectation in the hashed_keys
             generate_values.pop(self.poi, None)
@@ -226,7 +271,7 @@ class NeymanConstructor(SubmitterLocal):
                         "threshold": [],
                         "poi_expectation": [],
                     }
-                    threshold[threshold_key] = threshold_value
+                    threshold[threshold_key] = deepcopy(threshold_value)
                 threshold[threshold_key][self.poi].append(poi_value)
                 threshold[threshold_key]["threshold"].append(q_llr)
                 threshold[threshold_key]["poi_expectation"].append(poi_expectation)

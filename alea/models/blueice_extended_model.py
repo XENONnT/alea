@@ -2,6 +2,7 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from copy import deepcopy
 from pydoc import locate
+import itertools
 
 import numpy as np
 import scipy.stats as stats
@@ -138,10 +139,30 @@ class BlueiceExtendedModel(StatisticalModel):
         ll_index = self.likelihood_names.index(likelihood_name)
         return self.likelihood_list[ll_index].source_name_list
 
+    def get_all_source_name(self) -> set:
+        """Return a set of possible source names from all likelihood terms.
+
+        Args:
+            likelihood_name (str): Name of the likelihood.
+
+        Returns:
+            set: set of source names.
+
+        """
+        source_name = set(
+            itertools.chain.from_iterable([ll.source_name_list for ll in self.likelihood_list[:-1]])
+        )
+        return source_name
+
     @property
     def likelihood_list(self) -> List:
         """Return a list of likelihood terms."""
         return self._likelihood.likelihood_list
+
+    @property
+    def likelihood_parameters(self) -> List:
+        """Return a list of likelihood parameters."""
+        return self._likelihood.likelihood_parameters
 
     def get_expectation_values(self, per_likelihood_term=False, **kwargs) -> dict:
         """Return total expectation values (summed over all likelihood terms with the same name)
@@ -179,9 +200,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # ancillary likelihood does not contribute
         for ll_term, ll_name, parameter_names, livetime_parameter in zip(
-            self_copy._likelihood.likelihood_list[:-1],
+            self_copy.likelihood_list[:-1],
             self_copy.likelihood_names[:-1],
-            self_copy._likelihood.likelihood_parameters,
+            self_copy.likelihood_parameters,
             self_copy.livetime_parameter_names,
         ):
             ret[ll_name] = {}

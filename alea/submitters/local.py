@@ -70,14 +70,14 @@ class NeymanConstructor(SubmitterLocal):
 
     """
 
-    allowed_special_args = ["free_name", "true_name", "confidence_levels", "check_poi_expectation"]
+    allowed_special_args = ["free_name", "true_name", "confidence_levels", "add_poi_expectation"]
 
     def submit(
         self,
         free_name: str = "free",
         true_name: str = "true",
         confidence_levels: List[float] = [0.8, 0.9, 0.95],
-        check_poi_expectation: bool = False,
+        add_poi_expectation: bool = False,
     ):
         """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
         threshold will be saved into a json file. The threshold will be sorted based on the elements
@@ -87,8 +87,9 @@ class NeymanConstructor(SubmitterLocal):
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
-            check_poi_expectation: whether to check if the poi_expectation is consistent in
-                runner args and model's expectation values
+            add_poi_expectation: whether to calculate and add poi_expectation to limit_threshold,
+                if so, will also check whether the poi_expectation is consistent in runner args
+                and model's expectation values
 
         Example:
             >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))
@@ -134,6 +135,9 @@ class NeymanConstructor(SubmitterLocal):
         if "confidence_levels" in runner_args:
             confidence_levels = runner_args["confidence_levels"]
             self.logging.info(f"Overwrite confidence_levels to {confidence_levels}.")
+        if "add_poi_expectation" in runner_args:
+            add_poi_expectation = runner_args["add_poi_expectation"]
+            self.logging.info(f"Overwrite add_poi_expectation to {add_poi_expectation}.")
 
         # extract limit_threshold from the statistical_model_args
         limit_threshold = runner_args["statistical_model_args"].get("limit_threshold", None)
@@ -161,8 +165,8 @@ class NeymanConstructor(SubmitterLocal):
                 raise ValueError("confidence_levels" + message)
 
             # prepare the needed nominal_values and generate_values
-            nominal_values = runner_args["nominal_values"]
-            generate_values = runner_args["generate_values"]
+            nominal_values = deepcopy(runner_args["nominal_values"])
+            generate_values = deepcopy(runner_args["generate_values"])
             needed_kwargs = {
                 **nominal_values,
                 **generate_values,
@@ -202,10 +206,39 @@ class NeymanConstructor(SubmitterLocal):
                     f"the same as the poi {self.poi}!"
                 )
             needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
-            poi_expectation = needed_kwargs.get("poi_expectation", None)
+            poi_expectation = needed_kwargs.pop("poi_expectation", None)
             poi_value = needed_kwargs.get(self.poi, None)
             if poi_value is None:
                 raise ValueError("Can not find the poi value in the generate_values in metadata!")
+            if add_poi_expectation:
+                # check if the poi_expectation is consistent
+                for args in self.allowed_special_args:
+                    runner_args.pop(args, None)
+                runner_args["statistical_model_args"].pop("limit_threshold", None)
+                runner = Runner(**runner_args)
+                source = self.poi.replace("_rate_multiplier", "")
+                all_source_name = runner.model.get_all_source_name()
+                if source not in all_source_name:
+                    raise ValueError(
+                        f"poi {self.poi} does not corresponds to any source in the model!"
+                        " so can not calculate the poi_expectation!"
+                    )
+                expectation_values = runner.model.get_expectation_values(**needed_kwargs)
+                _poi_expectation = expectation_values.get(source, None)
+                if poi_expectation is not None:
+                    if not np.isclose(poi_expectation, _poi_expectation):
+                        raise ValueError(
+                            f"The poi_expectation from model {poi_expectation} is not "
+                            f"the same as the poi_expectation from toymc {_poi_expectation}!"
+                        )
+                else:
+                    warnings.warn(
+                        "Can not find the poi_expectation in the generate_values "
+                        f"{generate_values}, so will not check if the poi_expectation "
+                        "are consistent!"
+                    )
+                    poi_expectation = _poi_expectation
+
             # read the likelihood ratio
             results = toyfiles_to_numpy(output_filename)
             llfree = results[free_name]["ll"]
@@ -224,24 +257,6 @@ class NeymanConstructor(SubmitterLocal):
                 self.logging.warning(
                     "The number of toys is less than 1000, the threshold might not be accurate!"
                 )
-
-            if check_poi_expectation:
-                # check if the poi_expectation is consistent
-                runner_args["statistical_model_args"].pop("limit_threshold", None)
-                runner = Runner(**runner_args)
-                expectation_values = runner.model.get_expectation_values(
-                    **{**nominal_values, **generate_values}
-                )
-                component = self.poi.replace("_rate_multiplier", "")
-                # in some rare cases the poi is not a rate multiplier
-                # then the poi_expectation is not in the nominal_expectation_values
-                _poi_expectation = expectation_values.get(component, None)
-                if None not in [poi_expectation, _poi_expectation]:
-                    if poi_expectation != _poi_expectation:
-                        raise ValueError(
-                            f"The poi_expectation from model {poi_expectation} is not "
-                            f"the same as the poi_expectation from toymc {_poi_expectation}!"
-                        )
 
             # make sure no poi and poi_expectation in the hashed_keys
             generate_values.pop(self.poi, None)

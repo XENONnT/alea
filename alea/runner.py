@@ -340,7 +340,12 @@ class Runner:
         metadata["common_hypothesis"] = self.common_hypothesis
         metadata["generate_values"] = self.generate_values
         metadata["nominal_values"] = self.nominal_values
-        metadata["expectation_values"] = self.model.get_expectation_values(**self.generate_values)
+        try:
+            metadata["expectation_values"] = self.model.get_expectation_values(
+                **self.generate_values
+            )
+        except NotImplementedError:
+            metadata["expectation_values"] = {}
 
         array_metadatas = [{"hypotheses_values": ea} for ea in self._hypotheses_values]
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]

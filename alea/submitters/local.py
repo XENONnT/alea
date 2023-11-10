@@ -70,14 +70,13 @@ class NeymanConstructor(SubmitterLocal):
 
     """
 
-    allowed_special_args = ["free_name", "true_name", "confidence_levels", "add_poi_expectation"]
+    allowed_special_args = ["free_name", "true_name", "confidence_levels"]
 
     def submit(
         self,
         free_name: str = "free",
         true_name: str = "true",
         confidence_levels: List[float] = [0.8, 0.9, 0.95],
-        add_poi_expectation: bool = False,
     ):
         """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
         threshold will be saved into a json file. The threshold will be sorted based on the elements
@@ -87,9 +86,6 @@ class NeymanConstructor(SubmitterLocal):
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
-            add_poi_expectation: whether to calculate and add poi_expectation to limit_threshold,
-                if so, will also check whether the poi_expectation is consistent in runner args
-                and model's expectation values
 
         Example:
             >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))
@@ -135,9 +131,6 @@ class NeymanConstructor(SubmitterLocal):
         if "confidence_levels" in runner_args:
             confidence_levels = runner_args["confidence_levels"]
             self.logging.info(f"Overwrite confidence_levels to {confidence_levels}.")
-        if "add_poi_expectation" in runner_args:
-            add_poi_expectation = runner_args["add_poi_expectation"]
-            self.logging.info(f"Overwrite add_poi_expectation to {add_poi_expectation}.")
 
         # extract limit_threshold from the statistical_model_args
         limit_threshold = runner_args["statistical_model_args"].get("limit_threshold", None)
@@ -182,6 +175,7 @@ class NeymanConstructor(SubmitterLocal):
             output_filename_list = sorted(glob(output_filename))
             if len(output_filename_list) == 0:
                 raise ValueError(f"Can not find any output file {output_filename}!")
+
             # read metadata including generate_values
             metadata_list = []
             for _output_filename in output_filename_list:
@@ -205,27 +199,26 @@ class NeymanConstructor(SubmitterLocal):
                     f"The poi in the metadata {metadata['poi']} is not "
                     f"the same as the poi {self.poi}!"
                 )
+
+            # read poi and poi_expectation
             needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
             poi_expectation = needed_kwargs.pop("poi_expectation", None)
             poi_value = needed_kwargs.get(self.poi, None)
             if poi_value is None:
                 raise ValueError("Can not find the poi value in the generate_values in metadata!")
-            if add_poi_expectation:
-                # check if the poi_expectation is consistent
-                for args in self.allowed_special_args:
-                    runner_args.pop(args, None)
-                runner_args["statistical_model_args"].pop("limit_threshold", None)
-                runner = Runner(**runner_args)
-                source = self.poi.replace("_rate_multiplier", "")
-                all_source_name = runner.model.get_all_source_name()
-                if source not in all_source_name:
-                    raise ValueError(
-                        f"poi {self.poi} does not corresponds to any source in the model!"
-                        " so can not calculate the poi_expectation!"
-                    )
-                expectation_values = runner.model.get_expectation_values(**needed_kwargs)
-                _poi_expectation = expectation_values.get(source, None)
+            # read expectation_values from metadata
+            expectation_values = metadata["expectation_values"]
+            # check if the poi_expectation is in expectation_values
+            source = self.poi.replace("_rate_multiplier", "")
+            if source not in expectation_values:
+                warnings.warn(
+                    f"poi {self.poi} does not corresponds to any source in the model!"
+                    " so can not calculate the poi_expectation!"
+                )
+            else:
+                _poi_expectation = expectation_values[source]
                 if poi_expectation is not None:
+                    # check if the poi_expectation is consistent
                     if not np.isclose(poi_expectation, _poi_expectation):
                         raise ValueError(
                             f"The poi_expectation from model {poi_expectation} is not "

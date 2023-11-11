@@ -92,7 +92,7 @@ class Submitter:
             raise RuntimeError(
                 "Excecutable alea-run_toymc is not found, "
                 "please make sure you have installed alea-inference correctly, "
-                "and appended alea/bin or .local/bin(pip install direction) to your $PATH"
+                "and appended alea/bin or .local/bin(pip install direction) to your $PATH."
             )
 
         self.statistical_model = statistical_model

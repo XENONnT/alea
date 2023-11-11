@@ -18,4 +18,19 @@ repository by cloning the repository and running
     $ cd alea
     $ pip install .
 
+If you want to use the submission and toymc running scripts, you
+should append `.local/bin`(pip install direction) to your `PATH`
+environment variable. For example, `export PATH=$HOME/.local/bin`.
+
+
+For developers, it is recommended to install alea in editable mode.
+
+.. code-block:: console
+
+    $ cd alea
+    $ pip install -e .
+
+And append `alea/bin`(pip install direction) to your `PATH`.
+
+
 You are now ready to use alea!

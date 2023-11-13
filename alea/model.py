@@ -255,7 +255,7 @@ class StatisticalModel:
             parameter_values: values of the parameters
 
         """
-        return NotImplementedError("get_expectation_values is optional to implement")
+        raise NotImplementedError("get_expectation_values is optional to implement")
 
     @property
     def nominal_expectation_values(self):

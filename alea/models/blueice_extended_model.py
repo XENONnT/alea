@@ -60,6 +60,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ]
         self.livetime_parameter_names += [None]  # ancillary likelihood
         self.data_generators = self._build_data_generators()
+        self._set_default_ptype()
 
     @classmethod
     def from_config(cls, config_file_path: str, **kwargs) -> "BlueiceExtendedModel":
@@ -430,6 +431,23 @@ class BlueiceExtendedModel(StatisticalModel):
                 " must be constrained to be finite"
             )
         ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
+
+    def _set_default_ptype(self):
+        """Check if all parameters have a ptype that is in the list of allowed ptypes.
+
+        If no ptype is specified, set the default ptype "needs_reinit".
+
+        """
+        allowed_ptypes = ["rate", "shape", "efficiency", "livetim", "needs_reinit"]
+        default_ptype = "needs_reinit"
+        for p in self.parameters:
+            if p.ptype is None:
+                p.ptype = default_ptype
+            elif p.ptype not in allowed_ptypes:
+                raise ValueError(
+                    f"Parameter {p.name} has ptype {p.ptype} which is not in the list of "
+                    f"allowed ptypes: {allowed_ptypes}."
+                )
 
     def store_real_data(self, file_name: str, real_data_list: list, metadata=None):
         """Store real data in a file with toydata format.

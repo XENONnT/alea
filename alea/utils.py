@@ -374,6 +374,28 @@ def add_i_batch(filename: str) -> str:
     return fpat_split[0] + "_{i_batch:d}" + fpat_split[1]
 
 
+def search_filename_pattern(filename: str) -> str:
+    """Return pattern for a given existing filename. This is needed because sometimes the filename
+    is not appended by "_{i_batch:d}". We need to distinguish between the two cases and return the
+    correct pattern.
+
+    Returns:
+        str: existing pattern for filename, either filename or filename w/ inserted "_*"
+
+    """
+    # try to add a * to the filename to read all the files
+    fpat_split = os.path.splitext(filename)
+    _filename = fpat_split[0] + "_*" + fpat_split[1]
+    if len(sorted(glob(_filename))) != 0:
+        pattern = _filename
+    else:
+        pattern = filename
+    filename_list = sorted(glob(pattern))
+    if len(filename_list) == 0:
+        raise ValueError(f"Can not find any output file {filename}!")
+    return pattern
+
+
 def can_expand_grid(variations: dict) -> bool:
     """Check if variations can be expanded into a grid.
 

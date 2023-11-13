@@ -21,6 +21,7 @@ from alea.utils import (
     load_json,
     asymptotic_critical_value,
     deterministic_hash,
+    search_filename_pattern,
 )
 
 
@@ -166,15 +167,10 @@ class NeymanConstructor(SubmitterLocal):
             }
 
             # read the likelihood ratio
-            output_filename = runner_args["output_filename"].format(**needed_kwargs)
-            # try to add a * to the output_filename to read all the files
-            fpat_split = os.path.splitext(output_filename)
-            _output_filename = fpat_split[0] + "_*" + fpat_split[1]
-            if len(sorted(glob(_output_filename))) != 0:
-                output_filename = _output_filename
-            output_filename_list = sorted(glob(output_filename))
-            if len(output_filename_list) == 0:
-                raise ValueError(f"Can not find any output file {output_filename}!")
+            output_filename_pattern = search_filename_pattern(
+                runner_args["output_filename"].format(**needed_kwargs)
+            )
+            output_filename_list = sorted(glob(output_filename_pattern))
 
             # read metadata including generate_values
             metadata_list = []
@@ -233,7 +229,7 @@ class NeymanConstructor(SubmitterLocal):
                     poi_expectation = _poi_expectation
 
             # read the likelihood ratio
-            results = toyfiles_to_numpy(output_filename)
+            results = toyfiles_to_numpy(output_filename_pattern)
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)

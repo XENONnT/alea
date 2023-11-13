@@ -183,3 +183,14 @@ class TestBlueiceExtendedModel(TestCase):
             model.data = toydata[0]
             model.fit()
             remove(self.toydata_filename)
+
+    def test_needs_reinit(self):
+        """Test of the needs_reinit property of parameters."""
+        for model in self.models:
+            self.assertTrue(model.parameters["wimp_mass"].needs_reinit)
+            # check that a ValueError is raised when trying to set the nominal parameter
+            with self.assertRaises(ValueError):
+                model.parameters["wimp_mass"].nominal_value = 1
+            # check that a ValueError is raised when calling the parameters with another value
+            with self.assertRaises(ValueError):
+                model.parameters(wimp_mass=1)

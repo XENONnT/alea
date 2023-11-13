@@ -2,6 +2,7 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from copy import deepcopy
 from pydoc import locate
+import itertools
 
 import numpy as np
 import scipy.stats as stats
@@ -137,6 +138,20 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         ll_index = self.likelihood_names.index(likelihood_name)
         return self.likelihood_list[ll_index].source_name_list
+
+    def get_all_source_names(self) -> set:
+        """Return a set of possible source names from all likelihood terms.
+
+        Args:
+            likelihood_name (str): Name of the likelihood.
+        Returns:
+            set: set of source names.
+
+        """
+        source_names = set(
+            itertools.chain.from_iterable([ll.source_name_list for ll in self.likelihood_list[:-1]])
+        )
+        return source_names
 
     @property
     def likelihood_list(self) -> List:

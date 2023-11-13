@@ -70,6 +70,11 @@ class TestBlueiceExtendedModel(TestCase):
             expectation_values.append(this_expectation_dict)
         return expectation_values
 
+    def test_get_all_source_names(self):
+        """Test of the get_all_source_names method."""
+        for model in self.models:
+            model.get_all_source_names()
+
     def test_expectation_values(self):
         """Test of the expectation_values method."""
 

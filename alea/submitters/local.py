@@ -5,6 +5,7 @@ import warnings
 import subprocess
 import itertools
 import operator
+from glob import glob
 from functools import reduce
 from copy import deepcopy
 from typing import List, Dict, Any, Optional, Callable, cast
@@ -19,6 +20,8 @@ from alea.utils import (
     load_json,
     asymptotic_critical_value,
     deterministic_hash,
+    search_filename_pattern,
+    get_metadata,
 )
 
 
@@ -156,19 +159,30 @@ class NeymanConstructor(SubmitterLocal):
                 raise ValueError("confidence_levels" + message)
 
             # prepare the needed nominal_values and generate_values
-            nominal_values = runner_args["nominal_values"]
-            generate_values = runner_args["generate_values"]
+            nominal_values = deepcopy(runner_args["nominal_values"])
+            generate_values = deepcopy(runner_args["generate_values"])
             needed_kwargs = {
                 **nominal_values,
                 **generate_values,
             }
 
+            # get the output filename pattern
+            output_filename_pattern = search_filename_pattern(
+                runner_args["output_filename"].format(**needed_kwargs)
+            )
+
+            # read metadata including generate_values
+            metadata = self._read_metadata(output_filename_pattern)
+
+            # combine the generate_values from
+            # the metadata(where the _rate_multiplier is already calculated)
+            needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
+
+            # read poi and poi_expectation
+            poi_value, poi_expectation = self._read_poi(needed_kwargs)
+
             # read the likelihood ratio
-            output_filename = runner_args["output_filename"]
-            # add a * to the output_filename to read all the files
-            fpat_split = os.path.splitext(output_filename)
-            output_filename = fpat_split[0] + "*" + fpat_split[1]
-            results = toyfiles_to_numpy(output_filename.format(**needed_kwargs))
+            results = toyfiles_to_numpy(output_filename_pattern)
             llfree = results[free_name]["ll"]
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)
@@ -179,24 +193,12 @@ class NeymanConstructor(SubmitterLocal):
                     f"{(llrs < 0.0).sum() / len(llrs):.2f}, "
                     "the median if negative log likelihood ratios "
                     f"is {np.median(llrs[llrs < 0.0]):.2e}, "
-                    f"there might be a problem in your fitting.",
+                    f"there might be a problem in your fitting."
                 )
             if len(llrs) < 1000:
                 self.logging.warning(
-                    "The number of toys is less than 1000, the threshold might not be accurate!",
+                    "The number of toys is less than 1000, the threshold might not be accurate!"
                 )
-
-            # update poi according to poi_expectation
-            runner_args["statistical_model_args"].pop("limit_threshold", None)
-            runner = Runner(**runner_args)
-            expectation_values = runner.model.get_expectation_values(
-                **{**nominal_values, **generate_values}
-            )
-            # in some rare cases the poi is not a rate multiplier
-            # then the poi_expectation is not in the nominal_expectation_values
-            component = self.poi.replace("_rate_multiplier", "")
-            poi_expectation = expectation_values.get(component, None)
-            poi_value = generate_values.pop(self.poi)
 
             # make sure no poi and poi_expectation in the hashed_keys
             generate_values.pop(self.poi, None)
@@ -226,7 +228,7 @@ class NeymanConstructor(SubmitterLocal):
                         "threshold": [],
                         "poi_expectation": [],
                     }
-                    threshold[threshold_key] = threshold_value
+                    threshold[threshold_key] = deepcopy(threshold_value)
                 threshold[threshold_key][self.poi].append(poi_value)
                 threshold[threshold_key]["threshold"].append(q_llr)
                 threshold[threshold_key]["poi_expectation"].append(poi_expectation)
@@ -244,6 +246,58 @@ class NeymanConstructor(SubmitterLocal):
         with open(limit_threshold, mode="w") as f:
             json.dump(threshold, f, indent=4)
         print(f"Saving {limit_threshold}")
+
+    def _read_metadata(self, output_filename_pattern):
+        """Read metadata from the output files."""
+        output_filename_list = sorted(glob(output_filename_pattern))
+        metadata_list = get_metadata(output_filename_pattern)
+        for m in metadata_list:
+            m.pop("date", None)
+        if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
+            raise ValueError(
+                f"The metadata are not the same for all the {len(output_filename_list)} output!"
+            )
+        metadata = metadata_list[0]
+        if metadata["poi"] != self.poi:
+            raise ValueError(
+                f"The poi in the metadata {metadata['poi']} is not "
+                f"the same as the poi {self.poi}!"
+            )
+        return metadata
+
+    def _read_poi(self, metadata, **kwargs):
+        """Read poi and poi_expectation from the metadata, and check if the poi_expectation is
+        consistent with the poi_expectation from the model."""
+        poi_expectation = kwargs.pop("poi_expectation", None)
+        poi_value = kwargs.get(self.poi, None)
+        if poi_value is None:
+            raise ValueError("Can not find the poi value in the generate_values in metadata!")
+        # read expectation_values from metadata
+        expectation_values = metadata["expectation_values"]
+        # check if the poi_expectation is in expectation_values
+        source = self.poi.replace("_rate_multiplier", "")
+        if source not in expectation_values:
+            warnings.warn(
+                f"poi {self.poi} does not corresponds to any source in the model!"
+                " so can not calculate the poi_expectation!"
+            )
+        else:
+            _poi_expectation = expectation_values[source]
+            if poi_expectation is not None:
+                # check if the poi_expectation is consistent
+                if not np.isclose(poi_expectation, _poi_expectation):
+                    raise ValueError(
+                        f"The poi_expectation from model {poi_expectation} is not "
+                        f"the same as the poi_expectation from toymc {_poi_expectation}!"
+                    )
+            else:
+                warnings.warn(
+                    "Can not find the poi_expectation in the generate_values, "
+                    "so will not check if the poi_expectation "
+                    "are consistent!"
+                )
+                poi_expectation = _poi_expectation
+        return poi_value, poi_expectation
 
     @staticmethod
     def build_interpolator(

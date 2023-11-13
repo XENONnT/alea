@@ -133,7 +133,7 @@ class Parameter:
         if self.needs_reinit and (value != self._nominal_value):
             raise ValueError(
                 f"{self.name} is a parameter that requires re-initialization "
-                "its nominal value. "
+                "to change its nominal value "
                 f"(tried to override nominal value {self._nominal_value} with {value})."
             )
         self._nominal_value = value
@@ -381,9 +381,9 @@ class Parameters:
             if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
                 raise ValueError(
                     f"{name} is a parameter that requires re-initialization "
-                    "its nominal value. "
+                    "to override its nominal value "
                     f"(tried to override nominal value {param.nominal_value} "
-                    f"with {new_val}).)"
+                    f"with {new_val})."
                 )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value

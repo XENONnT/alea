@@ -10,7 +10,6 @@ from functools import reduce
 from copy import deepcopy
 from typing import List, Dict, Any, Optional, Callable, cast
 
-import h5py
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 from inference_interface import toyfiles_to_numpy
@@ -22,6 +21,7 @@ from alea.utils import (
     asymptotic_critical_value,
     deterministic_hash,
     search_filename_pattern,
+    get_metadata,
 )
 
 
@@ -166,67 +166,20 @@ class NeymanConstructor(SubmitterLocal):
                 **generate_values,
             }
 
-            # read the likelihood ratio
+            # get the output filename pattern
             output_filename_pattern = search_filename_pattern(
                 runner_args["output_filename"].format(**needed_kwargs)
             )
-            output_filename_list = sorted(glob(output_filename_pattern))
 
             # read metadata including generate_values
-            metadata_list = []
-            for _output_filename in output_filename_list:
-                with h5py.File(_output_filename, "r", libver="latest", swmr=True) as ipt:
-                    metadata = dict(
-                        zip(
-                            ipt.attrs.keys(),
-                            [json.loads(ipt.attrs[key]) for key in ipt.attrs.keys()],
-                        )
-                    )
-                metadata.pop("date", None)
-                metadata_list.append(metadata)
-            if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
-                raise ValueError(
-                    "The metadata are not the same for all "
-                    f"the {len(output_filename_list)} output!"
-                )
-            metadata = metadata_list[0]
-            if metadata["poi"] != self.poi:
-                raise ValueError(
-                    f"The poi in the metadata {metadata['poi']} is not "
-                    f"the same as the poi {self.poi}!"
-                )
+            metadata = self._read_metadata(output_filename_pattern)
+
+            # combine the generate_values from
+            # the metadata(where the _rate_multiplier is already calculated)
+            needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
 
             # read poi and poi_expectation
-            needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
-            poi_expectation = needed_kwargs.pop("poi_expectation", None)
-            poi_value = needed_kwargs.get(self.poi, None)
-            if poi_value is None:
-                raise ValueError("Can not find the poi value in the generate_values in metadata!")
-            # read expectation_values from metadata
-            expectation_values = metadata["expectation_values"]
-            # check if the poi_expectation is in expectation_values
-            source = self.poi.replace("_rate_multiplier", "")
-            if source not in expectation_values:
-                warnings.warn(
-                    f"poi {self.poi} does not corresponds to any source in the model!"
-                    " so can not calculate the poi_expectation!"
-                )
-            else:
-                _poi_expectation = expectation_values[source]
-                if poi_expectation is not None:
-                    # check if the poi_expectation is consistent
-                    if not np.isclose(poi_expectation, _poi_expectation):
-                        raise ValueError(
-                            f"The poi_expectation from model {poi_expectation} is not "
-                            f"the same as the poi_expectation from toymc {_poi_expectation}!"
-                        )
-                else:
-                    warnings.warn(
-                        "Can not find the poi_expectation in the generate_values "
-                        f"{generate_values}, so will not check if the poi_expectation "
-                        "are consistent!"
-                    )
-                    poi_expectation = _poi_expectation
+            poi_value, poi_expectation = self._read_poi(needed_kwargs)
 
             # read the likelihood ratio
             results = toyfiles_to_numpy(output_filename_pattern)
@@ -293,6 +246,58 @@ class NeymanConstructor(SubmitterLocal):
         with open(limit_threshold, mode="w") as f:
             json.dump(threshold, f, indent=4)
         print(f"Saving {limit_threshold}")
+
+    def _read_metadata(self, output_filename_pattern):
+        """Read metadata from the output files."""
+        output_filename_list = sorted(glob(output_filename_pattern))
+        metadata_list = get_metadata(output_filename_pattern)
+        for m in metadata_list:
+            m.pop("date", None)
+        if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
+            raise ValueError(
+                f"The metadata are not the same for all the {len(output_filename_list)} output!"
+            )
+        metadata = metadata_list[0]
+        if metadata["poi"] != self.poi:
+            raise ValueError(
+                f"The poi in the metadata {metadata['poi']} is not "
+                f"the same as the poi {self.poi}!"
+            )
+        return metadata
+
+    def _read_poi(self, metadata, **kwargs):
+        """Read poi and poi_expectation from the metadata, and check if the poi_expectation is
+        consistent with the poi_expectation from the model."""
+        poi_expectation = kwargs.pop("poi_expectation", None)
+        poi_value = kwargs.get(self.poi, None)
+        if poi_value is None:
+            raise ValueError("Can not find the poi value in the generate_values in metadata!")
+        # read expectation_values from metadata
+        expectation_values = metadata["expectation_values"]
+        # check if the poi_expectation is in expectation_values
+        source = self.poi.replace("_rate_multiplier", "")
+        if source not in expectation_values:
+            warnings.warn(
+                f"poi {self.poi} does not corresponds to any source in the model!"
+                " so can not calculate the poi_expectation!"
+            )
+        else:
+            _poi_expectation = expectation_values[source]
+            if poi_expectation is not None:
+                # check if the poi_expectation is consistent
+                if not np.isclose(poi_expectation, _poi_expectation):
+                    raise ValueError(
+                        f"The poi_expectation from model {poi_expectation} is not "
+                        f"the same as the poi_expectation from toymc {_poi_expectation}!"
+                    )
+            else:
+                warnings.warn(
+                    "Can not find the poi_expectation in the generate_values, "
+                    "so will not check if the poi_expectation "
+                    "are consistent!"
+                )
+                poi_expectation = _poi_expectation
+        return poi_value, poi_expectation
 
     @staticmethod
     def build_interpolator(

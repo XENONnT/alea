@@ -13,6 +13,8 @@ from base64 import b32encode
 from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 
+import h5py
+
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
 import numpy as np  # noqa: F401
@@ -394,6 +396,22 @@ def search_filename_pattern(filename: str) -> str:
     if len(filename_list) == 0:
         raise ValueError(f"Can not find any output file {filename}!")
     return pattern
+
+
+def get_metadata(output_filename_pattern: str) -> list:
+    """Get metadata from output files."""
+    output_filename_list = sorted(glob(output_filename_pattern))
+    metadata_list = []
+    for _output_filename in output_filename_list:
+        with h5py.File(_output_filename, "r", libver="latest", swmr=True) as ipt:
+            metadata = dict(
+                zip(
+                    ipt.attrs.keys(),
+                    [json.loads(ipt.attrs[key]) for key in ipt.attrs.keys()],
+                )
+            )
+        metadata_list.append(metadata)
+    return metadata_list
 
 
 def can_expand_grid(variations: dict) -> bool:

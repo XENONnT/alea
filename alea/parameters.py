@@ -319,6 +319,19 @@ class Parameters:
         """
         return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
+    def set_nominal_values(self, overwrite_init=False, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        for name, value in nominal_values.items():
+            if overwrite_init:
+                self.parameters[name]._nominal_value = value
+            else:
+                self.parameters[name].nominal_value = value
+
     @property
     def with_uncertainty(self) -> "Parameters":
         """Return parameters with a not-NaN uncertainty.

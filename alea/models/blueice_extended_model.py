@@ -159,6 +159,11 @@ class BlueiceExtendedModel(StatisticalModel):
         """Return a list of likelihood terms."""
         return self._likelihood.likelihood_list
 
+    @property
+    def likelihood_parameters(self) -> List:
+        """Return a list of likelihood parameters."""
+        return self._likelihood.likelihood_parameters
+
     def get_expectation_values(self, per_likelihood_term=False, **kwargs) -> dict:
         """Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
@@ -195,9 +200,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # ancillary likelihood does not contribute
         for ll_term, ll_name, parameter_names, livetime_parameter in zip(
-            self_copy._likelihood.likelihood_list[:-1],
+            self_copy.likelihood_list[:-1],
             self_copy.likelihood_names[:-1],
-            self_copy._likelihood.likelihood_parameters,
+            self_copy.likelihood_parameters,
             self_copy.livetime_parameter_names,
         ):
             ret[ll_name] = {}

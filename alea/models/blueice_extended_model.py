@@ -139,7 +139,8 @@ class BlueiceExtendedModel(StatisticalModel):
         ll_index = self.likelihood_names.index(likelihood_name)
         return self.likelihood_list[ll_index].source_name_list
 
-    def get_all_source_names(self) -> set:
+    @property
+    def all_source_names(self) -> set:
         """Return a set of possible source names from all likelihood terms.
 
         Args:
@@ -210,10 +211,9 @@ class BlueiceExtendedModel(StatisticalModel):
                 ret[ll_name][n] = mu
         if not per_likelihood_term:
             # sum over sources with same names of all likelihood terms
-            all_source_names = {name for sublist in ret.values() for name in sublist}
             ret = {
                 n: sum([ret[ll_name].get(n, 0.0) for ll_name in ret.keys()])  # type: ignore
-                for n in all_source_names
+                for n in self.all_source_names
             }
 
         return ret

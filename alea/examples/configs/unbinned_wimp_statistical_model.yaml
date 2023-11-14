@@ -3,8 +3,6 @@ parameter_definition:
     nominal_value: 50
     fittable: false
     description: WIMP mass in GeV/c^2
-    blueice_anchors:
-      - 50
 
   livetime_sr0:
     nominal_value: 0.2

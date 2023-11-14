@@ -119,6 +119,7 @@ class Runner:
             statistical_model_args = {}
         # nominal_values is keyword argument
         self.nominal_values = nominal_values if nominal_values else {}
+        # initialize nominal_values only once
         statistical_model_args["nominal_values"] = self.nominal_values
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
@@ -338,6 +339,13 @@ class Runner:
         metadata["poi"] = self.poi
         metadata["common_hypothesis"] = self.common_hypothesis
         metadata["generate_values"] = self.generate_values
+        metadata["nominal_values"] = self.nominal_values
+        try:
+            metadata["expectation_values"] = self.model.get_expectation_values(
+                **self.generate_values
+            )
+        except NotImplementedError:
+            metadata["expectation_values"] = {}
 
         array_metadatas = [{"hypotheses_values": ea} for ea in self._hypotheses_values]
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]

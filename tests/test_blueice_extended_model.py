@@ -203,3 +203,8 @@ class TestBlueiceExtendedModel(TestCase):
             # check that a ValueError is raised when calling the parameters with another value
             with self.assertRaises(ValueError):
                 model.parameters(wimp_mass=1)
+            with self.assertRaises(ValueError):
+                model.get_expectation_values(wimp_mass=1)
+            model.data = model.generate_data()
+            with self.assertRaises(ValueError):
+                model.fit(wimp_mass=1)

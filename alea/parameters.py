@@ -341,8 +341,10 @@ class Parameters:
 
     def set_nominal_values(self, **nominal_values):
         """Set the nominal values for parameters.
+
         Keyword Args:
             nominal_values (dict): A dict of parameter names and values.
+
         """
         for name, value in nominal_values.items():
             self.parameters[name].nominal_value = value

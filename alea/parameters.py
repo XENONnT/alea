@@ -60,6 +60,8 @@ class Parameter:
         self.fit_guess = fit_guess
         self.description = description
 
+        self._check_parameter_consistency()
+
     def __repr__(self) -> str:
         parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
         _repr = f"{self.__class__.__module__}.{self.__class__.__qualname__}"
@@ -169,6 +171,20 @@ class Parameter:
             raise ValueError(
                 f"parameter_interval_bounds {value} not within "
                 f"fit_limits {self.fit_limits} for parameter {self.name}."
+            )
+
+    def _check_parameter_consistency(self):
+        """Check if parameter is consistent."""
+        if self.fittable and self.needs_reinit:
+            warnings.warn(
+                f"Parameter {self.name} is fittable and needs re-initialization. "
+                "This may cause unexpected behaviour."
+            )
+        if (self.blueice_anchors is not None) and self.needs_reinit:
+            raise ValueError(
+                f"Parameter {self.name} needs re-initialization but has "
+                "blueice_anchors defined. "
+                "This may cause unexpected behaviour."
             )
 
 

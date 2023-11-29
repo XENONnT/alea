@@ -95,7 +95,7 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
-        nominal_values = kwargs.get("nominal_values", {})
+        nominal_values = kwargs.get("nominal_values", None)
         self._define_parameters(parameter_definition, nominal_values)
 
         self._check_ll_and_generate_data_signature()
@@ -105,12 +105,16 @@ class StatisticalModel:
         if parameter_definition is None:
             self.parameters = Parameters()
         elif isinstance(parameter_definition, dict):
-            for name, definition in parameter_definition.items():
-                if name in nominal_values:
-                    definition["nominal_value"] = nominal_values[name]
+            # if nominal_values are given, overwrite the ones in parameter_definition
+            if nominal_values is not None:
+                for name, definition in parameter_definition.items():
+                    if name in nominal_values:
+                        definition["nominal_value"] = nominal_values[name]
             self.parameters = Parameters.from_config(parameter_definition)
         elif isinstance(parameter_definition, list):
             self.parameters = Parameters.from_list(parameter_definition)
+            if nominal_values is not None:
+                self.parameters.set_nominal_values(**nominal_values)
         else:
             raise RuntimeError("parameter_definition must be dict or list")
 

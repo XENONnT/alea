@@ -24,8 +24,6 @@ class Parameter:
             for any value in between.
         fit_limits (Tuple[float, float], optional (default=None)):
             The limits for fitting the parameter.
-        static (bool, optional (default=False)):
-            If True, the parameter is static and cannot be changed from its nominal value.
         parameter_interval_bounds (Tuple[float, float], optional (default=None)):
             Limits for computing confidence intervals.
         fit_guess (float, optional (default=None)): The initial guess for fitting the parameter.
@@ -45,7 +43,6 @@ class Parameter:
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[List] = None,
         fit_limits: Optional[Tuple] = None,
-        static: Optional[bool] = False,
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
         description: Optional[str] = None,
@@ -59,10 +56,11 @@ class Parameter:
         self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
-        self.static = static
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess
         self.description = description
+
+        self._check_parameter_consistency()
 
     def __repr__(self) -> str:
         parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
@@ -134,13 +132,21 @@ class Parameter:
 
     @nominal_value.setter
     def nominal_value(self, value: Optional[float]) -> None:
-        if self.static and (value != self._nominal_value):
+        if self.needs_reinit and (value != self._nominal_value):
             raise ValueError(
-                f"{self.name} is a static parameter. "
-                "You can't change its nominal value "
+                f"{self.name} is a parameter that requires re-initialization "
+                "to change its nominal value "
                 f"(tried to override nominal value {self._nominal_value} with {value})."
             )
         self._nominal_value = value
+
+    @property
+    def needs_reinit(self) -> bool:
+        """Return True if the parameter needs re-initialization (for ptype `needs_reinit`)."""
+        needs_reinit = False
+        if self.ptype == "needs_reinit":
+            needs_reinit = True
+        return needs_reinit
 
     def __eq__(self, other: object) -> bool:
         """Return True if all attributes are equal."""
@@ -165,6 +171,20 @@ class Parameter:
             raise ValueError(
                 f"parameter_interval_bounds {value} not within "
                 f"fit_limits {self.fit_limits} for parameter {self.name}."
+            )
+
+    def _check_parameter_consistency(self):
+        """Check if parameter is consistent."""
+        if self.fittable and self.needs_reinit:
+            warnings.warn(
+                f"Parameter {self.name} is fittable and needs re-initialization. "
+                "This may cause unexpected behaviour."
+            )
+        if (self.blueice_anchors is not None) and self.needs_reinit:
+            raise ValueError(
+                f"Parameter {self.name} needs re-initialization but has "
+                "blueice_anchors defined. "
+                "This may cause unexpected behaviour."
             )
 
 
@@ -335,6 +355,16 @@ class Parameters:
             k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
         }
 
+    def set_nominal_values(self, **nominal_values):
+        """Set the nominal values for parameters.
+
+        Keyword Args:
+            nominal_values (dict): A dict of parameter names and values.
+
+        """
+        for name, value in nominal_values.items():
+            self.parameters[name].nominal_value = value
+
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.
 
@@ -374,12 +404,12 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
-            if param.static and (new_val != param.nominal_value) and (new_val is not None):
+            if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
                 raise ValueError(
-                    f"Parameter {name} is static. "
-                    "You can't change its value from its nominal value "
+                    f"{name} is a parameter that requires re-initialization "
+                    "to override its nominal value "
                     f"(tried to override nominal value {param.nominal_value} "
-                    f"with {new_val}).)"
+                    f"with {new_val})."
                 )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value

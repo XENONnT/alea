@@ -179,7 +179,7 @@ class NeymanConstructor(SubmitterLocal):
             needed_kwargs = {**metadata["generate_values"], **needed_kwargs}
 
             # read poi and poi_expectation
-            poi_value, poi_expectation = self._read_poi(needed_kwargs)
+            poi_value, poi_expectation = self._read_poi(metadata, **needed_kwargs)
 
             # read the likelihood ratio
             results = toyfiles_to_numpy(output_filename_pattern)

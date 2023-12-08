@@ -170,11 +170,6 @@ class StatisticalModel:
             This implementation won't allow you to call generate_data by positional arguments.
 
         """
-        if set(kwargs.keys()) - set(self.parameters.fittable):
-            warnings.warn(
-                "When you pass non-fittable parameters to generate_data, "
-                "you might changed the nominal values of the parameters.",
-            )
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)

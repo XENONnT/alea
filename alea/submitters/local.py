@@ -195,7 +195,7 @@ class NeymanConstructor(SubmitterLocal):
                     f"total fraction of negative log likelihood ratio is "
                     f"{(llrs < 0.0).sum() / len(llrs):.02f}, "
                     f"total fraction of invalid fit is {1 - mean_valid:.02f}, "
-                    f"the median if negative log likelihood ratios "
+                    f"the median of negative log likelihood ratios "
                     f"is {np.median(llrs[llrs < 0.0]):.02e}, "
                     f"there might be a problem in your fitting."
                 )

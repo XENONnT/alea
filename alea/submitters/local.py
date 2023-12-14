@@ -187,12 +187,16 @@ class NeymanConstructor(SubmitterLocal):
             lltrue = results[true_name]["ll"]
             llrs = 2.0 * (llfree - lltrue)
             if llrs.min() < 0.0:
+                mean_valid = (
+                    results[free_name]["valid_fit"] & results[true_name]["valid_fit"]
+                ).mean()
                 self.logging.warning(
-                    f"The lowest log likelihood ratio is negative {llrs.min():.2e}, "
+                    f"The lowest log likelihood ratio is negative {llrs.min():.02e}, "
                     f"total fraction of negative log likelihood ratio is "
-                    f"{(llrs < 0.0).sum() / len(llrs):.2f}, "
-                    "the median if negative log likelihood ratios "
-                    f"is {np.median(llrs[llrs < 0.0]):.2e}, "
+                    f"{(llrs < 0.0).sum() / len(llrs):.02f}, "
+                    f"total fraction of invalid fit is {1 - mean_valid:.02f}, "
+                    f"the median if negative log likelihood ratios "
+                    f"is {np.median(llrs[llrs < 0.0]):.02e}, "
                     f"there might be a problem in your fitting."
                 )
             if len(llrs) < 1000:

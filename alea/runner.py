@@ -66,6 +66,7 @@ class Runner:
         toydata_filename (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
         output_filename (str, optional (default='test_toymc.h5')): output filename
+        seed (int, optional (default=None)): random seed for runners before generating toydata
         metadata (dict, optional (default=None)): metadata to be saved in output file
 
     """
@@ -90,6 +91,7 @@ class Runner:
         toydata_filename: str = "test_toydata_filename.h5",
         only_toydata: bool = False,
         output_filename: str = "test_output_filename.h5",
+        seed: Optional[int] = None,
         metadata: Optional[dict] = None,
     ):
         """Initialize statistical model, parameters list, and generate values list."""
@@ -141,6 +143,7 @@ class Runner:
         self._toydata_mode = toydata_mode
         self._output_filename = output_filename
         self.only_toydata = only_toydata
+        self.seed = seed
         self._metadata = metadata if metadata else {}
 
         self._result_names, self._result_dtype = self._get_parameter_list()
@@ -340,6 +343,7 @@ class Runner:
         metadata["common_hypothesis"] = self.common_hypothesis
         metadata["generate_values"] = self.generate_values
         metadata["nominal_values"] = self.nominal_values
+        metadata["seed"] = self.seed
         try:
             metadata["expectation_values"] = self.model.get_expectation_values(
                 **self.generate_values
@@ -374,6 +378,8 @@ class Runner:
 
     def data_generator(self):
         """Generate, save or read toydata."""
+        # set seed
+        np.random.seed(self.seed)
         # check toydata mode
         if self._toydata_mode not in {
             "read",

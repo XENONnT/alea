@@ -260,8 +260,10 @@ class Runner:
         """Get parameter list and result list from statistical model."""
         parameter_list = sorted(self.model.get_parameter_list())
         # add likelihood, lower limit, upper limit, and the migrad valid fit bool
-        result_names = parameter_list + ["ll", "dl", "ul", "valid_fit"]
+        result_names = parameter_list + ["ll", "dl", "ul"]
         result_dtype = [(n, float) for n in result_names]
+        result_names += ["valid_fit"]
+        result_dtype += [("valid_fit", bool)]
         return result_names, result_dtype
 
     def _get_hypotheses(self):

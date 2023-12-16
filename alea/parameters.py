@@ -41,7 +41,7 @@ class Parameter:
         ptype: Optional[str] = None,
         uncertainty: Optional[Union[float, str]] = None,
         relative_uncertainty: Optional[bool] = None,
-        blueice_anchors: Optional[List] = None,
+        blueice_anchors: Optional[Union[list, str]] = None,
         fit_limits: Optional[Tuple] = None,
         parameter_interval_bounds: Optional[Tuple[float, float]] = None,
         fit_guess: Optional[float] = None,
@@ -54,7 +54,10 @@ class Parameter:
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
-        self.blueice_anchors = blueice_anchors
+        if isinstance(blueice_anchors, str):
+            self.blueice_anchors = evaluate_numpy_scipy_expression(blueice_anchors).tolist()
+        else:
+            self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess

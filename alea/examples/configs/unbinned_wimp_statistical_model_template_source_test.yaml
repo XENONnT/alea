@@ -54,12 +54,7 @@ parameter_definition:
     uncertainty: 'stats.uniform(loc=-2, scale=4)'
     # relative_uncertainty: false
     fittable: true
-    blueice_anchors:
-      - -2
-      - -1
-      - 0
-      - 1
-      - 2
+    blueice_anchors: 'np.arange(-2, 3)'
     fit_limits:
       - -2
       - 2

@@ -19,7 +19,7 @@ from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_
 class BlueiceExtendedModel(StatisticalModel):
     """A statistical model based on blueice likelihoods.
 
-    This class extends the `StatisticalModel` class and provides methods
+    This class extends the ``StatisticalModel`` class and provides methods
     for generating data and computing likelihoods based on blueice.
 
     Attributes:
@@ -127,7 +127,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def get_source_name_list(self, likelihood_name: str) -> list:
         """Return a list of source names for a given likelihood term. The order is the same as used
-        in the `source` column of the data, so this can be used to map the indices provided in the
+        in the ``source`` column of the data, so this can be used to map the indices provided in the
         data to a source name.
 
         Args:

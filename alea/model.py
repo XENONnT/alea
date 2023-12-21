@@ -260,7 +260,7 @@ class StatisticalModel:
     def nominal_expectation_values(self):
         """Nominal expectation values for the sources of the likelihood.
 
-        For this to work, you must implement `get_expectation_values`.
+        For this to work, you must implement ``get_expectation_values``.
 
         """
         return self.get_expectation_values()  # no kwargs for nominal

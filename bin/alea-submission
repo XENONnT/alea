@@ -10,12 +10,26 @@ def main():
         "--computation",
         type=str,
         required=True,
-        choices=[
-            "discovery_power",
-            "threshold",
-            "sensitivity",
-        ],
-        help="Type of computation, defined in YAML runner config file",
+        help=(
+            "Type of computation, defined in YAML runner config file\n"
+            "May be any key in computation_options.\n"
+            'If the key is "threshold" no jobs are submitted,\n'
+            "and the runner instead tries to collate already existing files\n"
+            "to compute a Neyman threshold.\n"
+            "Otherwise it submits toyMCs according to the config file.\n"
+            "Other common names are (you have to set the config accordingly):\n"
+            '    * "discovery_power": you wish to compute discovery significance '
+            "for different signal sizes\n"
+            '    * "sensitivity": you wish to compute the distribution of confidence'
+            "intervals under the null hypothesis:\n"
+            '    * "coverage": you wish to compute upper limits for a range of signal sizes\n'
+            '    * "neyman": you wish to compute the test statistic for testing'
+            "a range of true signal sizes\n"
+            '    * "pull": you wish to check the distribution of fitted nuisance parameters'
+            "as function of the true value\n"
+            '    * "trialcorrection": you wish to compute discovery significance'
+            "for the same dataset with all signal hypotheses\n"
+        ),
     )
     # Exclusive groups on submission destination
     group = parser.add_mutually_exclusive_group(required=False)
@@ -36,6 +50,11 @@ def main():
         required=False,
         default=None,
         help="Overwriting the outputfolder, usually defined in runner config file",
+    )
+    parser.add_argument(
+        "--resubmit",
+        action="store_true",
+        help="Force resubmit no matter if the output folder exists",
     )
     parsed_args = parser.parse_args()
 
@@ -66,6 +85,7 @@ def main():
     kwargs = {
         "computation": parsed_args.computation,
         "debug": parsed_args.debug,
+        "resubmit": parsed_args.resubmit,
     }
     # if outputfolder is provided, overwrite the one in runner config file
     if parsed_args.outputfolder:

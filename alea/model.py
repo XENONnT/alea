@@ -95,19 +95,26 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
-        self._define_parameters(parameter_definition)
+        nominal_values = kwargs.get("nominal_values", None)
+        self._define_parameters(parameter_definition, nominal_values)
 
         self._check_ll_and_generate_data_signature()
-        self.set_nominal_values(**kwargs.get("nominal_values", {}))
 
-    def _define_parameters(self, parameter_definition):
+    def _define_parameters(self, parameter_definition, nominal_values=None):
         """Initialize the parameters of the model."""
         if parameter_definition is None:
             self.parameters = Parameters()
         elif isinstance(parameter_definition, dict):
+            # if nominal_values are given, overwrite the ones in parameter_definition
+            if nominal_values is not None:
+                for name, definition in parameter_definition.items():
+                    if name in nominal_values:
+                        definition["nominal_value"] = nominal_values[name]
             self.parameters = Parameters.from_config(parameter_definition)
         elif isinstance(parameter_definition, list):
             self.parameters = Parameters.from_list(parameter_definition)
+            if nominal_values is not None:
+                self.parameters.set_nominal_values(**nominal_values)
         else:
             raise RuntimeError("parameter_definition must be dict or list")
 
@@ -163,11 +170,6 @@ class StatisticalModel:
             This implementation won't allow you to call generate_data by positional arguments.
 
         """
-        if set(kwargs.keys()) - set(self.parameters.fittable):
-            warnings.warn(
-                "When you pass non-fittable parameters to generate_data, "
-                "you might changed the nominal values of the parameters.",
-            )
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)
@@ -236,15 +238,6 @@ class StatisticalModel:
             raise ValueError("The number of data sets and data names must be the same")
         toydata_to_file(file_name, _data_list, data_name_list, **kw)
 
-    def set_nominal_values(self, **nominal_values):
-        """Set the nominal values for parameters.
-
-        Keyword Args:
-            nominal_values (dict): A dict of parameter names and values.
-
-        """
-        self.parameters.set_nominal_values(**nominal_values)
-
     def set_fit_guesses(self, **fit_guesses):
         """Set the fit guesses for parameters.
 
@@ -261,13 +254,13 @@ class StatisticalModel:
             parameter_values: values of the parameters
 
         """
-        return NotImplementedError("get_expectation_values is optional to implement")
+        raise NotImplementedError("get_expectation_values is optional to implement")
 
     @property
     def nominal_expectation_values(self):
         """Nominal expectation values for the sources of the likelihood.
 
-        For this to work, you must implement `get_expectation_values`.
+        For this to work, you must implement ``get_expectation_values``.
 
         """
         return self.get_expectation_values()  # no kwargs for nominal

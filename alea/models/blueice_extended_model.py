@@ -2,6 +2,7 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from copy import deepcopy
 from pydoc import locate
+import itertools
 
 import numpy as np
 import scipy.stats as stats
@@ -18,7 +19,7 @@ from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_
 class BlueiceExtendedModel(StatisticalModel):
     """A statistical model based on blueice likelihoods.
 
-    This class extends the `StatisticalModel` class and provides methods
+    This class extends the ``StatisticalModel`` class and provides methods
     for generating data and computing likelihoods based on blueice.
 
     Attributes:
@@ -60,6 +61,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ]
         self.livetime_parameter_names += [None]  # ancillary likelihood
         self.data_generators = self._build_data_generators()
+        self._set_default_ptype()
 
     @classmethod
     def from_config(cls, config_file_path: str, **kwargs) -> "BlueiceExtendedModel":
@@ -125,7 +127,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def get_source_name_list(self, likelihood_name: str) -> list:
         """Return a list of source names for a given likelihood term. The order is the same as used
-        in the `source` column of the data, so this can be used to map the indices provided in the
+        in the ``source`` column of the data, so this can be used to map the indices provided in the
         data to a source name.
 
         Args:
@@ -139,19 +141,42 @@ class BlueiceExtendedModel(StatisticalModel):
         return self.likelihood_list[ll_index].source_name_list
 
     @property
+    def all_source_names(self) -> set:
+        """Return a set of possible source names from all likelihood terms.
+
+        Args:
+            likelihood_name (str): Name of the likelihood.
+        Returns:
+            set: set of source names.
+
+        """
+        source_names = set(
+            itertools.chain.from_iterable([ll.source_name_list for ll in self.likelihood_list[:-1]])
+        )
+        return source_names
+
+    @property
     def likelihood_list(self) -> List:
         """Return a list of likelihood terms."""
         return self._likelihood.likelihood_list
 
-    def get_expectation_values(self, **kwargs) -> dict:
+    @property
+    def likelihood_parameters(self) -> List:
+        """Return a list of likelihood parameters."""
+        return self._likelihood.likelihood_parameters
+
+    def get_expectation_values(self, per_likelihood_term=False, **kwargs) -> dict:
         """Return total expectation values (summed over all likelihood terms with the same name)
         given a number of named parameters (kwargs)
 
         Args:
+            per_likelihood_term (bool): If True, return expectation values
+                per likelihood term. Otherwise, sum each source over all likelihood terms.
             kwargs: Named parameters
 
         Returns:
-            dict: Dictionary of expectation values
+            dict: Dictionary of expectation values. If per_likelihood_term is True, the dictionary
+                has the form {likelihood_name: {source_name: expectation_value, ...}, ...}.
 
         Caution:
             The function silently drops parameters it can't handle!
@@ -168,18 +193,20 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         generate_values = self.parameters(**kwargs)  # kwarg or nominal value
-        ret = cast(Dict[str, float], {})
+        ret = cast(Dict[str, Dict[str, float]], {})
 
         # calling ll need data to be set
         self_copy = deepcopy(self)
         self_copy.data = self_copy.generate_data()
 
         # ancillary likelihood does not contribute
-        for ll_term, parameter_names, livetime_parameter in zip(
-            self_copy._likelihood.likelihood_list[:-1],
-            self_copy._likelihood.likelihood_parameters,
+        for ll_term, ll_name, parameter_names, livetime_parameter in zip(
+            self_copy.likelihood_list[:-1],
+            self_copy.likelihood_names[:-1],
+            self_copy.likelihood_parameters,
             self_copy.livetime_parameter_names,
         ):
+            ret[ll_name] = {}
             # WARNING: This silently drops parameters it can't handle!
             call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
             if livetime_parameter is not None:
@@ -187,7 +214,14 @@ class BlueiceExtendedModel(StatisticalModel):
 
             mus = ll_term(full_output=True, **call_args)[1]
             for n, mu in zip(ll_term.source_name_list, mus):
-                ret[n] = ret.get(n, 0) + mu
+                ret[ll_name][n] = mu
+        if not per_likelihood_term:
+            # sum over sources with same names of all likelihood terms
+            ret = {
+                n: sum([ret[ll_name].get(n, 0.0) for ll_name in ret.keys()])  # type: ignore
+                for n in self.all_source_names
+            }
+
         return ret
 
     def _process_blueice_config(self, config, template_folder_list):
@@ -417,6 +451,23 @@ class BlueiceExtendedModel(StatisticalModel):
                 " must be constrained to be finite"
             )
         ll.add_shape_parameter(efficiency_name, anchors=(limits[0], limits[1]))
+
+    def _set_default_ptype(self):
+        """Check if all parameters have a ptype that is in the list of allowed ptypes.
+
+        If no ptype is specified, set the default ptype "needs_reinit".
+
+        """
+        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit"]
+        default_ptype = "needs_reinit"
+        for p in self.parameters:
+            if p.ptype is None:
+                p.ptype = default_ptype
+            elif p.ptype not in allowed_ptypes:
+                raise ValueError(
+                    f"Parameter {p.name} has ptype {p.ptype} which is not in the list of "
+                    f"allowed ptypes: {allowed_ptypes}."
+                )
 
     def store_real_data(self, file_name: str, real_data_list: list, metadata=None):
         """Store real data in a file with toydata format.

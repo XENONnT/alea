@@ -70,6 +70,15 @@ class TestBlueiceExtendedModel(TestCase):
             expectation_values.append(this_expectation_dict)
         return expectation_values
 
+    def test_all_source_names(self):
+        """Test of the all_source_names method."""
+        for config, model in zip(self.configs, self.models):
+            _source_names = set()
+            for ll_t in config["likelihood_config"]["likelihood_terms"]:
+                _source_names.update([s["name"] for s in ll_t["sources"]])
+            source_names = model.all_source_names
+            self.assertEqual(source_names, _source_names)
+
     def test_expectation_values(self):
         """Test of the expectation_values method."""
 
@@ -96,6 +105,23 @@ class TestBlueiceExtendedModel(TestCase):
             )
             for k, v in expectation_values.items():
                 self.assertEqual(v * scaling_factor, new_expectation_values[k])
+
+    def test_get_expectation_values_per_likelihood_term(self):
+        """Test of the get_expectation_values method with per_likelihood=True."""
+        self.set_new_models()
+        for model in self.models:
+            vals_per = model.get_expectation_values(per_likelihood_term=True)
+            vals_total = model.get_expectation_values(per_likelihood_term=False)
+
+            # Manually sum up the per_likelihood_term expectation values
+            summed_vals = {}
+            for term in vals_per.values():
+                for key, value in term.items():
+                    summed_vals[key] = summed_vals.get(key, 0) + value
+
+            # Check whether the summed values are equal to the total values
+            for key, summed_val in summed_vals.items():
+                self.assertEqual(summed_val, vals_total[key])
 
     def test_generate_data(self):
         """Test of the generate_data method."""
@@ -166,3 +192,19 @@ class TestBlueiceExtendedModel(TestCase):
             model.data = toydata[0]
             model.fit()
             remove(self.toydata_filename)
+
+    def test_needs_reinit(self):
+        """Test of the needs_reinit property of parameters."""
+        for model in self.models:
+            self.assertTrue(model.parameters["wimp_mass"].needs_reinit)
+            # check that a ValueError is raised when trying to set the nominal parameter
+            with self.assertRaises(ValueError):
+                model.parameters["wimp_mass"].nominal_value = 1
+            # check that a ValueError is raised when calling the parameters with another value
+            with self.assertRaises(ValueError):
+                model.parameters(wimp_mass=1)
+            with self.assertRaises(ValueError):
+                model.get_expectation_values(wimp_mass=1)
+            model.data = model.generate_data()
+            with self.assertRaises(ValueError):
+                model.fit(wimp_mass=1)

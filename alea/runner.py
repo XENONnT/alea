@@ -1,3 +1,4 @@
+import time
 import inspect
 from copy import deepcopy
 from typing import Optional, Dict, Union
@@ -65,6 +66,7 @@ class Runner:
         toydata_filename (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
         output_filename (str, optional (default='test_toymc.h5')): output filename
+        seed (int, optional (default=None)): random seed for runners before generating toydata
         metadata (dict, optional (default=None)): metadata to be saved in output file
 
     """
@@ -89,6 +91,7 @@ class Runner:
         toydata_filename: str = "test_toydata_filename.h5",
         only_toydata: bool = False,
         output_filename: str = "test_output_filename.h5",
+        seed: Optional[int] = None,
         metadata: Optional[dict] = None,
     ):
         """Initialize statistical model, parameters list, and generate values list."""
@@ -118,6 +121,7 @@ class Runner:
             statistical_model_args = {}
         # nominal_values is keyword argument
         self.nominal_values = nominal_values if nominal_values else {}
+        # initialize nominal_values only once
         statistical_model_args["nominal_values"] = self.nominal_values
         # likelihood_config is keyword argument, because not all statistical model needs it
         statistical_model_args["likelihood_config"] = likelihood_config
@@ -139,6 +143,7 @@ class Runner:
         self._toydata_mode = toydata_mode
         self._output_filename = output_filename
         self.only_toydata = only_toydata
+        self.seed = seed
         self._metadata = metadata if metadata else {}
 
         self._result_names, self._result_dtype = self._get_parameter_list()
@@ -255,8 +260,10 @@ class Runner:
         """Get parameter list and result list from statistical model."""
         parameter_list = sorted(self.model.get_parameter_list())
         # add likelihood, lower limit, upper limit, and the migrad valid fit bool
-        result_names = parameter_list + ["ll", "dl", "ul", "valid_fit"]
+        result_names = parameter_list + ["ll", "dl", "ul"]
         result_dtype = [(n, float) for n in result_names]
+        result_names += ["valid_fit"]
+        result_dtype += [("valid_fit", bool)]
         return result_names, result_dtype
 
     def _get_hypotheses(self):
@@ -337,6 +344,14 @@ class Runner:
         metadata["poi"] = self.poi
         metadata["common_hypothesis"] = self.common_hypothesis
         metadata["generate_values"] = self.generate_values
+        metadata["nominal_values"] = self.nominal_values
+        metadata["seed"] = self.seed
+        try:
+            metadata["expectation_values"] = self.model.get_expectation_values(
+                **self.generate_values
+            )
+        except NotImplementedError:
+            metadata["expectation_values"] = {}
 
         array_metadatas = [{"hypotheses_values": ea} for ea in self._hypotheses_values]
         numpy_arrays_and_names = [(r, rn) for r, rn in zip(results, result_names)]
@@ -365,6 +380,8 @@ class Runner:
 
     def data_generator(self):
         """Generate, save or read toydata."""
+        # set seed
+        np.random.seed(self.seed)
         # check toydata mode
         if self._toydata_mode not in {
             "read",
@@ -471,8 +488,15 @@ class Runner:
         If only_toydata is True, only generate toydata.
 
         """
+        global_start = time.time()
+        cpu_global_start = time.process_time()
         if self.only_toydata:
             self.simulate()
         else:
             results = self.simulate_and_fit()
             self.write_output(results)
+        print(
+            "Used real time {0:.02f}s, CPU time {1:.02f}s".format(
+                time.time() - global_start, time.process_time() - cpu_global_start
+            )
+        )

@@ -1,3 +1,29 @@
+0.2.1 / 2023-12-08
+------------------
+* Add optional argument `degree_of_freedom` for `asymptotic_critical_value` by @dachengx in https://github.com/XENONnT/alea/pull/86
+* Update readthedocs configurations by @dachengx in https://github.com/XENONnT/alea/pull/88
+* Update tutorials by @hammannr in https://github.com/XENONnT/alea/pull/89
+* Add column to toyMC results with minuit convergence flag by @kdund in https://github.com/XENONnT/alea/pull/91
+* Debug a typo at docstring of fittable parameter by @dachengx in https://github.com/XENONnT/alea/pull/95
+* Improve documentation by @hammannr in https://github.com/XENONnT/alea/pull/101
+* Update Neyman threshold when changing runner_args by @hammannr in https://github.com/XENONnT/alea/pull/100
+* Allow submitter to skip the already succeeded files by @dachengx in https://github.com/XENONnT/alea/pull/94
+* Print time usage of `Runner.run` by @dachengx in https://github.com/XENONnT/alea/pull/104
+* Get expectation values per likelihood term by @hammannr in https://github.com/XENONnT/alea/pull/106
+* Prevent arguments to submission variations being changed by deepcopy-ing them.  by @dachengx in https://github.com/XENONnT/alea/pull/107
+* Make error message more explicit that an excecutable is not found and… by @kdund in https://github.com/XENONnT/alea/pull/109
+* Read poi and expectation directly from `output_filename` to accelerate `NeymanConstructor` by @dachengx in https://github.com/XENONnT/alea/pull/108
+* Direct call of used parameters of model by @dachengx in https://github.com/XENONnT/alea/pull/112
+* Add function to get all sources names from all likelihoods by @dachengx in https://github.com/XENONnT/alea/pull/111
+* Make sure values of parameters that need re-initialization are not changed by @hammannr in https://github.com/XENONnT/alea/pull/110
+* Allow all computation names by @kdund in https://github.com/XENONnT/alea/pull/116
+* Debug for the missing argument in `_read_poi` by @dachengx in https://github.com/XENONnT/alea/pull/118
+* Remove unnecessary warning given new ptype constraints by @dachengx in https://github.com/XENONnT/alea/pull/119
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.0...v0.2.1
+
+
 0.2.0 / 2023-09-01
 ------------------
 * Proposal to use pre-commit for continuous integration by @dachengx in https://github.com/XENONnT/alea/pull/78

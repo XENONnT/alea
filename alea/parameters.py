@@ -11,7 +11,7 @@ class Parameter:
     Attributes:
         name (str): The name of the parameter.
         nominal_value (float, optional (default=None)): The nominal value of the parameter.
-        fittable (bool, optional (default=None)):
+        fittable (bool, optional (default=True)):
             Indicates if the parameter is fittable or always fixed.
         ptype (str, optional (default=None)): The ptype of the parameter.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
@@ -31,6 +31,8 @@ class Parameter:
 
     """
 
+    _uncertainty: Optional[Union[float, str]]
+
     def __init__(
         self,
         name: str,
@@ -47,7 +49,7 @@ class Parameter:
     ):
         """Initialise a parameter."""
         self.name = name
-        self.nominal_value = nominal_value
+        self._nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
@@ -57,6 +59,8 @@ class Parameter:
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess
         self.description = description
+
+        self._check_parameter_consistency()
 
     def __repr__(self) -> str:
         parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
@@ -121,6 +125,29 @@ class Parameter:
     def parameter_interval_bounds(self, value: Optional[Tuple[float, float]]) -> None:
         self._parameter_interval_bounds = value
 
+    @property
+    def nominal_value(self) -> Optional[float]:
+        """Return the nominal value of the parameter."""
+        return self._nominal_value
+
+    @nominal_value.setter
+    def nominal_value(self, value: Optional[float]) -> None:
+        if self.needs_reinit and (value != self._nominal_value):
+            raise ValueError(
+                f"{self.name} is a parameter that requires re-initialization "
+                "to change its nominal value "
+                f"(tried to override nominal value {self._nominal_value} with {value})."
+            )
+        self._nominal_value = value
+
+    @property
+    def needs_reinit(self) -> bool:
+        """Return True if the parameter needs re-initialization (for ptype ``needs_reinit``)."""
+        needs_reinit = False
+        if self.ptype == "needs_reinit":
+            needs_reinit = True
+        return needs_reinit
+
     def __eq__(self, other: object) -> bool:
         """Return True if all attributes are equal."""
         if isinstance(other, Parameter):
@@ -144,6 +171,20 @@ class Parameter:
             raise ValueError(
                 f"parameter_interval_bounds {value} not within "
                 f"fit_limits {self.fit_limits} for parameter {self.name}."
+            )
+
+    def _check_parameter_consistency(self):
+        """Check if parameter is consistent."""
+        if self.fittable and self.needs_reinit:
+            warnings.warn(
+                f"Parameter {self.name} is fittable and needs re-initialization. "
+                "This may cause unexpected behaviour."
+            )
+        if (self.blueice_anchors is not None) and self.needs_reinit:
+            raise ValueError(
+                f"Parameter {self.name} needs re-initialization but has "
+                "blueice_anchors defined. "
+                "This may cause unexpected behaviour."
             )
 
 
@@ -363,6 +404,13 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
+            if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
+                raise ValueError(
+                    f"{name} is a parameter that requires re-initialization "
+                    "to override its nominal value "
+                    f"(tried to override nominal value {param.nominal_value} "
+                    f"with {new_val})."
+                )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
         if any(i is None for k, i in values.items()):

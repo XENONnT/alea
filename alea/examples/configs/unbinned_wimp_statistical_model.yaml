@@ -89,7 +89,7 @@ likelihood_config:
           - er_band_shift
         named_parameters:
           - er_band_shift
-        template_filename: er_template_{er_band_shift}.h5
+        template_filename: er_template_{er_band_shift}.ii.h5
         histogram_scale_factor: 1
 
       - name: wimp
@@ -100,7 +100,7 @@ likelihood_config:
           - signal_efficiency
         named_parameters:
           - wimp_mass
-        template_filename: wimp{wimp_mass:d}gev_template.h5
+        template_filename: wimp{wimp_mass:d}gev_template.ii.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency
 
@@ -122,7 +122,7 @@ likelihood_config:
           - er_band_shift
         named_parameters:
           - er_band_shift
-        template_filename: er_template_{er_band_shift}.h5
+        template_filename: er_template_{er_band_shift}.ii.h5
         histogram_scale_factor: 2
 
       - name: wimp
@@ -133,6 +133,6 @@ likelihood_config:
           - signal_efficiency
         named_parameters:
           - wimp_mass
-        template_filename: wimp{wimp_mass:d}gev_template.h5
+        template_filename: wimp{wimp_mass:d}gev_template.ii.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency

@@ -68,11 +68,11 @@ likelihood_config:
           - er_band_shift
         named_parameters:
           - er_band_shift
-        template_filename: er_template_{er_band_shift}.h5
+        template_filename: er_template_{er_band_shift}.ii.h5
 
       - name: wimp
         histname: wimp_template
         parameters:
           - wimp_rate_multiplier
           - wimp_mass
-        template_filename: wimp50gev_template.h5
+        template_filename: wimp50gev_template.ii.h5

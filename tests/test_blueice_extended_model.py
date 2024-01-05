@@ -23,7 +23,7 @@ class TestBlueiceExtendedModel(TestCase):
         ]
         ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
         cls.n_likelihood_terms = ns
-        cls.toydata_filename = "simple_data.h5"
+        cls.toydata_filename = "simple_data.ii.h5"
         cls.set_new_models(cls)
 
     def set_new_models(self):

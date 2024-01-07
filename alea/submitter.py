@@ -365,6 +365,7 @@ class Submitter:
                 toydata_filename = i_args["toydata_filename"]
                 only_toydata = i_args["only_toydata"]
                 output_filename = i_args["output_filename"]
+                # these check might need change if we support more modes
                 if (toydata_mode == "generate_and_store") and (toydata_filename is None):
                     raise ValueError(
                         "toydata_filename should be provided when toydata_mode is "

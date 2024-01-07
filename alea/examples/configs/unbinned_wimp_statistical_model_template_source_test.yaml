@@ -83,7 +83,7 @@ likelihood_config:
         fixed_weight: 0.2
         weight_names: [fixed_weight, er_band_shift]  # not meaningful, just an example
         histnames: [er_template, er_template, er_template]
-        template_filenames: [er_template_0.h5, er_template_1.h5, er_template_-1.h5]
+        template_filenames: [er_template_0.ii.h5, er_template_1.ii.h5, er_template_-1.ii.h5]
         histogram_scale_factor: 100  # absolute rate, /year
 
       - name: wimp
@@ -92,7 +92,7 @@ likelihood_config:
           - wimp_rate_multiplier
           - wimp_mass
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        template_filename: wimp50gev_template.ii.h5
         apply_efficiency: True
         efficiency_name: signal_efficiency
 
@@ -116,7 +116,7 @@ likelihood_config:
           - er_band_shift
         named_parameters:
           - er_band_shift
-        template_filename: er_template_{er_band_shift}.h5
+        template_filename: er_template_{er_band_shift}.ii.h5
 
       - name: wimp
         class: alea.template_source.SpectrumTemplateSource
@@ -125,7 +125,7 @@ likelihood_config:
           - wimp_rate_multiplier
           - wimp_mass
           - signal_efficiency
-        template_filename: wimp50gev_template.h5
+        template_filename: wimp50gev_template.ii.h5
         spectrum_name: test_cs1_spectrum.json
         apply_efficiency: True
         efficiency_name: signal_efficiency

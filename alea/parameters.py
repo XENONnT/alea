@@ -145,7 +145,7 @@ class Parameter:
 
     @property
     def needs_reinit(self) -> bool:
-        """Return True if the parameter needs re-initialization (for ptype `needs_reinit`)."""
+        """Return True if the parameter needs re-initialization (for ptype ``needs_reinit``)."""
         needs_reinit = False
         if self.ptype == "needs_reinit":
             needs_reinit = True

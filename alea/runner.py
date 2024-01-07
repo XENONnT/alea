@@ -65,7 +65,7 @@ class Runner:
             toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
         toydata_filename (str, optional (default=None)): toydata filename
         only_toydata (bool, optional (default=False)): whether only generate toydata
-        output_filename (str, optional (default='test_toymc.h5')): output filename
+        output_filename (str, optional (default='test_toymc.ii.h5')): output filename
         seed (int, optional (default=None)): random seed for runners before generating toydata
         metadata (dict, optional (default=None)): metadata to be saved in output file
 
@@ -88,9 +88,9 @@ class Runner:
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
         toydata_mode: str = "generate_and_store",
-        toydata_filename: str = "test_toydata_filename.h5",
+        toydata_filename: str = "test_toydata_filename.ii.h5",
         only_toydata: bool = False,
-        output_filename: str = "test_output_filename.h5",
+        output_filename: str = "test_output_filename.ii.h5",
         seed: Optional[int] = None,
         metadata: Optional[dict] = None,
     ):

@@ -361,15 +361,30 @@ class Submitter:
                     + " ".join(map(shlex.quote, script.split(" ")))
                 )
 
+                toydata_mode = i_args["toydata_mode"]
+                toydata_filename = i_args["toydata_filename"]
+                only_toydata = i_args["only_toydata"]
                 output_filename = i_args["output_filename"]
-                if (
-                    (output_filename is not None)
-                    and os.path.exists(output_filename)
-                    and not self.resubmit
-                    and self.computation != "threshold"
+                if (toydata_mode == "generate_and_store") and (toydata_filename is None):
+                    raise ValueError(
+                        "toydata_filename should be provided when toydata_mode is "
+                        "generate_and_store."
+                    )
+                if (not only_toydata) and (output_filename is None):
+                    raise ValueError(
+                        "output_filename should be provided when only_toydata is False."
+                    )
+
+                already_done = True
+                if self.resubmit or (self.computation == "threshold"):
+                    already_done = False
+                if (toydata_mode == "generate_and_store") and (
+                    not os.path.exists(toydata_filename)
                 ):
-                    continue
-                else:
+                    already_done = False
+                if (not only_toydata) and (not os.path.exists(output_filename)):
+                    already_done = False
+                if not already_done:
                     yield script, output_filename
 
     @staticmethod

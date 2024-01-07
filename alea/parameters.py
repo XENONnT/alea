@@ -54,10 +54,7 @@ class Parameter:
         self.ptype = ptype
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
-        if isinstance(blueice_anchors, str):
-            self.blueice_anchors = evaluate_numpy_scipy_expression(blueice_anchors).tolist()
-        else:
-            self.blueice_anchors = blueice_anchors
+        self.blueice_anchors = blueice_anchors
         self.fit_limits = fit_limits
         self.parameter_interval_bounds = parameter_interval_bounds
         self.fit_guess = fit_guess
@@ -97,6 +94,22 @@ class Parameter:
                     "nominal_value should be set."
                 )
         self._uncertainty = value
+
+    @property
+    def blueice_anchors(self) -> Any:
+        """Return the blueice_anchors of the parameter.
+
+        If the blueice_anchors is a string, it will be evaluated as a numpy or scipy function.
+
+        """
+        if isinstance(self._blueice_anchors, str):
+            return evaluate_numpy_scipy_expression(self._blueice_anchors).tolist()
+        else:
+            return self._blueice_anchors
+
+    @blueice_anchors.setter
+    def blueice_anchors(self, value: Optional[Union[list, str]]) -> None:
+        self._blueice_anchors = value
 
     @property
     def fit_guess(self) -> Optional[float]:

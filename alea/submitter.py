@@ -361,16 +361,31 @@ class Submitter:
                     + " ".join(map(shlex.quote, script.split(" ")))
                 )
 
-                output_filename = i_args["output_filename"]
-                if (
-                    (output_filename is not None)
-                    and os.path.exists(output_filename)
-                    and not self.resubmit
-                    and self.computation != "threshold"
-                ):
-                    continue
-                else:
-                    yield script, output_filename
+                if not self.already_done(i_args):
+                    yield script, i_args["output_filename"]
+
+    def already_done(self, i_args: dict) -> bool:
+        """Check if the job is already done, considering the modes of toydata and output."""
+        toydata_mode = i_args["toydata_mode"]
+        toydata_filename = i_args["toydata_filename"]
+        only_toydata = i_args["only_toydata"]
+        output_filename = i_args["output_filename"]
+        # these check might need change if we support more modes
+        if (toydata_mode == "generate_and_store") and (toydata_filename is None):
+            raise ValueError(
+                "toydata_filename should be provided when toydata_mode is generate_and_store."
+            )
+        if (not only_toydata) and (output_filename is None):
+            raise ValueError("output_filename should be provided when only_toydata is False.")
+
+        is_done = True
+        if self.resubmit or (self.computation == "threshold"):
+            is_done = False
+        if (toydata_mode == "generate_and_store") and (not os.path.exists(toydata_filename)):
+            is_done = False
+        if (not only_toydata) and (not os.path.exists(output_filename)):
+            is_done = False
+        return is_done
 
     @staticmethod
     def update_n_batch(runner_args):

@@ -61,6 +61,7 @@ class Submitter:
 
     config_file_path: str
     template_path: str
+    combine_n_job: int = 1
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -371,6 +372,31 @@ class Submitter:
                     continue
                 else:
                     yield script, output_filename
+
+    def combined_tickets_generator(self):
+        """Get the combined submission script for the current configuration. ``self.vcombine_n_job``
+        jobs will be combined into one submission script.
+
+        Yields:
+            (str, str): the combined submission script and name output_filename
+
+        """
+
+        _script = ""
+        n_combined = 0
+        for script, last_output_filename in self.computation_tickets_generator():
+            if n_combined == 0:
+                _script += script
+            else:
+                _script += " && " + script
+            n_combined += 1
+            if n_combined == self.combine_n_job:
+                yield _script, last_output_filename
+                n_combined = 0
+                _script = ""
+        else:
+            if n_combined > 0:
+                yield _script, last_output_filename
 
     @staticmethod
     def update_n_batch(runner_args):

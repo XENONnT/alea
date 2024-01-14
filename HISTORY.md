@@ -1,3 +1,15 @@
+0.2.2 / 2024-01-13
+------------------
+* Save dtype of `valid_fit` as bool by @dachengx in https://github.com/XENONnT/alea/pull/123
+* Optional setting of random seed for debugging by @dachengx in https://github.com/XENONnT/alea/pull/122
+* Tiny minor change on docstring by @dachengx in https://github.com/XENONnT/alea/pull/126
+* Change example filename extension by @kdund in https://github.com/XENONnT/alea/pull/93
+* Add axis_names to example templates by @hammannr in https://github.com/XENONnT/alea/pull/127
+* Evaluate `blueice_anchors` expression by @dachengx in https://github.com/XENONnT/alea/pull/124
+* Update pypi to use trusted publisher by @dachengx in https://github.com/XENONnT/alea/pull/130
+* Update versions of `blueice` and `inference-interface` by @dachengx in https://github.com/XENONnT/alea/pull/132
+
+
 0.2.1 / 2023-12-08
 ------------------
 * Add optional argument `degree_of_freedom` for `asymptotic_critical_value` by @dachengx in https://github.com/XENONnT/alea/pull/86

@@ -317,7 +317,7 @@ class Submitter:
         """Get the submission script for the current configuration. It generates the submission
         script for each combination of the computation options.
 
-        for Runner from to_zip, to_vary and in_common.
+        For Runner from to_zip, to_vary and in_common:
             - First, generate the combined computational options directly.
             - Second, update the input and output folder of the options.
             - Thrid, collect the non-fittable(settable) parameters into nominal_values.
@@ -395,10 +395,11 @@ class Submitter:
         Yields:
             (str, str): the combined submission script and name output_filename
 
-        Example:
-            Use can add ``combine_n_jobs: 10`` in ``local_configurations``, ``slurm_configurations``
-                or ``htcondor_configurations`` to combine 10 jobs into one submission script. User
-                will need this feature when the number of jobs pending for submission is too large.
+        Note:
+            User can add ``combine_n_jobs: 10`` in ``local_configurations``,
+            ``slurm_configurations`` or ``htcondor_configurations`` to combine 10 jobs into
+            one submission script. User will need this feature when the number of jobs pending
+            for submission is too large.
 
         """
 

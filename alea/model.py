@@ -204,10 +204,10 @@ class StatisticalModel:
         Store a list of datasets.
         (each on the form of a list of one or more structured arrays or dicts)
         Using inference_interface, but included here to allow over-writing.
-        The structure would be: [[datasets1], [datasets2], ..., [datasetsn]],
+        The structure would be: ``[[datasets1], [datasets2], ..., [datasetsn]]``,
         where each of datasets is a list of structured arrays.
-        If you specify, it is set, if not it will read from self.get_likelihood_term_names.
-        If not defined, it will be ["0", "1", ..., "n-1"]. The metadata is optional.
+        If you specify, it is set, if not it will read from ``self.get_likelihood_term_names``.
+        If not defined, it will be ``["0", "1", ..., "n-1"]``. The metadata is optional.
 
         Args:
             file_name (str): name of the file to store the data in

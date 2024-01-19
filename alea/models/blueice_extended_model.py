@@ -287,6 +287,8 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config = self._process_blueice_config(config, template_folder_list)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
+            if likelihood_class is None:
+                raise ValueError(f"Could not find {config['likelihood_type']}!")
             ll = likelihood_class(blueice_config)
 
             for source in config["sources"]:

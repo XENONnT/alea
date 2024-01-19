@@ -125,9 +125,10 @@ def adapt_likelihood_config_for_blueice(
     )
 
     if "default_source_class" in likelihood_config_copy:
-        likelihood_config_copy["default_source_class"] = locate(
-            likelihood_config_copy["default_source_class"]
-        )
+        default_source_class = locate(likelihood_config_copy["default_source_class"])
+        if default_source_class is None:
+            raise ValueError(f"Could not find {likelihood_config_copy['default_source_class']}!")
+        likelihood_config_copy["default_source_class"] = default_source_class
 
     for source in likelihood_config_copy["sources"]:
         if "template_filename" in source:
@@ -135,7 +136,10 @@ def adapt_likelihood_config_for_blueice(
                 source["template_filename"], template_folder_list
             )
         if "class" in source:
-            source["class"] = locate(source["class"])
+            source_class = locate(source["class"])
+            if source_class is None:
+                raise ValueError(f"Could not find {source['class']}!")
+            source["class"] = source_class
         if "template_filenames" in source:
             source["templatenames"] = [
                 get_file_path(template_filename, template_folder_list)

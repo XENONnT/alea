@@ -61,9 +61,7 @@ class SubmitterLocal(Submitter):
         for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
                 print(script)
-                runner = self.initialized_runner(script)
-                runner.run()
-                return
+                return self.initialized_runner(script)
             subprocess.call(shlex.split(script))
 
 

@@ -38,7 +38,7 @@ class SubmitterSlurm(Submitter):
         self.name = self.__class__.__name__
         self.slurm_configurations = kwargs.get("slurm_configurations", {})
         self.template_path = self.slurm_configurations.pop("template_path", None)
-        self.combine_n_job = self.slurm_configurations.pop("combine_n_job", 1)
+        self.combine_n_jobs = self.slurm_configurations.pop("combine_n_jobs", 1)
         self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)

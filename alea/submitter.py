@@ -61,7 +61,7 @@ class Submitter:
 
     config_file_path: str
     template_path: str
-    combine_n_job: int = 1
+    combine_n_jobs: int = 1
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -389,11 +389,16 @@ class Submitter:
         return is_done
 
     def combined_tickets_generator(self):
-        """Get the combined submission script for the current configuration. ``self.vcombine_n_job``
+        """Get the combined submission script for the current configuration. ``self.combine_n_jobs``
         jobs will be combined into one submission script.
 
         Yields:
             (str, str): the combined submission script and name output_filename
+
+        Example:
+            Use can add ``combine_n_jobs: 10`` in ``local_configurations``, ``slurm_configurations``
+                or ``htcondor_configurations`` to combine 10 jobs into one submission script. User
+                will need this feature when the number of jobs pending for submission is too large.
 
         """
 
@@ -405,7 +410,7 @@ class Submitter:
             else:
                 _script += " && " + script
             n_combined += 1
-            if n_combined == self.combine_n_job:
+            if n_combined == self.combine_n_jobs:
                 yield _script, last_output_filename
                 n_combined = 0
                 _script = ""

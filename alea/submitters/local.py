@@ -32,7 +32,7 @@ class SubmitterLocal(Submitter):
         """Initialize the SubmitterLocal class."""
         self.local_configurations = kwargs.get("local_configurations", {})
         self.template_path = self.local_configurations.pop("template_path", None)
-        self.combine_n_job = self.local_configurations.pop("combine_n_job", 1)
+        self.combine_n_jobs = self.local_configurations.pop("combine_n_jobs", 1)
         super().__init__(*args, **kwargs)
 
     @staticmethod

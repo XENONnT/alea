@@ -61,6 +61,7 @@ class Submitter:
 
     config_file_path: str
     template_path: str
+    combine_n_jobs: int = 1
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -316,7 +317,7 @@ class Submitter:
         """Get the submission script for the current configuration. It generates the submission
         script for each combination of the computation options.
 
-        for Runner from to_zip, to_vary and in_common.
+        For Runner from to_zip, to_vary and in_common:
             - First, generate the combined computational options directly.
             - Second, update the input and output folder of the options.
             - Thrid, collect the non-fittable(settable) parameters into nominal_values.
@@ -386,6 +387,37 @@ class Submitter:
         if (not only_toydata) and (not os.path.exists(output_filename)):
             is_done = False
         return is_done
+
+    def combined_tickets_generator(self):
+        """Get the combined submission script for the current configuration. ``self.combine_n_jobs``
+        jobs will be combined into one submission script.
+
+        Yields:
+            (str, str): the combined submission script and name output_filename
+
+        Note:
+            User can add ``combine_n_jobs: 10`` in ``local_configurations``,
+            ``slurm_configurations`` or ``htcondor_configurations`` to combine 10 jobs into
+            one submission script. User will need this feature when the number of jobs pending
+            for submission is too large.
+
+        """
+
+        _script = ""
+        n_combined = 0
+        for script, last_output_filename in self.computation_tickets_generator():
+            if n_combined == 0:
+                _script += script
+            else:
+                _script += " && " + script
+            n_combined += 1
+            if n_combined == self.combine_n_jobs:
+                yield _script, last_output_filename
+                n_combined = 0
+                _script = ""
+        else:
+            if n_combined > 0:
+                yield _script, last_output_filename
 
     @staticmethod
     def update_n_batch(runner_args):

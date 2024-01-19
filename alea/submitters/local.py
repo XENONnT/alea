@@ -32,6 +32,7 @@ class SubmitterLocal(Submitter):
         """Initialize the SubmitterLocal class."""
         self.local_configurations = kwargs.get("local_configurations", {})
         self.template_path = self.local_configurations.pop("template_path", None)
+        self.combine_n_jobs = self.local_configurations.pop("combine_n_jobs", 1)
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -57,7 +58,7 @@ class SubmitterLocal(Submitter):
         If debug is True, only return the first instance of Runner.
 
         """
-        for _, (script, _) in enumerate(self.computation_tickets_generator()):
+        for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
                 print(script)
                 return self.initialized_runner(script)

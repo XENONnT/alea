@@ -9,6 +9,16 @@ from inference_interface import template_to_multihist
 
 from alea.utils import load_json
 
+import os
+from inference_interface import multihist_to_template
+
+from nton.background.accidental_coincidence.fake_peaks import (
+    generate_ndhist,
+    process_dataset,
+    bootstrap,
+)
+from nton.cevns.templates import Templates
+
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
 
@@ -213,7 +223,7 @@ class TemplateSource(HistogramPdfSource):
         if self.events_per_day > 0:
             h.histogram /= self.events_per_day
         else:
-            raise ValueError("Sum of histogram is zero.")
+            logging.warn("Sum of histogram is zero.")
 
         if self.config.get("convert_to_uniform", False):
             h.histogram = 1.0 / self._bin_volumes
@@ -398,6 +408,105 @@ class SpectrumTemplateSource(TemplateSource):
         # Fix the bin sizes
         if can_check_binning:
             histogram_info = f"reweighted {histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
+
+        self.set_dtype()
+        self.set_pdf_histogram(h)
+
+
+class BootstrapTemplateSource(TemplateSource):
+    def build_histogram(self):
+        """Build the histogram of the source."""
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+        histname = self.config["histname"].format(**self.format_named_parameters)
+        h_ref = template_to_multihist(templatename, histname)
+
+        # Apply the downsampling
+        if self.config["print_debug"]:
+            if self.config["bs_skip"]:
+                print("Skipping downsampling")
+            if self.config["bs_complement"]:
+                print("Returning complement")
+            if self.config["bs_normalize"]:
+                print("Will perform normalization")
+            if self.config["bs_renormalize"]:
+                print("Will perform renormalization")
+            print(f'Downsampling fraction {self.config["bs_fraction"]}')
+            print(f'Downsampling seed {self.config["bs_seed"]}')
+        if self.config["bs_skip"]:
+            h = h_ref.similar_blank_hist()
+            h.histogram = h_ref.histogram.copy()
+        else:
+            (
+                dataset,
+                origin_times,
+                origin_times_indices,
+                origin_times_counts,
+                time_chunk,
+                bins_dict,
+            ) = process_dataset(
+                self.config["dataset_filename"],
+                self.config["header_filename"],
+                self.config["bins_filename"],
+            )
+            new_dataset = bootstrap(
+                dataset,
+                origin_times,
+                origin_times_indices,
+                origin_times_counts,
+                time_chunk,
+                fraction=self.config["bs_fraction"],
+                replace=self.config["bs_replace"],
+                seed=self.config["bs_seed"],
+                chunked=self.config["bs_chunked"],
+                complement=self.config["bs_complement"],
+            )
+            h = h_ref.similar_blank_hist()
+            h.histogram = generate_ndhist(new_dataset, bins_dict, Templates.inf_axis_names)
+            if self.config["bs_normalize"]:
+                if self.config["bs_chunked"]:
+                    remaining_rate = self.config["bs_fraction"]
+                else:
+                    remaining_rate = self.config["bs_fraction"] ** 2
+                if not self.config["bs_complement"]:
+                    h.histogram /= remaining_rate
+                else:
+                    h.histogram /= 1 - remaining_rate
+            if self.config["bs_renormalize"]:
+                if h.n <= 0:
+                    pass
+                else:
+                    h.histogram *= h_ref.n / h.n
+            dirname = os.path.dirname(self.config["bootstrap_filename"])
+            os.makedirs(dirname, exist_ok=True)
+            metadata = {
+                k: v
+                for k, v in self.config.items()
+                if k.startswith("bs_") or k.endswith("_filename")
+            }
+            filename = self.config["bootstrap_filename"].format(**self.config)
+            multihist_to_template(
+                [h],
+                filename,
+                histogram_names=["template"],
+                metadata=metadata,
+            )
+            print(f"Saving {filename}")
+            print(f"Ratio to reference is {h.n / h_ref.n:.3f}")
+
+        if np.min(h.histogram) < 0:
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
+
+        if self.config.get("normalise_template", False):
+            h /= h.n
+        if not self.config.get("in_events_per_bin", True):
+            h.histogram *= h.bin_volumes()
+
+        h = self.apply_slice_args(h)
+
+        # Fix the bin sizes
+        if can_check_binning:
+            histogram_info = f"{histname:s} in hdf5 file {templatename:s}"
             self._check_binning(h, histogram_info)
 
         self.set_dtype()

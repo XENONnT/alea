@@ -164,20 +164,27 @@ class Runner:
             statistical_model_args.get("asymptotic_dof", 1),
         )
 
+    def pre_process_poi(self, value, name):
+        """Pre-process of poi_expectation."""
+        if not all([isinstance(v, (float, int)) for v in value.values()]):
+            raise ValueError(f"{name} should be a dict of float! But {value} is provided.")
+        # update poi according to poi_expectation
+        if "poi_expectation" in value:
+            value = self.update_poi(self.model, self.poi, value, self.nominal_values)
+        return value
+
     @property
     def generate_values(self) -> Dict[str, float]:
         return self._generate_values
 
     @generate_values.setter
     def generate_values(self, value: Dict[str, float]) -> None:
-        if not all([isinstance(v, (float, int)) for v in value.values()]):
-            raise ValueError(f"generate_values should be a dict of float! But {value} is provided.")
-        # update poi according to poi_expectation
         if "poi_expectation" in value:
             self.input_poi_expectation = True
-            value = self.update_poi(self.model, self.poi, value, self.nominal_values)
         else:
             self.input_poi_expectation = False
+        # update poi according to poi_expectation
+        value = self.pre_process_poi(value, "generate_values")
         self._generate_values = value
 
     @property
@@ -186,11 +193,21 @@ class Runner:
 
     @common_hypothesis.setter
     def common_hypothesis(self, value: Dict[str, float]) -> None:
-        if not all([isinstance(v, (float, int)) for v in value.values()]):
-            raise ValueError(
-                f"common_hypothesis should be a dict of float! But {value} is provided."
-            )
+        # update poi according to poi_expectation
+        value = self.pre_process_poi(value, "common_hypothesis")
         self._common_hypothesis = value
+
+    @property
+    def hypotheses(self) -> list:
+        return self._hypotheses
+
+    @hypotheses.setter
+    def hypotheses(self, values: list) -> None:
+        # update poi according to poi_expectation
+        for i in range(len(values)):
+            if isinstance(values[i], dict):
+                values[i] = self.pre_process_poi(values[i], "hypothesis")
+        self._hypotheses = values
 
     @staticmethod
     def runner_arguments():

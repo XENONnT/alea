@@ -184,8 +184,7 @@ class Runner:
         else:
             self.input_poi_expectation = False
         # update poi according to poi_expectation
-        value = self.pre_process_poi(value, "generate_values")
-        self._generate_values = value
+        self._generate_values = self.pre_process_poi(value, "generate_values")
 
     @property
     def common_hypothesis(self) -> Dict[str, float]:
@@ -194,8 +193,7 @@ class Runner:
     @common_hypothesis.setter
     def common_hypothesis(self, value: Dict[str, float]) -> None:
         # update poi according to poi_expectation
-        value = self.pre_process_poi(value, "common_hypothesis")
-        self._common_hypothesis = value
+        self._common_hypothesis = self.pre_process_poi(value, "common_hypothesis")
 
     @property
     def hypotheses(self) -> list:

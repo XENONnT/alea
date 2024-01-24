@@ -164,10 +164,12 @@ class Runner:
             statistical_model_args.get("asymptotic_dof", 1),
         )
 
-    def pre_process_poi(self, value, name):
-        """Pre-process of poi_expectation."""
+    def pre_process_poi(self, value, attribute_name):
+        """Pre-process of poi_expectation for some attributes of runner."""
         if not all([isinstance(v, (float, int)) for v in value.values()]):
-            raise ValueError(f"{name} should be a dict of float! But {value} is provided.")
+            raise ValueError(
+                f"{attribute_name} should be a dict of float! But {value} is provided."
+            )
         # update poi according to poi_expectation
         if "poi_expectation" in value:
             value = self.update_poi(self.model, self.poi, value, self.nominal_values)

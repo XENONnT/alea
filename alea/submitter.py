@@ -512,9 +512,9 @@ class Submitter:
                 "limit_threshold"
             )
         if "limit_threshold_interpolation" in runner_args:
-            runner_args["statistical_model_args"][
-                "limit_threshold_interpolation"
-            ] = runner_args.pop("limit_threshold_interpolation")
+            runner_args["statistical_model_args"]["limit_threshold_interpolation"] = (
+                runner_args.pop("limit_threshold_interpolation")
+            )
         if "asymptotic_dof" in runner_args:
             runner_args["statistical_model_args"]["asymptotic_dof"] = runner_args.pop(
                 "asymptotic_dof"

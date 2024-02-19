@@ -405,6 +405,7 @@ class Submitter:
 
         _script = ""
         n_combined = 0
+        n_submitted = 0
         for script, last_output_filename in self.computation_tickets_generator():
             if n_combined == 0:
                 _script += script
@@ -413,11 +414,14 @@ class Submitter:
             n_combined += 1
             if n_combined == self.combine_n_jobs:
                 yield _script, last_output_filename
+                n_submitted += 1
                 n_combined = 0
                 _script = ""
         else:
             if n_combined > 0:
                 yield _script, last_output_filename
+                n_submitted += 1
+        print(f"Total {n_submitted} jobs submitted.")
 
     @staticmethod
     def update_n_batch(runner_args):

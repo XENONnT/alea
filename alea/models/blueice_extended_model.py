@@ -9,6 +9,7 @@ import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
 from inference_interface import dict_to_structured_array, structured_array_to_dict
 
+import multihist
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
@@ -223,6 +224,63 @@ class BlueiceExtendedModel(StatisticalModel):
             }
 
         return ret
+
+    def get_pdf(
+        self, source_name: str, likelihood_name: str, multiply_mu=False, **kwargs
+    ) -> multihist.Histdd:
+        """Return the pdf for a given source and likelihood term.
+
+        Args:
+            source_name (str): Name of the source.
+            likelihood_name (str): Name of the likelihood.
+            kwargs: Named parameters.
+
+        Returns:
+            multihist.Histdd: A histogram of the pdf.
+
+        """
+        if likelihood_name not in self.likelihood_names:
+            raise ValueError(f"Likelihood {likelihood_name} not found.")
+        if source_name not in self.get_source_name_list(likelihood_name):
+            raise ValueError(f"Source {source_name} not found in likelihood {likelihood_name}.")
+        likelihood_index = self.likelihood_names.index(likelihood_name)
+
+        # prepare the generate_values, WARNING: This silently drops parameters it can't handle!
+        generate_values = self.parameters(**kwargs)  # kwarg or nominal value
+        parameter_names = self.likelihood_parameters[likelihood_index]
+        livetime_parameter = self.livetime_parameter_names[likelihood_index]
+        call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
+        if livetime_parameter is not None:
+            call_args["livetime_days"] = generate_values[livetime_parameter]
+
+        # we will set fake data to the likelihood term so we need to copy it
+        ll_term = deepcopy(self.likelihood_list[likelihood_index])
+
+        # set fake data as the center of each bin
+        h = multihist.Histdd(dimensions=ll_term.base_model.config["analysis_space"])
+        bin_centers = []
+        dtype = []
+
+        for dim in ll_term.base_model.config["analysis_space"]:
+            dtype.append((dim[0], float))
+            bin_centers.append(0.5 * (dim[1][:-1] + dim[1][1:]))
+
+        data_binc = np.zeros(np.product(h.histogram.shape), dtype=dtype)
+        for i, l in enumerate(itertools.product(*bin_centers)):
+            for n, v in zip([dt[0] for dt in dtype], l):
+                data_binc[n][i] = v
+
+        ll_term.set_data(data_binc)
+
+        # Evaluate the pdf and cast it to a multihist
+        _, mus, ps = ll_term(full_output=True, **call_args)
+        source_names = [s.name for s in ll_term.base_model.sources]
+        ps = {s: p for s, p in zip(source_names, ps)}
+        h.histogram = ps[source_name].reshape(h.histogram.shape)
+
+        if multiply_mu:
+            h.histogram *= mus[source_names.index(source_name)]
+        return h
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""

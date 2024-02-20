@@ -225,24 +225,20 @@ class BlueiceExtendedModel(StatisticalModel):
 
         return ret
 
-    def get_pdf(
-        self, source_name: str, likelihood_name: str, multiply_mu=False, **kwargs
-    ) -> multihist.Histdd:
+    def get_pdfs(self, likelihood_name: str, multiply_mus=False, **kwargs) -> dict:
         """Return the pdf for a given source and likelihood term.
 
         Args:
-            source_name (str): Name of the source.
-            likelihood_name (str): Name of the likelihood.
+            likelihood_name (str): Name of the likelihood term.
+            multiply_mus (bool): If True, multiply the pdf with the mus.
             kwargs: Named parameters.
 
         Returns:
-            multihist.Histdd: A histogram of the pdf.
+            dict: Dictionary of multihist objects for each source.
 
         """
         if likelihood_name not in self.likelihood_names:
             raise ValueError(f"Likelihood {likelihood_name} not found.")
-        if source_name not in self.get_source_name_list(likelihood_name):
-            raise ValueError(f"Source {source_name} not found in likelihood {likelihood_name}.")
         likelihood_index = self.likelihood_names.index(likelihood_name)
 
         # prepare the generate_values, WARNING: This silently drops parameters it can't handle!
@@ -275,12 +271,16 @@ class BlueiceExtendedModel(StatisticalModel):
         # Evaluate the pdf and cast it to a multihist
         _, mus, ps = ll_term(full_output=True, **call_args)
         source_names = [s.name for s in ll_term.base_model.sources]
-        ps = {s: p for s, p in zip(source_names, ps)}
-        h.histogram = ps[source_name].reshape(h.histogram.shape)
 
-        if multiply_mu:
-            h.histogram *= mus[source_names.index(source_name)]
-        return h
+        hs = {}
+        for source_name, p in zip(source_names, ps):
+            this_h = deepcopy(h)
+            this_h.histogram = p.reshape(h.histogram.shape)
+            if multiply_mus:
+                this_h.histogram *= mus[source_names.index(source_name)]
+            hs[source_name] = this_h
+
+        return hs
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""

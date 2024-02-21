@@ -39,22 +39,20 @@ class BlueiceDataGenerator:
         logging.debug("initing simulator, binned: " + str(self.binned))
 
         ll = deepcopy(ll_term)
-        bins = []  # bin edges
         bincs = []  # bin centers of each component
         direction_names = []
         dtype = []
         data_length = 1  # number of bins in nD histogram
         data_lengths = []  # list of number of bins of each component
-        for direction in ll.base_model.config["analysis_space"]:
-            bins.append(direction[1])
-            binc = 0.5 * (direction[1][1::] + direction[1][0:-1])
+        analysis_space = ll_term.base_model.config["analysis_space"]
+        for name, bin_edges in analysis_space:
+            binc = 0.5 * (bin_edges[1:] + bin_edges[:-1])
             bincs.append(binc)
-            dtype.append((direction[0], float))
-            data_length *= len(direction[1]) - 1
-            data_lengths.append(len(direction[1]) - 1)
-            direction_names.append(direction[0])
+            dtype.append((name, float))
+            data_length *= len(bin_edges) - 1
+            data_lengths.append(len(bin_edges) - 1)
+            direction_names.append(name)
         dtype.append(("source", int))
-        logging.debug("init simulate_interpolated with bins: " + str(bins))
 
         data_binc = np.zeros(data_length, dtype=dtype)
         for i, l in enumerate(product(*bincs)):
@@ -64,7 +62,7 @@ class BlueiceDataGenerator:
         ll.set_data(data_binc)
         source_histograms = []
         for i in range(len(ll.base_model.sources)):
-            source_histograms.append(mh.Histdd(bins=bins))
+            source_histograms.append(mh.Histdd(dimensions=analysis_space))
 
         self.ll = ll
         self.bincs = bincs
@@ -72,7 +70,8 @@ class BlueiceDataGenerator:
         self.source_histograms = source_histograms
         self.data_lengths = data_lengths
         self.dtype = dtype
-        self.last_kwargs = {"FAKE_PARAMETER": None}
+        self.last_kwargs = {}
+        self.first_call = True
         self.mus = ll.base_model.expected_events()
         self.parameters = list(ll.shape_parameters.keys())
         self.parameters += [n + "_rate_multiplier" for n in ll.rate_parameters.keys()]
@@ -99,31 +98,7 @@ class BlueiceDataGenerator:
             The dtype follows self.dtype.
 
         """
-        if filter_kwargs:
-            kwargs = {k: v for k, v in kwargs.items() if k in self.parameters + ["livetime_days"]}
-
-        unmatched_item = set(self.last_kwargs.items()) ^ set(kwargs.items())
-        logging.debug("filtered kwargs in simulate: " + str(kwargs))
-        logging.debug("unmatched_item in simulate: " + str(unmatched_item))
-        # check if the cached generator may be used:
-        if ("FAKE_PARAMETER" in self.last_kwargs.keys()) or (len(unmatched_item) != 0):
-            ret = self.ll(full_output=True, **kwargs)  # result, mus, ps
-            if isinstance(ret, float):
-                logging.warning("ERROR, generator kwarg outside range?")
-                logging.warning(kwargs)
-            _, mus, ps_array = ret
-            for i in range(len(self.ll.base_model.sources)):
-                self.source_histograms[i].histogram = ps_array[i].reshape(self.data_lengths)
-                if not self.binned:
-                    logging.debug(
-                        f"Source {str(self.ll.base_model.sources[i].name)} is not binned. "
-                        "Multiplying histogram with bin volumes."
-                    )
-                    self.source_histograms[i] *= self.source_histograms[i].bin_volumes()
-                    logging.debug("n after multiplying: " + str(self.source_histograms[i].n))
-            self.mus = mus
-            self.last_kwargs = kwargs
-            logging.debug(f"mus of simulate: {mus}")
+        self.compute_pdfs(filter_kwargs=filter_kwargs, **kwargs)
 
         if n_toys is not None:
             if sample_n_toys:
@@ -135,7 +110,6 @@ class BlueiceDataGenerator:
             # Generate a number n_source (according to the expectation value)
             # of toys for each source component:
             n_sources = sps.poisson(self.mus).rvs()
-            logging.debug("number of events drawn from Poisson: " + str(n_sources))
             if len(self.ll.base_model.sources) == 1:
                 n_sources = np.array([n_sources])
 
@@ -148,5 +122,33 @@ class BlueiceDataGenerator:
                     r_data[n][i_write : i_write + n_source] = rvs[:, j]
                 r_data["source"][i_write : i_write + n_source] = i
                 i_write += n_source
-        logging.debug("return simulated data with length: " + str(len(r_data)))
         return r_data
+
+    def compute_pdfs(self, filter_kwargs=True, **kwargs) -> None:
+        """Compute PDFs of the sources for the given parameters.
+
+        Args:
+            filter_kwargs (bool, optional (default=True)): If True,
+                only parameters of the ll object are accepted as kwargs. Defaults to True.
+            kwargs: The parameters pasted to the likelihood function.
+
+        """
+        if filter_kwargs:
+            kwargs = {k: v for k, v in kwargs.items() if k in self.parameters + ["livetime_days"]}
+
+        # check if the cached generator may be used:
+        unmatched_item = set(self.last_kwargs.items()) ^ set(kwargs.items())
+        kwargs_changed = len(unmatched_item) != 0
+        if self.first_call or kwargs_changed:
+            ret = self.ll(full_output=True, **kwargs)
+            if isinstance(ret, float):
+                logging.warning("ERROR, generator kwarg outside range?")
+                logging.warning(kwargs)
+            _, mus, ps_array = ret
+            for i in range(len(self.ll.base_model.sources)):
+                self.source_histograms[i].histogram = ps_array[i].reshape(self.data_lengths)
+                if not self.binned:
+                    self.source_histograms[i] *= self.source_histograms[i].bin_volumes()
+            self.mus = mus
+            self.last_kwargs = kwargs
+            self.first_call = False

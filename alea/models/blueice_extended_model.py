@@ -9,7 +9,7 @@ import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
 from inference_interface import dict_to_structured_array, structured_array_to_dict
 
-import multihist
+# import multihist
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
@@ -241,6 +241,15 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(f"Likelihood {likelihood_name} not found.")
         likelihood_index = self.likelihood_names.index(likelihood_name)
 
+        if not self.parameters.values_in_fit_limits(**kwargs):
+            raise ValueError("Values are not within fit limits")
+        generate_values = self.parameters(**kwargs)
+        lt_name = self.livetime_parameter_names[likelihood_index]
+        lt = generate_values.get(lt_name, None)
+
+        # compute the pdfs
+        self.data_generators[likelihood_index].compute_pdfs(livetime_days=lt, **generate_values)
+
         # prepare the generate_values, WARNING: This silently drops parameters it can't handle!
         generate_values = self.parameters(**kwargs)  # kwarg or nominal value
         parameter_names = self.likelihood_parameters[likelihood_index]
@@ -250,37 +259,40 @@ class BlueiceExtendedModel(StatisticalModel):
             call_args["livetime_days"] = generate_values[livetime_parameter]
 
         # we will set fake data to the likelihood term so we need to copy it
-        ll_term = deepcopy(self.likelihood_list[likelihood_index])
+        # ll_term = deepcopy(self.likelihood_list[likelihood_index])
 
         # set fake data as the center of each bin
-        h = multihist.Histdd(dimensions=ll_term.base_model.config["analysis_space"])
-        bin_centers = []
-        dtype = []
+        # analysis_space = ll_term.base_model.config["analysis_space"]
+        # h_template = multihist.Histdd(dimensions=analysis_space)
+        # bin_centers = []
+        # dtype = []
+        # for (name, bin_edges) in analysis_space:
+        #     dtype.append((name, float))
+        #     bin_centers.append(0.5 * (bin_edges[:-1] + bin_edges[1:]))
 
-        for dim in ll_term.base_model.config["analysis_space"]:
-            dtype.append((dim[0], float))
-            bin_centers.append(0.5 * (dim[1][:-1] + dim[1][1:]))
+        # data_binc = np.zeros(np.product(h_template.histogram.shape), dtype=dtype)
+        # for i, l in enumerate(itertools.product(*bin_centers)):
+        #     for n, v in zip([dt[0] for dt in dtype], l):
+        #         data_binc[n][i] = v
 
-        data_binc = np.zeros(np.product(h.histogram.shape), dtype=dtype)
-        for i, l in enumerate(itertools.product(*bin_centers)):
-            for n, v in zip([dt[0] for dt in dtype], l):
-                data_binc[n][i] = v
+        # ll_term.set_data(data_binc)
 
-        ll_term.set_data(data_binc)
+        # # Evaluate the pdf and cast it to a multihist
+        # _, mus, ps = ll_term(full_output=True, **call_args)
+        # source_names = [s.name for s in ll_term.base_model.sources]
 
-        # Evaluate the pdf and cast it to a multihist
-        _, mus, ps = ll_term(full_output=True, **call_args)
-        source_names = [s.name for s in ll_term.base_model.sources]
+        # hs = {}
+        # for source_name, p in zip(source_names, ps):
+        #     h = deepcopy(h_template)
+        #     h.histogram = p.reshape(h_template.histogram.shape)
 
-        hs = {}
-        for source_name, p in zip(source_names, ps):
-            this_h = deepcopy(h)
-            this_h.histogram = p.reshape(h.histogram.shape)
-            if multiply_mus:
-                this_h.histogram *= mus[source_names.index(source_name)]
-            hs[source_name] = this_h
+        #     h.histogram *= h.bin_volumes()
+        #     if multiply_mus:
+        #         h.histogram *= mus[source_names.index(source_name)]
+        #     hs[source_name] = h
 
-        return hs
+        # return hs
+        return {}
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""

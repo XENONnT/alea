@@ -1,3 +1,12 @@
+0.2.3 / 2024-02-22
+------------------
+* Improve check of already made toydata and output by @dachengx in https://github.com/XENONnT/alea/pull/128
+* Combine several jobs into one to save computation resources by @dachengx in https://github.com/XENONnT/alea/pull/131
+* Check `locate` loaded package by @dachengx in https://github.com/XENONnT/alea/pull/134
+* Update `hypotheses` and `common_hypothesis` by `pre_process_poi` by @dachengx in https://github.com/XENONnT/alea/pull/135
+* Print total number of submitted jobs by @dachengx in https://github.com/XENONnT/alea/pull/137
+
+
 0.2.2 / 2024-01-13
 ------------------
 * Save dtype of `valid_fit` as bool by @dachengx in https://github.com/XENONnT/alea/pull/123

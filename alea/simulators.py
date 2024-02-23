@@ -52,6 +52,7 @@ class BlueiceDataGenerator:
             data_length *= len(bin_edges) - 1
             data_lengths.append(len(bin_edges) - 1)
             direction_names.append(name)
+        # IDEA: make source a string, not an int
         dtype.append(("source", int))
 
         data_binc = np.zeros(data_length, dtype=dtype)
@@ -98,8 +99,7 @@ class BlueiceDataGenerator:
             The dtype follows self.dtype.
 
         """
-        # TODO: I changed source_histograms to be a dict, so this needs to be updated
-        self.compute_pdfs(filter_kwargs=filter_kwargs, **kwargs)
+        self.compute_pdfs_and_mus(filter_kwargs=filter_kwargs, **kwargs)
 
         if n_toys is not None:
             if sample_n_toys:
@@ -118,7 +118,8 @@ class BlueiceDataGenerator:
         i_write = 0
         for i, n_source in enumerate(n_sources):
             if n_source > 0:  # dont generate if 0
-                rvs = self.source_histograms[i].get_random(n_source)
+                source_name = self.ll.base_model.sources[i].name
+                rvs = self.source_histograms[source_name].get_random(n_source)
                 for j, n in enumerate(self.direction_names):
                     r_data[n][i_write : i_write + n_source] = rvs[:, j]
                 r_data["source"][i_write : i_write + n_source] = i
@@ -146,10 +147,10 @@ class BlueiceDataGenerator:
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
             _, mus, ps_array = ret
-            for i in range(len(self.ll.base_model.sources)):
-                self.source_histograms[i].histogram = ps_array[i].reshape(self.data_lengths)
+            for i, s in enumerate(self.ll.base_model.sources):
+                self.source_histograms[s.name].histogram = ps_array[i].reshape(self.data_lengths)
                 if not self.binned:
-                    self.source_histograms[i] *= self.source_histograms[i].bin_volumes()
+                    self.source_histograms[s.name] *= self.source_histograms[s.name].bin_volumes()
             self.mus = mus
             self.last_kwargs = kwargs
             self.first_call = False

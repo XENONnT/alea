@@ -8,7 +8,6 @@ import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
 from inference_interface import dict_to_structured_array, structured_array_to_dict
 
-# import multihist
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator

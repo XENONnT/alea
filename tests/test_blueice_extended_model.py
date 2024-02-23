@@ -77,7 +77,7 @@ class TestBlueiceExtendedModel(TestCase):
             for ll_t in config["likelihood_config"]["likelihood_terms"]:
                 _source_names.update([s["name"] for s in ll_t["sources"]])
             source_names = model.all_source_names
-            self.assertEqual(source_names, _source_names)
+            self.assertEqual(source_names, sorted(_source_names))
 
     def test_expectation_values(self):
         """Test of the expectation_values method."""

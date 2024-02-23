@@ -251,12 +251,15 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # compute the pdfs
         self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values)
+        source_histograms = self.data_generators[ll_index].source_histograms
 
         if multiply_mus:
-            # FIXME
-            raise NotImplementedError
+            mus = self.data_generators[ll_index].mus
+            for source_name, hist in source_histograms.items():
+                source_index = self.get_source_name_list(likelihood_name).index(source_name)
+                hist.histogram *= mus[source_index]
 
-        return self.data_generators[ll_index].source_histograms
+        return source_histograms
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""

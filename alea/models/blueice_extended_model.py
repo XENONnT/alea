@@ -212,15 +212,15 @@ class BlueiceExtendedModel(StatisticalModel):
         return ret
 
     def get_source_histograms(self, likelihood_name: str, multiply_mus=False, **kwargs) -> dict:
-        """Return the pdf for a given source and likelihood term.
+        """Return the pdfs or histograms of all sources for a given likelihood term.
 
         Args:
             likelihood_name (str): Name of the likelihood term.
-            multiply_mus (bool): If True, multiply the pdf with the mus.
+            multiply_mus (bool): If True, multiply the pdfs/histograms with the expecftation values.
             kwargs: Named parameters.
 
         Returns:
-            dict: Dictionary of multihist objects for each source.
+            dict: Dictionary containing a multihist object for each source.
 
         """
         if likelihood_name not in self.likelihood_names:

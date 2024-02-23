@@ -36,37 +36,34 @@ class BlueiceDataGenerator:
             self.binned = False
         else:
             raise NotImplementedError
-        logging.debug("initing simulator, binned: " + str(self.binned))
 
         ll = deepcopy(ll_term)
         bincs = []  # bin centers of each component
         direction_names = []
         dtype = []
-        data_length = 1  # number of bins in nD histogram
         data_lengths = []  # list of number of bins of each component
         analysis_space = ll_term.base_model.config["analysis_space"]
+
+        source_histograms = {}
+        for n in ll.source_name_list:
+            source_histograms[n] = mh.Histdd(dimensions=analysis_space)
+
         for name, bin_edges in analysis_space:
-            binc = 0.5 * (bin_edges[1:] + bin_edges[:-1])
-            bincs.append(binc)
+            bincs.append(0.5 * (bin_edges[1:] + bin_edges[:-1]))
             dtype.append((name, float))
-            data_length *= len(bin_edges) - 1
             data_lengths.append(len(bin_edges) - 1)
             direction_names.append(name)
         # IDEA: make source a string, not an int
         dtype.append(("source", int))
 
-        data_binc = np.zeros(data_length, dtype=dtype)
+        data_binc = np.zeros(np.prod(data_lengths), dtype=dtype)
         for i, l in enumerate(product(*bincs)):
             for n, v in zip(direction_names, l):
                 data_binc[n][i] = v
 
         ll.set_data(data_binc)
-        source_histograms = {}
-        for s in ll.base_model.sources:
-            source_histograms[s.name] = mh.Histdd(dimensions=analysis_space)
 
         self.ll = ll
-        self.bincs = bincs
         self.direction_names = direction_names
         self.source_histograms = source_histograms
         self.data_lengths = data_lengths
@@ -118,7 +115,7 @@ class BlueiceDataGenerator:
         i_write = 0
         for i, n_source in enumerate(n_sources):
             if n_source > 0:  # dont generate if 0
-                source_name = self.ll.base_model.sources[i].name
+                source_name = self.ll.source_name_list[i]
                 rvs = self.source_histograms[source_name].get_random(n_source)
                 for j, n in enumerate(self.direction_names):
                     r_data[n][i_write : i_write + n_source] = rvs[:, j]
@@ -147,10 +144,10 @@ class BlueiceDataGenerator:
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
             _, mus, ps_array = ret
-            for i, s in enumerate(self.ll.base_model.sources):
-                self.source_histograms[s.name].histogram = ps_array[i].reshape(self.data_lengths)
+            for n, p in zip(self.ll.source_name_list, ps_array):
+                self.source_histograms[n].histogram = p.reshape(self.data_lengths)
                 if not self.binned:
-                    self.source_histograms[s.name] *= self.source_histograms[s.name].bin_volumes()
+                    self.source_histograms[n] *= self.source_histograms[n].bin_volumes()
             self.mus = mus
             self.last_kwargs = kwargs
             self.first_call = False

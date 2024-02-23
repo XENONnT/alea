@@ -225,7 +225,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         return ret
 
-    def get_pdfs(self, likelihood_name: str, multiply_mus=False, **kwargs) -> dict:
+    def get_source_histograms(self, likelihood_name: str, multiply_mus=False, **kwargs) -> dict:
         """Return the pdf for a given source and likelihood term.
 
         Args:
@@ -239,24 +239,32 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         if likelihood_name not in self.likelihood_names:
             raise ValueError(f"Likelihood {likelihood_name} not found.")
-        likelihood_index = self.likelihood_names.index(likelihood_name)
+        ll_index = self.likelihood_names.index(likelihood_name)
 
         if not self.parameters.values_in_fit_limits(**kwargs):
             raise ValueError("Values are not within fit limits")
         generate_values = self.parameters(**kwargs)
-        lt_name = self.livetime_parameter_names[likelihood_index]
-        lt = generate_values.get(lt_name, None)
+        lt_name = self.livetime_parameter_names[ll_index]
+        # change keyof lt_name to "livetime_days" if it is in the generate_values
+        if lt_name in generate_values:
+            generate_values["livetime_days"] = generate_values.pop(lt_name)
 
         # compute the pdfs
-        self.data_generators[likelihood_index].compute_pdfs(livetime_days=lt, **generate_values)
+        self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values)
 
-        # prepare the generate_values, WARNING: This silently drops parameters it can't handle!
-        generate_values = self.parameters(**kwargs)  # kwarg or nominal value
-        parameter_names = self.likelihood_parameters[likelihood_index]
-        livetime_parameter = self.livetime_parameter_names[likelihood_index]
-        call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
-        if livetime_parameter is not None:
-            call_args["livetime_days"] = generate_values[livetime_parameter]
+        if multiply_mus:
+            # FIXME
+            raise NotImplementedError
+
+        return self.data_generators[ll_index].source_histograms
+
+        # # prepare the generate_values, WARNING: This silently drops parameters it can't handle!
+        # generate_values = self.parameters(**kwargs)  # kwarg or nominal value
+        # parameter_names = self.likelihood_parameters[likelihood_index]
+        # livetime_parameter = self.livetime_parameter_names[likelihood_index]
+        # call_args = {k: i for k, i in generate_values.items() if k in parameter_names}
+        # if livetime_parameter is not None:
+        #     call_args["livetime_days"] = generate_values[livetime_parameter]
 
         # we will set fake data to the likelihood term so we need to copy it
         # ll_term = deepcopy(self.likelihood_list[likelihood_index])
@@ -292,7 +300,7 @@ class BlueiceExtendedModel(StatisticalModel):
         #     hs[source_name] = h
 
         # return hs
-        return {}
+        # return {}
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""

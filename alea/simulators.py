@@ -60,9 +60,9 @@ class BlueiceDataGenerator:
                 data_binc[n][i] = v
 
         ll.set_data(data_binc)
-        source_histograms = []
-        for i in range(len(ll.base_model.sources)):
-            source_histograms.append(mh.Histdd(dimensions=analysis_space))
+        source_histograms = {}
+        for s in ll.base_model.sources:
+            source_histograms[s.name] = mh.Histdd(dimensions=analysis_space)
 
         self.ll = ll
         self.bincs = bincs
@@ -98,6 +98,7 @@ class BlueiceDataGenerator:
             The dtype follows self.dtype.
 
         """
+        # TODO: I changed source_histograms to be a dict, so this needs to be updated
         self.compute_pdfs(filter_kwargs=filter_kwargs, **kwargs)
 
         if n_toys is not None:
@@ -124,7 +125,7 @@ class BlueiceDataGenerator:
                 i_write += n_source
         return r_data
 
-    def compute_pdfs(self, filter_kwargs=True, **kwargs) -> None:
+    def compute_pdfs_and_mus(self, filter_kwargs=True, **kwargs) -> None:
         """Compute PDFs of the sources for the given parameters.
 
         Args:

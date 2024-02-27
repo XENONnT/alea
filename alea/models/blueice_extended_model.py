@@ -370,7 +370,20 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         # last one is AncillaryLikelihood
-        return [BlueiceDataGenerator(ll_term) for ll_term in self.likelihood_list[:-1]]
+        data_generators = []
+        for ll_term in self.likelihood_list[:-1]:
+            methods = [s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources]
+            # make sure that all sources have the same pdf_interpolation_method
+            if len(set(methods)) != 1:
+                raise ValueError("All sources must have the same pdf_interpolation_method.")
+            method = methods[0]
+            if method == "piecewise":
+                data_generators.append(BlueiceDataGenerator(ll_term))
+            elif method == "linear":
+                raise NotImplementedError("Linear interpolation is not yet supported. Choose piecewise as pdf_interpolation_method.")
+            else:
+                raise ValueError(f"Unknown pdf_interpolation_method {method}.")
+        return data_generators
 
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]

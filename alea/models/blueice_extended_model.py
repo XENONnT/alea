@@ -380,7 +380,9 @@ class BlueiceExtendedModel(StatisticalModel):
             if method == "piecewise":
                 data_generators.append(BlueiceDataGenerator(ll_term))
             elif method == "linear":
-                raise NotImplementedError("Linear interpolation is not yet supported. Choose piecewise as pdf_interpolation_method.")
+                raise NotImplementedError(
+                    "Linear interpolation is not yet supported. Choose piecewise as pdf_interpolation_method."
+                )
             else:
                 raise ValueError(f"Unknown pdf_interpolation_method {method}.")
         return data_generators

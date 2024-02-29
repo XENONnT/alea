@@ -45,6 +45,13 @@ class TemplateSource(HistogramPdfSource):
 
     """
 
+    def __init__(self, config: Dict, *args, **kwargs):
+        """Initialize the TemplateSource."""
+        # override the default interpolation method
+        if "pdf_interpolation_method" not in config:
+            config["pdf_interpolation_method"] = "piecewise"
+        super().__init__(config, *args, **kwargs)
+
     def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.
 

@@ -228,7 +228,7 @@ class BlueiceExtendedModel(StatisticalModel):
             raise ValueError(f"Likelihood {likelihood_name} not found.")
         elif likelihood_name == "ancillary":
             raise ValueError("No source histograms for ancillary likelihood.")
-        
+
         ll_index = self.likelihood_names.index(likelihood_name)
 
         # prepare generate_values

@@ -223,19 +223,14 @@ class TestBlueiceExtendedModel(TestCase):
                     source_index = ll_term.source_name_list.index(s_name)
                     blueice_source = ll_term.base_model.sources[source_index]
                     blueice_hist = blueice_source._pdf_histogram.histogram
-                    np.testing.assert_almost_equal(blueice_hist, histogram,
-                                                   decimal=10)
+                    np.testing.assert_almost_equal(blueice_hist, histogram, decimal=10)
 
                 # check that expected_events boolean works
-                source_histograms = model.get_source_histograms(
-                    ll_name,
-                    expected_events=True
-                )
+                source_histograms = model.get_source_histograms(ll_name, expected_events=True)
                 for s_name, histogram in source_histograms.items():
                     mu = mus[ll_name][s_name]
                     sum_hist = histogram.n
-                    np.testing.assert_almost_equal(mu, sum_hist,
-                                                   decimal=4)
+                    np.testing.assert_almost_equal(mu, sum_hist, decimal=4)
 
             # check that model.likelihood_names[-1] fails
             with self.assertRaises(ValueError):

@@ -2,6 +2,7 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from pydoc import locate
 import itertools
+from copy import deepcopy
 
 import numpy as np
 import scipy.stats as stats
@@ -210,12 +211,13 @@ class BlueiceExtendedModel(StatisticalModel):
 
         return ret
 
-    def get_source_histograms(self, likelihood_name: str, multiply_mus=False, **kwargs) -> dict:
+    def get_source_histograms(self, likelihood_name: str, expected_events=False, **kwargs) -> dict:
         """Return the pdfs or histograms of all sources for a given likelihood term.
 
         Args:
             likelihood_name (str): Name of the likelihood term.
-            multiply_mus (bool): If True, multiply the pdfs/histograms with the expecftation values.
+            expected_events (bool): If True, return the histograms containing
+                the number of expected events.
             kwargs: Named parameters.
 
         Returns:
@@ -224,6 +226,9 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         if likelihood_name not in self.likelihood_names:
             raise ValueError(f"Likelihood {likelihood_name} not found.")
+        elif likelihood_name == "ancillary":
+            raise ValueError("No source histograms for ancillary likelihood.")
+        
         ll_index = self.likelihood_names.index(likelihood_name)
 
         # prepare generate_values
@@ -237,13 +242,17 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # compute the pdfs
         self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values)
-        source_histograms = self.data_generators[ll_index].source_histograms
+        source_histograms = deepcopy(self.data_generators[ll_index].source_histograms)
 
-        if multiply_mus:
+        if expected_events:
             mus = self.data_generators[ll_index].mus
             for source_name, hist in source_histograms.items():
                 source_index = self.get_source_name_list(likelihood_name).index(source_name)
                 hist.histogram *= mus[source_index]
+        # for unbinned likelihoods we need to divide by the bin volumes
+        elif not expected_events and not self.data_generators[ll_index].binned:
+            for hist in source_histograms.values():
+                hist.histogram /= hist.bin_volumes()
 
         return source_histograms
 

@@ -2,6 +2,7 @@ from os import remove
 import pytest
 from unittest import TestCase
 from copy import deepcopy
+import numpy as np
 
 from inference_interface import toydata_from_file
 
@@ -208,3 +209,38 @@ class TestBlueiceExtendedModel(TestCase):
             model.data = model.generate_data()
             with self.assertRaises(ValueError):
                 model.fit(wimp_mass=1)
+
+    def test_get_source_histograms(self):
+        """Test of the get_source_histograms method."""
+        for model in self.models:
+            mus = model.get_expectation_values(per_likelihood_term=True)
+            for ll_name, ll_term in zip(model.likelihood_names[:-1], model.likelihood_list[:-1]):
+                source_histograms = model.get_source_histograms(ll_name)
+                self.assertEqual(sorted(source_histograms.keys()), sorted(ll_term.source_name_list))
+
+                # check whether the correct source histograms are returned
+                for s_name, histogram in source_histograms.items():
+                    source_index = ll_term.source_name_list.index(s_name)
+                    blueice_source = ll_term.base_model.sources[source_index]
+                    blueice_hist = blueice_source._pdf_histogram.histogram
+                    np.testing.assert_almost_equal(blueice_hist, histogram,
+                                                   decimal=10)
+
+                # check that expected_events boolean works
+                source_histograms = model.get_source_histograms(
+                    ll_name,
+                    expected_events=True
+                )
+                for s_name, histogram in source_histograms.items():
+                    mu = mus[ll_name][s_name]
+                    sum_hist = histogram.n
+                    np.testing.assert_almost_equal(mu, sum_hist,
+                                                   decimal=4)
+
+            # check that model.likelihood_names[-1] fails
+            with self.assertRaises(ValueError):
+                model.get_source_histograms(model.likelihood_names[-1])
+
+            # check that invalid likelihood names fail
+            with self.assertRaises(ValueError):
+                model.get_source_histograms("alea_iacta_est")

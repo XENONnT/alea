@@ -45,6 +45,13 @@ class TemplateSource(HistogramPdfSource):
 
     """
 
+    def __init__(self, config: Dict, *args, **kwargs):
+        """Initialize the TemplateSource."""
+        # override the default interpolation method
+        if "pdf_interpolation_method" not in config:
+            config["pdf_interpolation_method"] = "piecewise"
+        super().__init__(config, *args, **kwargs)
+
     def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.
 
@@ -76,20 +83,15 @@ class TemplateSource(HistogramPdfSource):
             logging.debug("expected_bin_edges: " + str(expected_bin_edges))
             logging.debug("seen_bin_edges: " + str(seen_bin_edges))
             logging.debug("h.bin_edges type" + str(h.bin_edges))
+            err_msg = (
+                f"Axis {axis_i:d} of histogram {histogram_info} "
+                f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}."
+            )
             if len(seen_bin_edges) != len(expected_bin_edges):
-                raise ValueError(
-                    f"Axis {axis_i:d} of histogram {histogram_info} "
-                    f"has {len(seen_bin_edges)} bin edges, but expected {expected_bin_edges}."
-                )
-            try:
-                np.testing.assert_almost_equal(seen_bin_edges, expected_bin_edges, decimal=2)
-            except AssertionError:
-                logging.warn(
-                    f"Axis {axis_i:d} of histogram {histogram_info} "
-                    f"has bin edges {seen_bin_edges}, but expected {expected_bin_edges}. "
-                    "Since length matches, setting it expected values..."
-                )
-                h.bin_edges[axis_i] = expected_bin_edges
+                raise ValueError(err_msg)
+            np.testing.assert_almost_equal(
+                seen_bin_edges, expected_bin_edges, decimal=2, err_msg=err_msg
+            )
 
     @property
     def format_named_parameters(self):

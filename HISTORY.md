@@ -1,3 +1,14 @@
+0.2.3 / 2024-02-22
+------------------
+* Improve check of already made toydata and output by @dachengx in https://github.com/XENONnT/alea/pull/128
+* Combine several jobs into one to save computation resources by @dachengx in https://github.com/XENONnT/alea/pull/131
+* Check `locate` loaded package by @dachengx in https://github.com/XENONnT/alea/pull/134
+* Update `hypotheses` and `common_hypothesis` by `pre_process_poi` by @dachengx in https://github.com/XENONnT/alea/pull/135
+* Print total number of submitted jobs by @dachengx in https://github.com/XENONnT/alea/pull/137
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.2...v0.2.3
+
+
 0.2.2 / 2024-01-13
 ------------------
 * Save dtype of `valid_fit` as bool by @dachengx in https://github.com/XENONnT/alea/pull/123
@@ -8,6 +19,8 @@
 * Evaluate `blueice_anchors` expression by @dachengx in https://github.com/XENONnT/alea/pull/124
 * Update pypi to use trusted publisher by @dachengx in https://github.com/XENONnT/alea/pull/130
 * Update versions of `blueice` and `inference-interface` by @dachengx in https://github.com/XENONnT/alea/pull/132
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.1...v0.2.2
 
 
 0.2.1 / 2023-12-08
@@ -57,7 +70,6 @@ New Contributors
 * First runner manipulating statistical model by @dachengx in https://github.com/XENONnT/alea/pull/50
 * Set best_fit_args to confidence_interval_args if None by @kdund in https://github.com/XENONnT/alea/pull/76
 * Livetime scaling by @kdund in https://github.com/XENONnT/alea/pull/73
-
 
 **Full Changelog**: https://github.com/XENONnT/alea/compare/v0.0.0...v0.1.0
 

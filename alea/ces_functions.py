@@ -27,7 +27,7 @@ def smearing_hist_gaussian(
     hist: Hist1d,
     smearing_a: float,
     smearing_b: float,
-    bins: Iterable[float] | None = None,
+    bins: Optional[Iterable[float]] = None,
 ):
     """
     Smear a histogram. This allows for non-uniform histogram binning.
@@ -39,6 +39,7 @@ def smearing_hist_gaussian(
     if bins is None:
         # set the bins to the bin edges of the input histogram
         bins = hist.bin_edges
+    bins = np.array(bins)
 
     e_true_s, rates, bin_volumes = hist.bin_centers, hist.histogram, hist.bin_volumes()
     mask = np.where(e_true_s > 0)
@@ -226,7 +227,7 @@ def efficiency_hist_constant(hist, efficiency):
     return hist * efficiency
 
 
-MODELS = {
+MODELS: Dict[str, Dict[str, Callable]] = {
     "smearing": {
         "gaussian": smearing_hist_gaussian,
         "skew_gaussian": smearing_hist_skew_gaussian,
@@ -243,10 +244,14 @@ class Transformation(BaseModel):
     model: str
 
     @validator("model")
+    @classmethod
     def check_model(cls, v, values):
         if v not in MODELS[values["mode"]]:
             raise ValueError(f"Model {v} not found for mode {values['mode']}")
         return v
 
     def apply_transformation(self, histogram: Hist1d):
-        return MODELS[self.mode][self.model](histogram, **self.parameters)
+        chosen_model = MODELS[self.mode][self.model]
+        return chosen_model(histogram, **self.parameters)
+
+

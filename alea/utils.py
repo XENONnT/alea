@@ -608,3 +608,27 @@ def deterministic_hash(thing, length=10):
     # disable bandit
     digest = sha256(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()
+
+
+def signal_multiplier_estimation(
+    signal: np.ndarray, background: np.ndarray, data: np.ndarray, iteration=100
+) -> float:
+    mask = (signal > 0) | (background > 0)
+    if np.any(data[~mask] > 0):
+        raise ValueError("Data has non-zero values where signal and background is zero.")
+
+    sig = signal[mask].ravel()
+    bkg = background[mask].ravel()
+    obs = data[mask].ravel()
+
+    def correction_on_multiplier(x):
+        exp = sig * x + bkg
+        return np.sum(np.where(exp > 0, (obs / exp - 1) * sig, 0)) / np.sum(
+            np.where(exp > 0, obs * sig**2 / exp**2, 0)
+        )
+
+    x = [np.sum(obs - bkg) / np.sum(sig)]
+    for _ in range(iteration):
+        x.append(x[-1] + correction_on_multiplier(x[-1]))
+
+    return np.clip(np.mean(x[-10:]), 0, None)

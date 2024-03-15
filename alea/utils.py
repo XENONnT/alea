@@ -613,6 +613,20 @@ def deterministic_hash(thing, length=10):
 def signal_multiplier_estimation(
     signal: np.ndarray, background: np.ndarray, data: np.ndarray, iteration=100
 ) -> float:
+    """Estimate the best-fit signal multiplier using perturbation theory. The method tries to solve
+    the critial point of the likelihood function by perturbation theory, where the likelihood
+    function is defined as the binned Poisson likelihood function, given signal, background models
+    and data.
+
+    Args:
+        signal (np.ndarray): signal model
+        background (np.ndarray): background model
+        data (np.ndarray): data array
+        iteration (int, optional (default=100)): number of iterations
+    Returns:
+        float: best-fit signal multiplier
+
+    """
     mask = (signal > 0) | (background > 0)
     if np.any(data[~mask] > 0):
         raise ValueError("Data has non-zero values where signal and background is zero.")
@@ -631,4 +645,8 @@ def signal_multiplier_estimation(
     for _ in range(iteration):
         x.append(x[-1] + correction_on_multiplier(x[-1]))
 
+    # For underfluctutation case, the best-fit multiplier could be negative
+    # in which case the perturbation theory may not converge or be negative.
+    # Thus we average the last 10 values to get a stable result and clip it
+    # to be non-negative.
     return np.clip(np.mean(x[-10:]), 0, None)

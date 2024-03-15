@@ -610,7 +610,7 @@ def deterministic_hash(thing, length=10):
     return b32encode(digest)[:length].decode("ascii").lower()
 
 
-def signal_multiplier_estimation(
+def signal_multiplier_estimator(
     signal: np.ndarray, background: np.ndarray, data: np.ndarray, iteration=100
 ) -> float:
     """Estimate the best-fit signal multiplier using perturbation theory. The method tries to solve
@@ -635,18 +635,18 @@ def signal_multiplier_estimation(
     bkg = background[mask].ravel()
     obs = data[mask].ravel()
 
+    @np.errstate(invalid="ignore", divide="ignore")
     def correction_on_multiplier(x):
         exp = sig * x + bkg
         return np.sum(np.where(exp > 0, (obs / exp - 1) * sig, 0)) / np.sum(
             np.where(exp > 0, obs * sig**2 / exp**2, 0)
         )
 
-    x = [np.sum(obs - bkg) / np.sum(sig)]
-    for _ in range(iteration):
-        x.append(x[-1] + correction_on_multiplier(x[-1]))
-
     # For underfluctutation case, the best-fit multiplier could be negative
     # in which case the perturbation theory may not converge or be negative.
-    # Thus we average the last 10 values to get a stable result and clip it
-    # to be non-negative.
-    return np.clip(np.mean(x[-10:]), 0, None)
+    # Thus we clip it to be non-negative.
+    x = np.sum(obs - bkg) / np.sum(sig)
+    for _ in range(iteration):
+        x += correction_on_multiplier(x)
+        x = np.clip(x, 0, None)
+    return x

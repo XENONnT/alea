@@ -61,7 +61,20 @@ class SubmitterLocal(Submitter):
         for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
                 print(script)
-                return self.initialized_runner(script)
+                runner = self.initialized_runner(script)
+                # print all parameters
+                print("\n\n" + f"{' PARAMETERS ':#^80}")
+                print(runner.model.parameters)
+                # print all expectation values
+                print("\n\n" + f"{' NOMINAL EXPECTATION VALUES ':#^80}")
+                try:
+                    expectation_values = runner.model.nominal_expectation_values
+                    max_key_length = max([len(k) for k in expectation_values.keys()])
+                    for k, v in expectation_values.items():
+                        print(f"{k:<{max_key_length}}   {v}")
+                except NotImplementedError as msg:
+                    warnings.warn(str(msg))
+                return runner
             subprocess.call(shlex.split(script))
 
 

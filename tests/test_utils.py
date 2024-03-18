@@ -112,4 +112,4 @@ class TestUtils(TestCase):
         )
         data = (bkg + sig * 1e-1).get_random(size=np.random.poisson(bkg.n))
         data = mh.Histdd(*data.T, bins=bkg.bin_edges)
-        signal_multiplier_estimator(sig.histogram, bkg.histogram, data.histogram)
+        signal_multiplier_estimator(sig.histogram, bkg.histogram, data.histogram, diagnostic=True)

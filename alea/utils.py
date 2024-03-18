@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 
 import h5py
+import matplotlib.pyplot as plt
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
@@ -611,7 +612,11 @@ def deterministic_hash(thing, length=10):
 
 
 def signal_multiplier_estimator(
-    signal: np.ndarray, background: np.ndarray, data: np.ndarray, iteration=100
+    signal: np.ndarray,
+    background: np.ndarray,
+    data: np.ndarray,
+    iteration=100,
+    diagnostic=False,
 ) -> float:
     """Estimate the best-fit signal multiplier using perturbation theory. The method tries to solve
     the critial point of the likelihood function by perturbation theory, where the likelihood
@@ -646,7 +651,13 @@ def signal_multiplier_estimator(
     # in which case the perturbation theory may not converge or be negative.
     # Thus we clip it to be non-negative.
     x = np.sum(obs - bkg) / np.sum(sig)
+    xs = [x]
     for _ in range(iteration):
         x += correction_on_multiplier(x)
         x = np.clip(x, 0, None)
+        xs.append(x)
+    if diagnostic:
+        plt.plot(xs, marker=".")
+        plt.xlabel("Iteration")
+        plt.ylabel("x")
     return x

@@ -190,7 +190,7 @@ def smearing_hist_skew_gaussian(hist, sa, sp, wa, wb, bins=None):
 
 
 @validate_call
-def biasing_hist_arctan(hist, A, k):
+def biasing_hist_arctan(hist, A=0.01977, k=0.01707):
     """
     Apply a constant bias to a histogram
 
@@ -205,7 +205,7 @@ def biasing_hist_arctan(hist, A, k):
     return h_bias
 
 
-def biasing_hist_sigmoid(hist, A, k):
+def biasing_hist_sigmoid(hist, A=0.0513, k=0.0247):
     true_energy = hist.bin_centers
     h_bias = deepcopy(hist)
     bias_derivative = (
@@ -240,7 +240,7 @@ MODELS: Dict[str, Dict[str, Callable]] = {
 # input: model name, parameters, transformation mode
 class Transformation(BaseModel):
     parameters: Dict[str, float]
-    mode: Literal["smearing", "bias", "efficiency"]
+    action: Literal["smearing", "bias", "efficiency"]
     model: str
 
     @validator("model")
@@ -251,7 +251,7 @@ class Transformation(BaseModel):
         return v
 
     def apply_transformation(self, histogram: Hist1d):
-        chosen_model = MODELS[self.mode][self.model]
+        chosen_model = MODELS[self.action][self.model]
         return chosen_model(histogram, **self.parameters)
 
 

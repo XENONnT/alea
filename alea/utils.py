@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 
 import h5py
+import matplotlib.pyplot as plt
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
@@ -608,3 +609,55 @@ def deterministic_hash(thing, length=10):
     # disable bandit
     digest = sha256(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()
+
+
+def signal_multiplier_estimator(
+    signal: np.ndarray,
+    background: np.ndarray,
+    data: np.ndarray,
+    iteration=100,
+    diagnostic=False,
+) -> float:
+    """Estimate the best-fit signal multiplier using perturbation theory. The method tries to solve
+    the critial point of the likelihood function by perturbation theory, where the likelihood
+    function is defined as the binned Poisson likelihood function, given signal, background models
+    and data.
+
+    Args:
+        signal (np.ndarray): signal model
+        background (np.ndarray): background model
+        data (np.ndarray): data array
+        iteration (int, optional (default=100)): number of iterations
+    Returns:
+        float: best-fit signal multiplier
+
+    """
+    mask = (signal > 0) | (background > 0)
+    if np.any(data[~mask] > 0):
+        raise ValueError("Data has non-zero values where signal and background is zero.")
+
+    sig = signal[mask].ravel()
+    bkg = background[mask].ravel()
+    obs = data[mask].ravel()
+
+    @np.errstate(invalid="ignore", divide="ignore")
+    def correction_on_multiplier(x):
+        exp = sig * x + bkg
+        return np.sum(np.where(exp > 0, (obs / exp - 1) * sig, 0)) / np.sum(
+            np.where(exp > 0, obs * sig**2 / exp**2, 0)
+        )
+
+    # For underfluctutation case, the best-fit multiplier could be negative
+    # in which case the perturbation theory may not converge or be negative.
+    # Thus we clip it to be non-negative.
+    x = np.sum(obs - bkg) / np.sum(sig)
+    xs = [x]
+    for _ in range(iteration):
+        x += correction_on_multiplier(x)
+        x = np.clip(x, 0, None)
+        xs.append(x)
+    if diagnostic:
+        plt.plot(xs, marker=".")
+        plt.xlabel("Iteration")
+        plt.ylabel("x")
+    return x

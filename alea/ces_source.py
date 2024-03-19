@@ -17,6 +17,11 @@ class CESTemplateSource(HistogramPdfSource):
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
         super().__init__(config, *args, **kwargs)
+        self.ces_space = eval(self.config["analysis_space"][0]["ces"])
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+        self.templatename = self.config["templatename"]
+        self.histname = self.config["histname"]
 
     def _check_histogram(self, h: Hist1d):
         """
@@ -74,11 +79,7 @@ class CESTemplateSource(HistogramPdfSource):
         It's always called during the initialization of the source.
         So the attributes are set here.
         """
-        self.ces_space = eval(self.config["analysis_space"][0]["ces"])
-        self.max_e = np.max(self.ces_space)
-        self.min_e = np.min(self.ces_space)
-        self.templatename = self.config["templatename"]
-        self.histname = self.config["histname"]
+        
         h = template_to_multihist(self.templatename, self.histname)
         self._check_histogram(h)
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume

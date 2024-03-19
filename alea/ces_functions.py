@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator, validate_call
+from pydantic import BaseModel, validator, validate_call, ConfigDict
 from typing import List, Dict, Optional, Union, Any, Literal, Callable, Iterable
 import numpy as np
 from scipy import stats
@@ -7,7 +7,7 @@ from scipy import interpolate, special
 import pandas as pd
 from tqdm import tqdm
 import numba
-from mulithist import Hist1d
+from multihist import Hist1d
 
 
 def energy_res(energy, a=25.8, b=1.429):
@@ -24,7 +24,7 @@ def energy_res(energy, a=25.8, b=1.429):
 
 @validate_call
 def smearing_hist_gaussian(
-    hist: Hist1d,
+    hist: Any,
     smearing_a: float,
     smearing_b: float,
     bins: Optional[Iterable[float]] = None,
@@ -36,6 +36,7 @@ def smearing_hist_gaussian(
     :param bins: bin edges of the returned spectrum
     :return: smeared histogram in the same unit as input spectrum
     """
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
         # set the bins to the bin edges of the input histogram
         bins = hist.bin_edges
@@ -169,7 +170,10 @@ def _smear_skew_array(e_true_s, rates, bin_volumes, bins, sa, sp, wa, wb):
     return smeared
 
 
-def smearing_hist_skew_gaussian(hist, sa, sp, wa, wb, bins=None):
+@validate_call
+def smearing_hist_skew_gaussian(
+    hist: Any, sa: float, sp: float, wa: float, wb: float, bins=None
+):
     """
     Smear a histogram using skew gaussian. This allows for non-uniform histogram binning.
 
@@ -178,6 +182,7 @@ def smearing_hist_skew_gaussian(hist, sa, sp, wa, wb, bins=None):
     :param add_bias: boolean, include reconstruction bias in spectrum modeling if True. Default True.
     :return: smeared histogram using skew gaussian in the same unit as input spectrum
     """
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
         # set the bins to the bin edges of the input histogram
         bins = hist.bin_edges
@@ -190,7 +195,7 @@ def smearing_hist_skew_gaussian(hist, sa, sp, wa, wb, bins=None):
 
 
 @validate_call
-def biasing_hist_arctan(hist, A=0.01977, k=0.01707):
+def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     """
     Apply a constant bias to a histogram
 
@@ -198,6 +203,7 @@ def biasing_hist_arctan(hist, A=0.01977, k=0.01707):
     :param bias: the bias to apply to the spectrum
     :return: the spectrum with the bias applied
     """
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
     h_bias = deepcopy(hist)
     bias_derivative = A * k / (1 + k**2 * true_energy**2)
@@ -205,7 +211,9 @@ def biasing_hist_arctan(hist, A=0.01977, k=0.01707):
     return h_bias
 
 
-def biasing_hist_sigmoid(hist, A=0.0513, k=0.0247):
+@validate_call
+def biasing_hist_sigmoid(hist: Any, A: float =0.0513, k: float =0.0247):
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
     h_bias = deepcopy(hist)
     bias_derivative = (
@@ -216,7 +224,7 @@ def biasing_hist_sigmoid(hist, A=0.0513, k=0.0247):
 
 
 @validate_call
-def efficiency_hist_constant(hist, efficiency):
+def efficiency_hist_constant(hist: Any, efficiency: float):
     """
     Apply a constant efficiency to a histogram
 
@@ -224,6 +232,8 @@ def efficiency_hist_constant(hist, efficiency):
     :param efficiency: the efficiency to apply to the spectrum
     :return: the spectrum with the efficiency applied
     """
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
+    assert 0 <= efficiency <= 1, "Efficiency must be between 0 and 1"
     return hist * efficiency
 
 
@@ -253,5 +263,3 @@ class Transformation(BaseModel):
     def apply_transformation(self, histogram: Hist1d):
         chosen_model = MODELS[self.action][self.model]
         return chosen_model(histogram, **self.parameters)
-
-

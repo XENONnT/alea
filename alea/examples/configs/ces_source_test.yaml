@@ -1,0 +1,12 @@
+name: xe133
+histname: xe133_template
+templatename: xe133_template.ii.h5
+rate_multiplier: 100
+fiducial_mass: 5
+data_dirs: /Users/yuema/XENONNT/alea/notebooks
+analysis_space:
+  - ces: np.arange(0, 1000, 2)
+apply_efficiency: false
+apply_smearing: false
+apply_bias: false
+

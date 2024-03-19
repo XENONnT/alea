@@ -17,16 +17,12 @@ class CESTemplateSource(HistogramPdfSource):
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
         super().__init__(config, *args, **kwargs)
-        self.analysis_space = self.config["analysis_space"]
-        self.templatename = self.config["templatename"]
-        self.histname = self.config["histname"]
-        self.min_e = np.min(self.analysis_space[0]["ces"])
-        self.max_e = np.max(self.analysis_space[0]["ces"])
 
     def _check_histogram(self, h: Hist1d):
         """
         Check if the histogram has expected binning
         """
+        self.analysis_space = self.config["analysis_space"]
         # We only take 1d histogram in the ces axes
         if not isinstance(h, Hist1d):
             raise ValueError("Only Hist1d object is supported")
@@ -73,8 +69,16 @@ class CESTemplateSource(HistogramPdfSource):
             )
         return None
 
-    def build_hitogram(self):
-        """Build the histogram of the source."""
+    def build_histogram(self):
+        """Build the histogram of the source.
+        It's always called during the initialization of the source.
+        So the attributes are set here.
+        """
+        self.ces_space = eval(self.config["analysis_space"][0]["ces"])
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+        self.templatename = self.config["templatename"]
+        self.histname = self.config["histname"]
         h = template_to_multihist(self.templatename, self.histname)
         self._check_histogram(h)
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume
@@ -102,6 +106,9 @@ class CESTemplateSource(HistogramPdfSource):
         right_edges = h.bin_edges[1:]
         outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
         h.histogram[outside_index] = 0
+        
+        self._bin_volumes = h.bin_volumes()
+        self._n_events_histogram = h.similar_blank_histogram()
 
         # Note that it already does what "fraction_in_roi" does in the old code. So no need to calculate that again
         integration_after_transformation_in_roi = np.trapz(h.histogram, h.bin_centers)
@@ -116,6 +123,7 @@ class CESTemplateSource(HistogramPdfSource):
         # For pdf, we need to normalize the histogram to 1 again
         h.histogram /= integration_after_transformation_in_roi
         self._pdf_histogram = h
+        self.set_dtype()
 
     def simulate(self, n_events: int):
         dtype = [
@@ -158,3 +166,9 @@ class CESTemplateSource(HistogramPdfSource):
             raise NotImplementedError(
                 "PDF Interpolation method %s not implemented" % method
             )
+    def set_dtype(self):
+        self.dtype = [
+            ("ces", float),
+            ("source", int),
+        ]
+    

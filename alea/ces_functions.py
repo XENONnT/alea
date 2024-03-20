@@ -207,7 +207,7 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     true_energy = hist.bin_centers
     h_bias = deepcopy(hist)
     bias_derivative = A * k / (1 + k**2 * true_energy**2)
-    h_bias.histogram *= 1 + bias_derivative
+    h_bias.histogram *= 1 / (1 + bias_derivative)
     return h_bias
 
 
@@ -219,7 +219,7 @@ def biasing_hist_sigmoid(hist: Any, A: float =0.0513, k: float =0.0247):
     bias_derivative = (
         A * k * np.exp(-k * true_energy) / (1 + np.exp(-k * true_energy)) ** 2
     )
-    h_bias.histogram *= 1 + bias_derivative
+    h_bias.histogram *= 1 / (1 + bias_derivative)
     return h_bias
 
 
@@ -256,8 +256,8 @@ class Transformation(BaseModel):
     @validator("model")
     @classmethod
     def check_model(cls, v, values):
-        if v not in MODELS[values["mode"]]:
-            raise ValueError(f"Model {v} not found for mode {values['mode']}")
+        if v not in MODELS[values["action"]]:
+            raise ValueError(f"Model {v} not found for action {values['action']}")
         return v
 
     def apply_transformation(self, histogram: Hist1d):

@@ -239,3 +239,19 @@ class TestBlueiceExtendedModel(TestCase):
             # check that invalid likelihood names fail
             with self.assertRaises(ValueError):
                 model.get_source_histograms("alea_iacta_est")
+
+    def test_sorted_returns(self):
+        """Test if sources are sorted in the same way for all return dicts."""
+        for model in self.models:
+            mus_per_ll = model.get_expectation_values(per_likelihood_term=True)
+            mus = model.get_expectation_values()
+            hist_per_ll = {}
+            for ll_name in model.likelihood_names[:-1]:
+                hist_per_ll[ll_name] = model.get_source_histograms(ll_name)
+            # check that keys are the same for each SR
+            for ll_name in model.likelihood_names[:-1]:
+                self.assertEqual(mus_per_ll[ll_name].keys(), hist_per_ll[ll_name].keys())
+            # check that global keys are the same
+            all_keys = {v for d in mus_per_ll.values() for v in d.keys()}
+            all_keys = sorted(all_keys)
+            self.assertEqual(all_keys, sorted(mus.keys()))

@@ -202,6 +202,8 @@ class BlueiceExtendedModel(StatisticalModel):
             mus = self.data_generators[ll_index].mus
             for n, mu in zip(self.likelihood_list[ll_index].source_name_list, mus):
                 ret[ll_name][n] = mu
+            # sort by source name
+            ret[ll_name] = dict(sorted(ret[ll_name].items(), key=lambda item: item[0]))
         if not per_likelihood_term:
             # sum over sources with same names of all likelihood terms
             ret = {
@@ -253,6 +255,9 @@ class BlueiceExtendedModel(StatisticalModel):
         elif not expected_events and not self.data_generators[ll_index].binned:
             for hist in source_histograms.values():
                 hist.histogram /= hist.bin_volumes()
+
+        # sort the source_histograms by source name
+        source_histograms = dict(sorted(source_histograms.items(), key=lambda item: item[0]))
 
         return source_histograms
 

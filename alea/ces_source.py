@@ -3,7 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from inference_interface import template_to_multihist
-from blueice import HistogramPdfSource
+from blueice import HistogramPdfSource, Source
 from blueice.exceptions import PDFNotComputedException
 
 from multihist import Hist1d
@@ -17,11 +17,7 @@ class CESTemplateSource(HistogramPdfSource):
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
         super().__init__(config, *args, **kwargs)
-        self.ces_space = eval(self.config["analysis_space"][0]["ces"])
-        self.max_e = np.max(self.ces_space)
-        self.min_e = np.min(self.ces_space)
-        self.templatename = self.config["templatename"]
-        self.histname = self.config["histname"]
+        
 
     def _check_histogram(self, h: Hist1d):
         """
@@ -33,7 +29,7 @@ class CESTemplateSource(HistogramPdfSource):
             raise ValueError("Only Hist1d object is supported")
         if len(self.analysis_space) != 1:
             raise ValueError("Only 1d analysis space is supported")
-        if list(self.analysis_space[0].keys())[0] != "ces":
+        if self.analysis_space[0][0] != "ces":
             raise ValueError("The analysis space must be ces")
         if np.min(h.histogram) < 0:
             raise AssertionError(
@@ -57,18 +53,26 @@ class CESTemplateSource(HistogramPdfSource):
         if self.config.get(f"apply_{transformation_type}", True):
             parameters_key = f"{transformation_type}_parameters"
             model_key = f"{transformation_type}_model"
-
-            if parameters_key not in self.config:
-                raise ValueError(
-                    f"{transformation_type.capitalize()} parameters are not provided"
-                )
+            
             if model_key not in self.config:
                 raise ValueError(
                     f"{transformation_type.capitalize()} model is not provided"
                 )
+                
+            if parameters_key not in self.config:
+                raise ValueError(
+                    f"{transformation_type.capitalize()} parameters are not provided"
+                )
+            else:
+                #print(self.config[parameters_key])
+                #combined_parameter_dict = {k:v for d in self.config[parameters_key] for k,v in d.items()}
+                # self.config[parameters_key] is a list showing the parameter names
+                parameter_list = self.config[parameters_key]
+                # to get the values we need to iterate over the list and use self.config.get
+                combined_parameter_dict = {k: self.config.get(k) for k in parameter_list}
 
             return Transformation(
-                parameters=self.config[parameters_key],
+                parameters=combined_parameter_dict,
                 action=transformation_type,
                 model=self.config[model_key],
             )
@@ -79,11 +83,17 @@ class CESTemplateSource(HistogramPdfSource):
         It's always called during the initialization of the source.
         So the attributes are set here.
         """
+        print("Building histogram")
         
+        self.ces_space = self.config["analysis_space"][0][1]
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+        self.templatename = self.config["templatename"]
+        self.histname = self.config["histname"]
         h = template_to_multihist(self.templatename, self.histname)
         self._check_histogram(h)
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume
-        # So the unit is always events/ton/year/keV, the rate multipliers are always in terms of that
+        # So the unit is always events/year/keV, the rate multipliers are always in terms of that
 
         total_integration = np.trapz(h.histogram, h.bin_centers)
         h.histogram /= total_integration
@@ -95,11 +105,11 @@ class CESTemplateSource(HistogramPdfSource):
 
         # Apply the transformations to the histogram
         if efficiency_transformation is not None:
-            h = efficiency_transformation.apply(h)
+            h = efficiency_transformation.apply_transformation(h)
         if smearing_transformation is not None:
-            h = smearing_transformation.apply(h)
+            h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
-            h = bias_transformation.apply(h)
+            h = bias_transformation.apply_transformation(h)
 
         # Calculate the integration of the histogram after all transformations to estimate the event rate
         # And only from min_e to max_e
@@ -113,11 +123,10 @@ class CESTemplateSource(HistogramPdfSource):
 
         # Note that it already does what "fraction_in_roi" does in the old code. So no need to calculate that again
         integration_after_transformation_in_roi = np.trapz(h.histogram, h.bin_centers)
+
         self.events_per_year = (
             integration_after_transformation_in_roi
             * self.config["rate_multiplier"]
-            * self.config["fiducial_mass"]
-            / 1000
         )
         self.events_per_day = self.events_per_year / 365
 
@@ -134,6 +143,10 @@ class CESTemplateSource(HistogramPdfSource):
         ret = np.zeros(n_events, dtype=dtype)
         ret["ces"] = self._pdf_histogram.get_random(n_events)
         return ret
+    
+    def compute_pdf(self):
+        self.build_histogram()
+        Source.compute_pdf(self)
 
     def pdf(self, *args):
         # override the default interpolation method in blueice (RegularGridInterpolator)

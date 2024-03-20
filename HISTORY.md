@@ -1,3 +1,15 @@
+0.2.4 / 2024-03-18
+------------------
+* Point away from alea for physics models by @kdund in https://github.com/XENONnT/alea/pull/143
+* Make "piecewise" the default pdf interpolation by @hammannr in https://github.com/XENONnT/alea/pull/142
+* Enforce bins in config and template to match by @hammannr in https://github.com/XENONnT/alea/pull/144
+* Make model histograms accessible by @hammannr in https://github.com/XENONnT/alea/pull/140
+* Make local submitter verbose by @hammannr in https://github.com/XENONnT/alea/pull/146
+* Estimator of signal multiplier based on perturbation theory by @zihaoxu98 in https://github.com/XENONnT/alea/pull/147
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.3...v0.2.4
+
+
 0.2.3 / 2024-02-22
 ------------------
 * Improve check of already made toydata and output by @dachengx in https://github.com/XENONnT/alea/pull/128

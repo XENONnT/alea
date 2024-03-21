@@ -57,6 +57,15 @@ class ReadOnlyDict:
             "This dictionary is read-only, please initialize a new one in order to change it."
         )
 
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
 
 def evaluate_numpy_scipy_expression(value: str):
     """Evaluate numpy(np) and scipy.stats expression."""

@@ -7,9 +7,6 @@ from utilix import batchq
 from alea.submitter import Submitter
 
 
-
-
-
 class SubmitterSlurm(Submitter):
     """Submitter for slurm cluster, using utilix.batchq.submit_job. The default batchq arguments are
     defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
@@ -51,7 +48,7 @@ class SubmitterSlurm(Submitter):
     def _eval_partition(self):
         # automatically set default partition based on hostname
         hostname = socket.gethostname()
-        if 'midway3' in hostname:
+        if "midway3" in hostname:
             self.partition = "lgrandi"
             self.qos = "lgrandi"
             self.exclude_nodes = ""
@@ -59,7 +56,6 @@ class SubmitterSlurm(Submitter):
             self.partition = "xenon1t"
             self.qos = "xenon1t"
             self.exclude_nodes = "dali[028-030],midway2-0048"
-
 
     def _submit(self, job, **kwargs):
         """Submits job to batch queue which actually runs the analysis.

@@ -273,6 +273,10 @@ class Submitter:
                 f"{set(merged_args_list[0].keys()) & set(common_runner_args.keys())}."
             )
 
+        if self.debug:
+            print("\n\n" + f"Will submit {len(merged_args_list)} argument combinations:")
+            for merged_args in merged_args_list:
+                print(merged_args)
         for merged_args in tqdm(merged_args_list):
             runner_args = deepcopy(default_args)
             # update defaults with merged_args and common_runner_args

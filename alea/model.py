@@ -11,7 +11,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits, asymptotic_critical_value
+from alea.utils import within_limits, clip_limits, asymptotic_critical_value, ReadOnlyDict
 
 
 class StatisticalModel:
@@ -217,7 +217,9 @@ class StatisticalModel:
             metadata (dict, optional (default=None)): metadata to store with the data.
                 If None, no metadata is stored.
         """
-        if all([isinstance(d, dict) for d in data_list]):
+        if all([isinstance(d, dict) for d in data_list]) or all(
+            [isinstance(d, ReadOnlyDict) for d in data_list]
+        ):
             _data_list = [list(d.values()) for d in data_list]
         elif all([isinstance(d, list) for d in data_list]):
             _data_list = data_list

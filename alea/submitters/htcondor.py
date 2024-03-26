@@ -104,14 +104,15 @@ class SubmitterHTCondor(Submitter):
         # Local site: this is the submit host
         logger.debug("Defining local site")
         local = Site("local")
-        # Logs and pegasus output goes here
+        # Logs and pegasus output goes here. This place is called stash in OSG jargon.
         scratch_dir = Directory(
             Directory.SHARED_SCRATCH, path='{}/scratch/{}'.format(self.work_dir, self._wf_id)
         )
         scratch_dir.add_file_servers(
             FileServer('file:///{}/scratch/{}'.format(self.work_dir, self.wf_id), Operation.ALL)
         )
-        # Jobs outputs goes here
+        # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
+        # This place is called stash in OSG jargon.
         storage_dir = Directory(
             Directory.LOCAL_STORAGE, path='{}/outputs/{}'.format(self.work_dir, self.wf_id)
         )
@@ -133,6 +134,7 @@ class SubmitterHTCondor(Submitter):
 
         # Staging sites: for XENON it is physically at dCache in UChicago
         # You will be able to download results from there via gfal commands
+        logger.debug("Defining stagging site")
         staging_davs = Site("staging-davs")
         scratch_dir = Directory(
             Directory.SHARED_SCRATCH, path='/xenon/scratch/{}'.format(getpass.getuser())
@@ -144,18 +146,29 @@ class SubmitterHTCondor(Submitter):
         staging_davs.add_directories(scratch_dir)
 
         # Condorpool: These are the job nodes on grid
+        logger.debug("Defining condorpool")
         condorpool = Site("condorpool")
         condorpool.add_profiles(Namespace.PEGASUS, style='condor')
         condorpool.add_profiles(Namespace.CONDOR, universe='vanilla')
-        # We need the x509 proxy for Rucio transfers
-        # TODO: One day we might need rucio
-        #condorpool.add_profiles(Namespace.CONDOR, key='x509userproxy',
-        #                        value=os.environ['HOME'] + '/user_cert')
         condorpool.add_profiles(Namespace.CONDOR, key='+SingularityImage',
                                 value=f'"{self.singularity_image}"')
-
-
+        # Ignore the site settings, since the container will set all this up inside
+        condorpool.add_profiles(Namespace.ENV, OSG_LOCATION='')
+        condorpool.add_profiles(Namespace.ENV, GLOBUS_LOCATION='')
+        condorpool.add_profiles(Namespace.ENV, PYTHONPATH='')
+        condorpool.add_profiles(Namespace.ENV, PERL5LIB='')
+        condorpool.add_profiles(Namespace.ENV, LD_LIBRARY_PATH='')
+        condorpool.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ['USER'])
+        # TODO: One day we might need rucio
+        # We need the x509 proxy for Rucio transfers
+        #condorpool.add_profiles(Namespace.CONDOR, key='x509userproxy',
+        #                        value=os.environ['HOME'] + '/user_cert')
+        #condorpool.add_profiles(Namespace.ENV, RUCIO_LOGGING_FORMAT="%(asctime)s  %(levelname)s  %(message)s")
+        #condorpool.add_profiles(Namespace.ENV, RUCIO_ACCOUNT='production')
     
+        # Add the sites to the SiteCatalog
+        sc.add_sites(local, staging_davs, condorpool)
+
 
     def _generate_tc(self):
         raise NotImplementedError

@@ -1,5 +1,6 @@
 import subprocess
 import os
+import getpass
 import threading
 import tempfile
 import time
@@ -59,6 +60,7 @@ class SubmitterHTCondor(Submitter):
     def _validate_x509_proxy(self, min_valid_hours=20):
         """
         Ensure $HOME/user_cert exists and has enough time left. 
+        This is necessary only if you are going to use Rucio.
         """
         logger.debug('Verifying that the ~/user_cert proxy has enough lifetime')
         shell = Shell('grid-proxy-info -timeleft -file ~/user_cert')
@@ -99,7 +101,7 @@ class SubmitterHTCondor(Submitter):
     def _generate_sc(self):
         sc = SiteCatalog()
         
-        # Local site - this is the submit host
+        # Local site: this is the submit host
         logger.debug("Defining local site")
         local = Site("local")
         # Logs and pegasus output goes here
@@ -118,7 +120,39 @@ class SubmitterHTCondor(Submitter):
         )
         # Add scratch and storage directories to the local site
         local.add_directories(scratch_dir, storage_dir)
+        # Add profiles to the local site
+        local.add_profiles(Namespace.ENV, HOME=os.environ['HOME'])
+        local.add_profiles(Namespace.ENV, GLOBUS_LOCATION='')
+        local.add_profiles(Namespace.ENV, PATH='/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/bin:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/condabin:/usr/bin:/bin')
+        local.add_profiles(Namespace.ENV, LD_LIBRARY_PATH='/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib')
+        local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ['USER'])
+        # TODO: One day we might need rucio
+        #local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ['HOME'] + '/user_cert')
+        #local.add_profiles(Namespace.ENV, RUCIO_LOGGING_FORMAT="%(asctime)s  %(levelname)s  %(message)s")
+        #local.add_profiles(Namespace.ENV, RUCIO_ACCOUNT='production')
 
+        # Staging sites: for XENON it is physically at dCache in UChicago
+        # You will be able to download results from there via gfal commands
+        staging_davs = Site("staging-davs")
+        scratch_dir = Directory(
+            Directory.SHARED_SCRATCH, path='/xenon/scratch/{}'.format(getpass.getuser())
+        )
+        scratch_dir.add_file_servers(
+            FileServer('gsidavs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/{}'.format(getpass.getuser()), 
+                       Operation.ALL)
+        )
+        staging_davs.add_directories(scratch_dir)
+
+        # Condorpool: These are the job nodes on grid
+        condorpool = Site("condorpool")
+        condorpool.add_profiles(Namespace.PEGASUS, style='condor')
+        condorpool.add_profiles(Namespace.CONDOR, universe='vanilla')
+        # We need the x509 proxy for Rucio transfers
+        # TODO: One day we might need rucio
+        #condorpool.add_profiles(Namespace.CONDOR, key='x509userproxy',
+        #                        value=os.environ['HOME'] + '/user_cert')
+        condorpool.add_profiles(Namespace.CONDOR, key='+SingularityImage',
+                                value=f'"{self.singularity_image}"')
 
 
     

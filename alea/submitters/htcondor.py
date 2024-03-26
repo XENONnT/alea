@@ -6,11 +6,14 @@ import tempfile
 import time
 from alea.submitter import Submitter
 import logging
+from pathlib import Path
 from Pegasus.api import *
 from datetime import datetime
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = "/scratch/$USER/workflows"
+TOP_DIR = Path(__file__).resolve().parent
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +32,7 @@ class SubmitterHTCondor(Submitter):
         self.singularity_image = self.htcondor_configurations.pop("singularity_image", DEFAULT_IMAGE)
         self._initial_dir = os.getcwd()
         self.work_dir = WORK_DIR
+        self.top_dir = TOP_DIR
         self._setup_wf_id()
 
         # Job input configurations
@@ -95,10 +99,13 @@ class SubmitterHTCondor(Submitter):
 
         # write properties file to ./pegasus.properties
         props.write()
-        self._pegasus_properties = props
+        self.pegasus_properties = props
 
 
     def _generate_sc(self):
+        """
+        Generates the SiteCatalog for the workflow.
+        """
         sc = SiteCatalog()
         
         # Local site: this is the submit host
@@ -166,13 +173,32 @@ class SubmitterHTCondor(Submitter):
         #condorpool.add_profiles(Namespace.ENV, RUCIO_LOGGING_FORMAT="%(asctime)s  %(levelname)s  %(message)s")
         #condorpool.add_profiles(Namespace.ENV, RUCIO_ACCOUNT='production')
     
+        # TODO: not sure if we want to move the resource requirements here, or do it in job
+
         # Add the sites to the SiteCatalog
         sc.add_sites(local, staging_davs, condorpool)
+        return sc
 
 
     def _generate_tc(self):
-        raise NotImplementedError
-    
+        """
+        Generates the TransformationCatalog for the workflow.
+        """
+        run_toymc  = Transformation(
+            name="alea-run_toymc",
+            site="local",
+            pfn=TOP_DIR / "bin/alea-run_toymc",
+            is_stageable=True,
+            arch=Arch.X86_64 
+        ).add_pegasus_profile(clusters_size=1)
+
+        tc = TransformationCatalog()
+        tc.add_transformations(run_toymc)
+
+        # Write TransformationCatalog to ./transformations.yml
+        tc.write()
+        return tc
+
 
     def _generate_rc(self):
         raise NotImplementedError

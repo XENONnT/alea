@@ -19,6 +19,9 @@ class SubmitterHTCondor(Submitter):
         self.name = self.__class__.__name__
         self.htcondor_configurations = kwargs.get("slurm_configurations", {})
         self.template_path = self.htcondor_configurations.pop("template_path", None)
+        self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
+        self.request_memory = self.htcondor_configurations.pop("request_memory", "2 GB")
+        self.request_disk = self.htcondor_configurations.pop("request_disk", "2 GB")
         super().__init__(*args, **kwargs)
     
     def _validate_x509_proxy(self, min_valid_hours=20):
@@ -35,6 +38,12 @@ class SubmitterHTCondor(Submitter):
     def _generate_sc(self):
         raise NotImplementedError
     
+    def _generate_tc(self):
+        raise NotImplementedError
+    
+    def _generate_rc(self):
+        raise NotImplementedError
+
     def _generate_workflow(self):
         raise NotImplementedError
     

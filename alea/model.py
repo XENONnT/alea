@@ -551,6 +551,55 @@ class StatisticalModel:
         return statistical_model_class
 
 
+class CompoundStatisticalModel(StatisticalModel):
+    """Wrapper for creating a statistical model from a list of StatisticalModels
+    TODO: parameter overlap
+    TODO: likelihood name overlap
+
+
+    """
+
+    def __init__(
+        self,
+        model_list=[],
+        confidence_level: float = 0.9,
+        confidence_interval_kind: str = "central",  # one of central, upper, lower
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        asymptotic_dof: Optional[int] = 1,
+    ):
+        """Store stat model list
+        TODO: should we offer init service here?
+        """
+        self.model_list = model_list
+        self.is_data_set = all([m.is_data_set for m in self.model_list])
+        self._confidence_level = confidence_level
+        if confidence_interval_kind not in {"central", "upper", "lower"}:
+            raise ValueError("confidence_interval_kind must be one of central, upper, lower")
+        self._confidence_interval_kind = confidence_interval_kind
+        self.confidence_interval_threshold = confidence_interval_threshold
+        self.asymptotic_dof = asymptotic_dof
+
+        self.parameters = Parameters()
+        for m in self.model_list:
+            for k, par in m.parameters.parameters.items():
+                if k not in self.parameters.parameters:
+                    self.parameters.add_parameter(par)
+                else:
+                    assert self.parameters[k] == par
+
+    def _define_parameters(self, parameter_definition, nominal_values=None):
+        raise NotImplementedError("Is this needed for the compound?")
+
+    def generate_data(self, **kwargs):
+        ret = []
+        for m in self.model_list:
+            ret += m.generate_data(**kwargs)
+        return ret
+
+    def ll(self, **kwargs):
+        return sum([m.ll(**kwargs) for m in self.model_list])
+
+
 class MinuitWrap:
     """Wrapper for functions to be called by Minuit. Initialized with a function f and a Parameters
     instance.

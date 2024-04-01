@@ -593,11 +593,28 @@ class CompoundStatisticalModel(StatisticalModel):
     def generate_data(self, **kwargs):
         ret = []
         for m in self.model_list:
-            ret += m.generate_data(**kwargs)
+            ret.append(m.generate_data(**kwargs))
         return ret
 
     def ll(self, **kwargs):
         return sum([m.ll(**kwargs) for m in self.model_list])
+
+    @property
+    def data(self):
+        ret = []
+        for m in self.model_list:
+            ret.append(m.data)
+        return ret
+
+    @data.setter
+    def data(self, datas):
+        """Need to determine _how many_ of the datasets go to each?
+
+        Perhaps just skip for now and let each likelihood term write its own data-set?
+
+        """
+        for m, data in zip(self.model_list, datas):
+            m.data = data
 
 
 class MinuitWrap:

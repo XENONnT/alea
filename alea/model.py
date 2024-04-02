@@ -600,6 +600,14 @@ class CompoundStatisticalModel(StatisticalModel):
         return sum([m.ll(**kwargs) for m in self.model_list])
 
     @property
+    def is_data_set(self):
+        return all([m.is_data_set for m in self.model_list])
+
+    @is_data_set.setter
+    def is_data_set(self, override):
+        raise NotImplementedError("You must set the data for this boolean to be true")
+
+    @property
     def data(self):
         ret = []
         for m in self.model_list:

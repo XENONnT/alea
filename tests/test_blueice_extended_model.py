@@ -21,6 +21,7 @@ class TestBlueiceExtendedModel(TestCase):
         cls.configs = [
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
+            load_yaml("unbinned_wimp_statistical_model_index_fitting.yaml"),
         ]
         ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
         cls.n_likelihood_terms = ns
@@ -191,6 +192,33 @@ class TestBlueiceExtendedModel(TestCase):
 
             # check that fixing all parameters to nominal works
             fit_result_fixed, _ = model.fit(**model.parameters())
+            for p in model.parameters:
+                self.assertEqual(p.nominal_value, fit_result_fixed[p.name])
+
+    def test_index_fit(self):
+        """Test of the index_fit method."""
+        for model in self.models:
+            model.data = model.generate_data()
+            index = np.random.randint(0, len(model.data["source"]))
+            fit_result, max_llh = model.index_fit(index)
+
+            # check whether all parameters are in fit_result
+            self.assertEqual(set(model.parameters.names), set(fit_result.keys()))
+
+            # check that non-fittable parameters are not fitted
+            for p in model.parameters:
+                if not p.fittable:
+                    self.assertEqual(p.nominal_value, fit_result[p.name])
+
+            # check that values are in fit limits
+            for p in model.parameters:
+                p.value_in_fit_limits(fit_result[p.name])
+
+            # check that likelihood is maximized
+            self.assertEqual(max_llh, model.ll(**fit_result))
+
+            # check that fixing all parameters to nominal works
+            fit_result_fixed, _ = model.index_fit(index, **model.parameters())
             for p in model.parameters:
                 self.assertEqual(p.nominal_value, fit_result_fixed[p.name])
 

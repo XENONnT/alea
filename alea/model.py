@@ -391,7 +391,8 @@ class StatisticalModel:
             for var in index_names:
                 m.values[var] = index_grid[np.argmax(lls)][var]
 
-            # Calculating Hessian will update the validity of the fitting given the new index variables
+            # Calculating Hessian will update the validity of
+            # the fitting given the new index variables
             m.hesse()
             if m.valid:
                 break

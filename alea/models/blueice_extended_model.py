@@ -359,7 +359,10 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # set shape parameters
                 shape_parameters = [
-                    p for p in source["parameters"] if (self.parameters[p].ptype == "shape") or (self.parameters[p].ptype == "shape_index")
+                    p
+                    for p in source["parameters"]
+                    if (self.parameters[p].ptype == "shape")
+                    or (self.parameters[p].ptype == "shape_index")
                 ]
                 for p in shape_parameters:
                     anchors = self.parameters[p].blueice_anchors

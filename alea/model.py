@@ -307,7 +307,9 @@ class StatisticalModel:
         return cost
 
     @_needs_data
-    def fit(self, verbose=False, index_fitting=True, max_index_fitting_iter=10, **kwargs) -> Tuple[dict, float]:
+    def fit(
+        self, verbose=False, index_fitting=True, max_index_fitting_iter=10, **kwargs
+    ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
         optimization is a minimization, the likelihood returned is the __maximum__ of the
@@ -339,7 +341,11 @@ class StatisticalModel:
             m.fixed[par] = True
 
         # Get the index variables, which could have problem if simply using migrad
-        index_variables = [p for p in self.parameters.parameters.values() if "index" in p.ptype and p.name not in fixed_params]
+        index_variables = [
+            p
+            for p in self.parameters.parameters.values()
+            if "index" in p.ptype and p.name not in fixed_params
+        ]
 
         if (not index_fitting) or (len(index_variables) == 0):
             # Call migrad to do the actual minimization
@@ -347,7 +353,10 @@ class StatisticalModel:
         else:
             index_anchors = [var.blueice_anchors for var in index_variables]
             index_names = [var.name for var in index_variables]
-            index_grid = [{index_names[i]: anchor[i] for i in range(len(anchor))} for anchor in product(*index_anchors)]
+            index_grid = [
+                {index_names[i]: anchor[i] for i in range(len(anchor))}
+                for anchor in product(*index_anchors)
+            ]
 
             # We fix the index variables in migrad
             for par in index_names:
@@ -375,8 +384,10 @@ class StatisticalModel:
                     break
 
             if verbose and itr == max_index_fitting_iter - 1:
-                print("The index searching iteration times reached the maximum! "
-                      "The optimization could not converge!")
+                print(
+                    "The index searching iteration times reached the maximum! "
+                    "The optimization could not converge!"
+                )
 
         self.minuit_object = m
         if verbose:

@@ -344,7 +344,7 @@ class StatisticalModel:
         index_variables = [
             p
             for p in self.parameters.parameters.values()
-            if "index" in p.ptype and p.name not in fixed_params
+            if "index" in str(p.ptype) and p.name not in fixed_params
         ]
 
         if (not index_fitting) or (len(index_variables) == 0):

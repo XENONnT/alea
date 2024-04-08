@@ -292,7 +292,11 @@ class BlueiceExtendedModel(StatisticalModel):
                 for p in self.parameters
                 if (p.ptype == "shape") and (p.name not in source["parameters"])
             ]
-            parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "index") and (p.name not in source["parameters"])]
+            parameters_to_ignore += [
+                p.name
+                for p in self.parameters
+                if (p.ptype == "shape_index") and (p.name not in source["parameters"])
+            ]
             # no efficiency affects PDF:
             parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
             parameters_to_ignore += source.get("extra_dont_hash_settings", [])
@@ -355,7 +359,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # set shape parameters
                 shape_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"
+                    p for p in source["parameters"] if (self.parameters[p].ptype == "shape") or (self.parameters[p].ptype == "shape_index")
                 ]
                 for p in shape_parameters:
                     anchors = self.parameters[p].blueice_anchors
@@ -514,7 +518,7 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit", "index"]
+        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit", "shape_index"]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

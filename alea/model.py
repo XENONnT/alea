@@ -3,6 +3,7 @@ import warnings
 from pydoc import locate
 from copy import deepcopy
 from typing import List, Tuple, Callable, Optional, Union
+from itertools import product
 
 import numpy as np
 from scipy.optimize import brentq
@@ -306,7 +307,7 @@ class StatisticalModel:
         return cost
 
     @_needs_data
-    def fit(self, verbose=False, **kwargs) -> Tuple[dict, float]:
+    def fit(self, verbose=False, index_fitting=True, max_index_fitting_iter=10, **kwargs) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
         optimization is a minimization, the likelihood returned is the __maximum__ of the
@@ -337,8 +338,46 @@ class StatisticalModel:
         for par in fixed_params:
             m.fixed[par] = True
 
-        # Call migrad to do the actual minimization
-        m.migrad()
+        # Get the index variables, which could have problem if simply using migrad
+        index_variables = [p for p in self.parameters.parameters.values() if "index" in p.ptype and p.name not in fixed_params]
+
+        if (not index_fitting) or (len(index_variables) == 0):
+            # Call migrad to do the actual minimization
+            m.migrad()
+        else:
+            index_anchors = [var.blueice_anchors for var in index_variables]
+            index_names = [var.name for var in index_variables]
+            index_grid = [{index_names[i]: anchor[i] for i in range(len(anchor))} for anchor in product(*index_anchors)]
+
+            # We fix the index variables in migrad
+            for par in index_names:
+                m.fixed[par] = True
+
+            # We firstly do optimization on other parameters with index variables
+            # fixed to their initial guesses. Then we grid search over the index
+            # variables given the optimized parameters. We repeat the optimization
+            # and grid search until the optimization converges
+            for itr in range(max_index_fitting_iter):
+                m.migrad()
+
+                # Find the best-fit index variables
+                lls = np.zeros(len(index_grid))
+                for i in range(len(lls)):
+                    params = m.values.to_dict()
+                    params.update(index_grid[i])
+                    lls[i] = self.ll(**params)
+                for var in index_names:
+                    m.values[var] = index_grid[np.argmax(lls)][var]
+
+                # Calculating Hessian will update the validity of the fitting given the new index variables
+                m.hesse()
+                if m.valid:
+                    break
+
+            if verbose and itr == max_index_fitting_iter - 1:
+                print("The index searching iteration times reached the maximum! "
+                      "The optimization could not converge!")
+
         self.minuit_object = m
         if verbose:
             print(m)

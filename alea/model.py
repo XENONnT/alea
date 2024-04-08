@@ -596,6 +596,10 @@ class CompoundStatisticalModel(StatisticalModel):
         return ret
 
     def ll(self, **kwargs):
+        if not set(kwargs.keys()) <= set(self.parameters.names):
+            raise ValueError(
+                set(kwargs.keys()) - set(self.parameters.names), "are not parameters of the model!"
+            )
         ret = 0
         for m in self.model_list:
             mkwargs = {k: i for k, i in kwargs.items() if k in m.parameters.parameters.keys()}

@@ -287,24 +287,27 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # add all parameters to extra_dont_hash for each source unless it is used:
         for i, source in enumerate(config["sources"]):
-            parameters_to_ignore: List[str] = [
-                p.name
-                for p in self.parameters
-                if (p.ptype == "shape") and (p.name not in source["parameters"])
-            ]
-            parameters_to_ignore += [
-                p.name
-                for p in self.parameters
-                if (p.ptype == "shape_index") and (p.name not in source["parameters"])
-            ]
-            # no efficiency affects PDF:
-            parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
-            parameters_to_ignore += source.get("extra_dont_hash_settings", [])
-
+            parameters_to_ignore = self._get_parameters_to_ignore(source)
             # ignore all shape parameters known to this model not named specifically
             # in the source:
             blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
         return blueice_config
+
+    def _get_parameters_to_ignore(self, source):
+        parameters_to_ignore: List[str] = [
+            p.name
+            for p in self.parameters
+            if (p.ptype == "shape") and (p.name not in source["parameters"])
+        ]
+        parameters_to_ignore += [
+            p.name
+            for p in self.parameters
+            if (p.ptype == "shape_index") and (p.name not in source["parameters"])
+        ]
+        # no efficiency affects PDF:
+        parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+        parameters_to_ignore += source.get("extra_dont_hash_settings", [])
+        return parameters_to_ignore
 
     def _build_ll_from_config(
         self, likelihood_config: dict, template_path: Optional[str] = None

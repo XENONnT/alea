@@ -349,51 +349,59 @@ class StatisticalModel:
 
         if (not index_fitting) or (len(index_variables) == 0):
             # Call migrad to do the actual minimization
-            m.migrad()
+            m = self._migrad_fit(m)
         else:
-            index_anchors = [var.blueice_anchors for var in index_variables]
-            index_names = [var.name for var in index_variables]
-            index_grid = [
-                {index_names[i]: anchor[i] for i in range(len(anchor))}
-                for anchor in product(*index_anchors)
-            ]
-
-            # We fix the index variables in migrad
-            for par in index_names:
-                m.fixed[par] = True
-
-            # We firstly do optimization on other parameters with index variables
-            # fixed to their initial guesses. Then we grid search over the index
-            # variables given the optimized parameters. We repeat the optimization
-            # and grid search until the optimization converges
-            for itr in range(max_index_fitting_iter):
-                m.migrad()
-
-                # Find the best-fit index variables
-                lls = np.zeros(len(index_grid))
-                for i in range(len(lls)):
-                    params = m.values.to_dict()
-                    params.update(index_grid[i])
-                    lls[i] = self.ll(**params)
-                for var in index_names:
-                    m.values[var] = index_grid[np.argmax(lls)][var]
-
-                # Calculating Hessian will update the validity of the fitting given the new index variables
-                m.hesse()
-                if m.valid:
-                    break
-
-            if verbose and itr == max_index_fitting_iter - 1:
-                print(
-                    "The index searching iteration times reached the maximum! "
-                    "The optimization could not converge!"
-                )
+            m = self._migrad_index_mixing_fit(m, index_variables, max_index_fitting_iter, verbose)
 
         self.minuit_object = m
         if verbose:
             print(m)
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
+
+    def _migrad_fit(self, m):
+        m.migrad()
+        return m
+
+    def _migrad_index_mixing_fit(self, m, index_variables, max_index_fitting_iter, verbose):
+        index_anchors = [var.blueice_anchors for var in index_variables]
+        index_names = [var.name for var in index_variables]
+        index_grid = [
+            {index_names[i]: anchor[i] for i in range(len(anchor))}
+            for anchor in product(*index_anchors)
+        ]
+
+        # We fix the index variables in migrad
+        for par in index_names:
+            m.fixed[par] = True
+
+        # We firstly do optimization on other parameters with index variables
+        # fixed to their initial guesses. Then we grid search over the index
+        # variables given the optimized parameters. We repeat the optimization
+        # and grid search until the optimization converges
+        for itr in range(max_index_fitting_iter):
+            m.migrad()
+
+            # Find the best-fit index variables
+            lls = np.zeros(len(index_grid))
+            for i in range(len(lls)):
+                params = m.values.to_dict()
+                params.update(index_grid[i])
+                lls[i] = self.ll(**params)
+            for var in index_names:
+                m.values[var] = index_grid[np.argmax(lls)][var]
+
+            # Calculating Hessian will update the validity of the fitting given the new index variables
+            m.hesse()
+            if m.valid:
+                break
+
+        if verbose and itr == max_index_fitting_iter - 1:
+            print(
+                "The index searching iteration times reached the maximum! "
+                "The optimization could not converge!"
+            )
+        return m
 
     def _confidence_interval_checks(
         self,

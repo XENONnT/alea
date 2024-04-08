@@ -571,7 +571,6 @@ class CompoundStatisticalModel(StatisticalModel):
         TODO: should we offer init service here?
         """
         self.model_list = model_list
-        self.is_data_set = all([m.is_data_set for m in self.model_list])
         self._confidence_level = confidence_level
         if confidence_interval_kind not in {"central", "upper", "lower"}:
             raise ValueError("confidence_interval_kind must be one of central, upper, lower")
@@ -597,7 +596,11 @@ class CompoundStatisticalModel(StatisticalModel):
         return ret
 
     def ll(self, **kwargs):
-        return sum([m.ll(**kwargs) for m in self.model_list])
+        ret = 0
+        for m in self.model_list:
+            mkwargs = {k: i for k, i in kwargs.items() if k in m.parameters.parameters.keys()}
+            ret += m.ll(**mkwargs)
+        return ret
 
     @property
     def is_data_set(self):

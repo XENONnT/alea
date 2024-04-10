@@ -54,6 +54,7 @@ likelihood_config:
     - name: science_run
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      likelihood_config: {"morpher": "IndexMorpher"}
       analysis_space:
         - cs1: np.arange(0, 102, 2)
         - cs2: np.geomspace(100, 100000, 51)

@@ -677,11 +677,13 @@ def signal_multiplier_estimator(
 
 class IndexMorpher(Morpher):
     """IndexMorpher is a morpher which applies no interpolation."""
+
     def get_anchor_points(self, bounds, n_models=None):
         grid = [par.keys() for _, (par, _, _) in self.shape_parameters.items()]
         return list(product(*grid))
 
     def make_interpolator(self, f, extra_dims, anchor_models):
         return lambda z: f(anchor_models[tuple(z)])
+
 
 blueice.pdf_morphers.MORPHERS["IndexMorpher"] = IndexMorpher

@@ -9,7 +9,6 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_functions import Transformation
 
-
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
@@ -18,6 +17,11 @@ class CESTemplateSource(HistogramPdfSource):
             config["pdf_interpolation_method"] = "piecewise"
         super().__init__(config, *args, **kwargs)
         
+    def _load_true_histogram(self):
+        self.templatename = self.config["templatename"]
+        self.histname = self.config["histname"]
+        h = template_to_multihist(self.templatename, self.histname)
+        return h
 
     def _check_histogram(self, h: Hist1d):
         """
@@ -46,8 +50,8 @@ class CESTemplateSource(HistogramPdfSource):
                 f"The histogram edge ({histogram_min},{histogram_max}) \
                 does not contain the analysis space ({self.min_e},{self.max_e})"
             )
-
-    def create_transformation(
+    
+    def _create_transformation(
         self, transformation_type: Literal["efficiency", "smearing", "bias"]
     ):
         if self.config.get(f"apply_{transformation_type}", True):
@@ -78,30 +82,11 @@ class CESTemplateSource(HistogramPdfSource):
             )
         return None
 
-    def build_histogram(self):
-        """Build the histogram of the source.
-        It's always called during the initialization of the source.
-        So the attributes are set here.
-        """
-        print("Building histogram")
-        
-        self.ces_space = self.config["analysis_space"][0][1]
-        self.max_e = np.max(self.ces_space)
-        self.min_e = np.min(self.ces_space)
-        self.templatename = self.config["templatename"]
-        self.histname = self.config["histname"]
-        h = template_to_multihist(self.templatename, self.histname)
-        self._check_histogram(h)
-        # To avoid confusion, we always normalize the histogram, regardless of the bin volume
-        # So the unit is always events/year/keV, the rate multipliers are always in terms of that
-
-        total_integration = np.trapz(h.histogram, h.bin_centers)
-        h.histogram /= total_integration
-
+    def _transform_histogram(self, h: Hist1d):
         # Create transformations for efficiency, smearing, and bias
-        efficiency_transformation = self.create_transformation("efficiency")
-        smearing_transformation = self.create_transformation("smearing")
-        bias_transformation = self.create_transformation("bias")
+        efficiency_transformation = self._create_transformation("efficiency")
+        smearing_transformation = self._create_transformation("smearing")
+        bias_transformation = self._create_transformation("bias")
 
         # Apply the transformations to the histogram
         if efficiency_transformation is not None:
@@ -110,6 +95,18 @@ class CESTemplateSource(HistogramPdfSource):
             h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
             h = bias_transformation.apply_transformation(h)
+    
+    def _normalize_hitogram(self,h: Hist1d):
+        # To avoid confusion, we always normalize the histogram, regardless of the bin volume
+        # So the unit is always events/ton/year/keV, the rate multipliers are always in terms of that
+        self.ces_space = self.config["analysis_space"][0][1]
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+        total_integration = np.trapz(h.histogram, h.bin_centers)
+        h.histogram /= total_integration
+
+        # Apply the transformations to the histogram
+        self._transform_histogram(h)
 
         # Calculate the integration of the histogram after all transformations to estimate the event rate
         # And only from min_e to max_e
@@ -132,6 +129,17 @@ class CESTemplateSource(HistogramPdfSource):
 
         # For pdf, we need to normalize the histogram to 1 again
         h.histogram /= integration_after_transformation_in_roi
+        return h
+    
+    def build_histogram(self):
+        """Build the histogram of the source.
+        It's always called during the initialization of the source.
+        So the attributes are set here.
+        """
+        print("Building histogram")
+        h = self._load_true_histogram()
+        self._check_histogram(h)
+        h = self._normalize_histogram(h)
         self._pdf_histogram = h
         self.set_dtype()
 

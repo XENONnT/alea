@@ -4,6 +4,7 @@ import json
 import yaml
 import importlib_resources
 import itertools
+import blueice
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
@@ -12,6 +13,8 @@ from hashlib import sha256
 from base64 import b32encode
 from collections.abc import Mapping
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
+from blueice.pdf_morphers import Morpher
+from itertools import product
 
 import h5py
 import matplotlib.pyplot as plt
@@ -670,3 +673,15 @@ def signal_multiplier_estimator(
         plt.xlabel("Iteration")
         plt.ylabel("x")
     return x
+
+
+class IndexMorpher(Morpher):
+    """IndexMorpher is a morpher which applies no interpolation."""
+    def get_anchor_points(self, bounds, n_models=None):
+        grid = [par.keys() for _, (par, _, _) in self.shape_parameters.items()]
+        return list(product(*grid))
+
+    def make_interpolator(self, f, extra_dims, anchor_models):
+        return lambda z: f(anchor_models[tuple(z)])
+
+blueice.pdf_morphers.MORPHERS["IndexMorpher"] = IndexMorpher

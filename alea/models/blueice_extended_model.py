@@ -263,15 +263,15 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
-        blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
-        blueice_config["livetime_days"] = self.parameters[
-            blueice_config["livetime_parameter"]
+        pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        pdf_base_config["livetime_days"] = self.parameters[
+            pdf_base_config["livetime_parameter"]
         ].nominal_value
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters
             if p.ptype != "rate":
-                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+                pdf_base_config[p.name] = pdf_base_config.get(p.name, p.nominal_value)
 
         # sanity checks
         for source in config["sources"]:
@@ -290,7 +290,15 @@ class BlueiceExtendedModel(StatisticalModel):
             parameters_to_ignore = self._get_parameters_to_ignore(source)
             # ignore all shape parameters known to this model not named specifically
             # in the source:
-            blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+            pdf_base_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+
+        # get blueice likelihood_config if it's given
+        likelihood_config = config.get("likelihood_config", None)
+
+        blueice_config = {
+            "pdf_base_config": pdf_base_config,
+            "likelihood_config": likelihood_config,
+        }
         return blueice_config
 
     def _get_parameters_to_ignore(self, source):
@@ -334,7 +342,7 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")
-            ll = likelihood_class(blueice_config)
+            ll = likelihood_class(**blueice_config)
 
             for source in config["sources"]:
                 # set rate parameters

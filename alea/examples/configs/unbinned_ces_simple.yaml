@@ -6,7 +6,31 @@ parameter_definition:
     description: Livetime in day
 
   xe133_rate_multiplier:
-    nominal_value: 100000
+    nominal_value: 1000
+    ptype: rate
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    parameter_interval_bounds:
+      - 0
+      - 50
+    fit_guess: 1.0
+  
+  test_flat_rate_multiplier:
+    nominal_value: 1000
+    ptype: rate
+    fittable: ture
+    fit_limits:
+      - 0
+      - null
+    parameter_interval_bounds:
+      - 0 
+      - 50
+    fit_guess: 1.0
+
+  test_gaussian_rate_multiplier:
+    nominal_value: 1000
     ptype: rate
     fittable: true
     fit_limits:
@@ -77,5 +101,17 @@ likelihood_config:
           - smearing_a
           - smearing_b
         template_filename: xe133_template.ii.h5
-  
+      - name: test_flat
+        class: alea.ces_source.CESFlatSource
+        parameters:
+          - test_flat_rate_multiplier
+      - name: test_gaussian
+        class: alea.ces_source.CESGaussianSource
+        peak_energy: 1500
+        parameters:
+          - test_gaussian_rate_multiplier
+          - smearing_a
+          - smearing_b
+
+
 

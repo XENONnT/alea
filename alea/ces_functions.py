@@ -21,6 +21,35 @@ def energy_res(energy, a=25.8, b=1.429):
     # xenon:xenonnt:analysis:ntsciencerun0:g1g2_update#standard_gaussian_vs_skew-gaussian_yue
     return (np.sqrt(energy) * a + energy * b) / 100
 
+def smearing_mono_gaussian(
+    hist: Any,
+    smearing_a: float,
+    smearing_b: float,
+    peak_energy: float,
+    bins: Optional[Iterable[float]] = None,
+):
+    
+    if bins is None:
+        # create an emptyzero histogram with the same binning as the input histogram
+        data = stats.norm.pdf(
+                hist.bin_centers,
+                loc=peak_energy,
+                scale=energy_res(peak_energy, smearing_a, smearing_b))
+        hist_smeared = Hist1d(data = np.zeros_like(data), bins = hist.bin_edges)
+        hist_smeared.histogram = data
+    else:
+        # use the bins that set by the user
+        bins = np.array(bins)
+        bin_centers = 0.5 * (bins[1:] + bins[:-1])
+        data = stats.norm.pdf(
+                bin_centers,
+                loc=peak_energy,
+                scale=energy_res(peak_energy, smearing_a, smearing_b))
+        # create an empty histogram with the user-defined binning
+        hist_smeared = Hist1d(data=np.zeros_like(data), bins=bins)
+        hist_smeared.histogram = data
+        
+    return hist_smeared
 
 @validate_call
 def smearing_hist_gaussian(
@@ -241,6 +270,7 @@ MODELS: Dict[str, Dict[str, Callable]] = {
     "smearing": {
         "gaussian": smearing_hist_gaussian,
         "skew_gaussian": smearing_hist_skew_gaussian,
+        "mono_gaussian": smearing_mono_gaussian,
     },
     "bias": {"arctan": biasing_hist_arctan, "sigmoid": biasing_hist_sigmoid},
     "efficiency": {"constant": efficiency_hist_constant},

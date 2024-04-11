@@ -34,7 +34,7 @@ parameter_definition:
 
   er_band_shift:
     nominal_value: 0
-    ptype: shape_index
+    ptype: index
     uncertainty: null
     fittable: true
     blueice_anchors:

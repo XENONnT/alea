@@ -310,7 +310,7 @@ class BlueiceExtendedModel(StatisticalModel):
         parameters_to_ignore += [
             p.name
             for p in self.parameters
-            if (p.ptype == "shape_index") and (p.name not in source["parameters"])
+            if (p.ptype == "index") and (p.name not in source["parameters"])
         ]
         # no efficiency affects PDF:
         parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
@@ -373,7 +373,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     p
                     for p in source["parameters"]
                     if (self.parameters[p].ptype == "shape")
-                    or (self.parameters[p].ptype == "shape_index")
+                    or (self.parameters[p].ptype == "index")
                 ]
                 for p in shape_parameters:
                     anchors = self.parameters[p].blueice_anchors
@@ -532,7 +532,7 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit", "shape_index"]
+        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit", "index"]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

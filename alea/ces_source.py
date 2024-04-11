@@ -9,6 +9,8 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_functions import Transformation
 
+MINIMAL_ENERGY_RESOLUTION = 0.05
+
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
@@ -16,10 +18,15 @@ class CESTemplateSource(HistogramPdfSource):
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
         super().__init__(config, *args, **kwargs)
-        
-    def _load_true_histogram(self):
+
+    def _load_inputs(self):
+        self.ces_space = self.config["analysis_space"][0][1]
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
         self.templatename = self.config["templatename"]
         self.histname = self.config["histname"]
+        
+    def _load_true_histogram(self):
         h = template_to_multihist(self.templatename, self.histname)
         return h
 
@@ -27,14 +34,11 @@ class CESTemplateSource(HistogramPdfSource):
         """
         Check if the histogram has expected binning
         """
-        self.analysis_space = self.config["analysis_space"]
         # We only take 1d histogram in the ces axes
         if not isinstance(h, Hist1d):
             raise ValueError("Only Hist1d object is supported")
-        if len(self.analysis_space) != 1:
+        if self.ces_space.ndim != 1:
             raise ValueError("Only 1d analysis space is supported")
-        if self.analysis_space[0][0] != "ces":
-            raise ValueError("The analysis space must be ces")
         if np.min(h.histogram) < 0:
             raise AssertionError(
                 f"There are bins for source {self.templatename} with negative entries."
@@ -50,30 +54,34 @@ class CESTemplateSource(HistogramPdfSource):
                 f"The histogram edge ({histogram_min},{histogram_max}) \
                 does not contain the analysis space ({self.min_e},{self.max_e})"
             )
-    
+
     def _create_transformation(
         self, transformation_type: Literal["efficiency", "smearing", "bias"]
     ):
         if self.config.get(f"apply_{transformation_type}", True):
             parameters_key = f"{transformation_type}_parameters"
             model_key = f"{transformation_type}_model"
-            
+
             if model_key not in self.config:
                 raise ValueError(
                     f"{transformation_type.capitalize()} model is not provided"
                 )
-                
+
             if parameters_key not in self.config:
                 raise ValueError(
                     f"{transformation_type.capitalize()} parameters are not provided"
                 )
             else:
-                #print(self.config[parameters_key])
-                #combined_parameter_dict = {k:v for d in self.config[parameters_key] for k,v in d.items()}
                 # self.config[parameters_key] is a list showing the parameter names
                 parameter_list = self.config[parameters_key]
                 # to get the values we need to iterate over the list and use self.config.get
-                combined_parameter_dict = {k: self.config.get(k) for k in parameter_list}
+                combined_parameter_dict = {
+                    k: self.config.get(k) for k in parameter_list
+                }
+            
+            # Also take the peak_energy parameter if it is a mono smearing model
+            if "mono" in self.config[model_key]:
+                combined_parameter_dict["peak_energy"] = self.config["peak_energy"]
 
             return Transformation(
                 parameters=combined_parameter_dict,
@@ -95,18 +103,16 @@ class CESTemplateSource(HistogramPdfSource):
             h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
             h = bias_transformation.apply_transformation(h)
-    
-    def _normalize_hitogram(self,h: Hist1d):
+        return h
+
+    def _normalize_histogram(self, h: Hist1d):
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume
-        # So the unit is always events/ton/year/keV, the rate multipliers are always in terms of that
-        self.ces_space = self.config["analysis_space"][0][1]
-        self.max_e = np.max(self.ces_space)
-        self.min_e = np.min(self.ces_space)
-        total_integration = np.trapz(h.histogram, h.bin_centers)
+        # So the unit is always events/year/keV, the rate multipliers are always in terms of that
+        total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
-        self._transform_histogram(h)
+        h = self._transform_histogram(h)
 
         # Calculate the integration of the histogram after all transformations to estimate the event rate
         # And only from min_e to max_e
@@ -114,7 +120,7 @@ class CESTemplateSource(HistogramPdfSource):
         right_edges = h.bin_edges[1:]
         outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
         h.histogram[outside_index] = 0
-        
+
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
 
@@ -122,25 +128,25 @@ class CESTemplateSource(HistogramPdfSource):
         integration_after_transformation_in_roi = np.trapz(h.histogram, h.bin_centers)
 
         self.events_per_year = (
-            integration_after_transformation_in_roi
-            * self.config["rate_multiplier"]
+            integration_after_transformation_in_roi * self.config["rate_multiplier"]
         )
         self.events_per_day = self.events_per_year / 365
 
         # For pdf, we need to normalize the histogram to 1 again
         h.histogram /= integration_after_transformation_in_roi
         return h
-    
+
     def build_histogram(self):
         """Build the histogram of the source.
         It's always called during the initialization of the source.
         So the attributes are set here.
         """
         print("Building histogram")
-        h = self._load_true_histogram()
+        self._load_inputs()
+        h = self._load_true_histogram()      
         self._check_histogram(h)
         h = self._normalize_histogram(h)
-        self._pdf_histogram = h
+        self._pdf_histogram = h 
         self.set_dtype()
 
     def simulate(self, n_events: int):
@@ -151,7 +157,7 @@ class CESTemplateSource(HistogramPdfSource):
         ret = np.zeros(n_events, dtype=dtype)
         ret["ces"] = self._pdf_histogram.get_random(n_events)
         return ret
-    
+
     def compute_pdf(self):
         self.build_histogram()
         Source.compute_pdf(self)
@@ -188,9 +194,55 @@ class CESTemplateSource(HistogramPdfSource):
             raise NotImplementedError(
                 "PDF Interpolation method %s not implemented" % method
             )
+
     def set_dtype(self):
         self.dtype = [
             ("ces", float),
             ("source", int),
         ]
+
+class CESGaussianSource(CESTemplateSource):
+    def _load_inputs(self):
+        self.ces_space = self.config["analysis_space"][0][1]
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+        self.mu = self.config["peak_energy"]
+    def _load_true_histogram(self):
+        number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
+        h = Hist1d(
+            data=np.repeat(self.mu, 1),
+            bins=number_of_bins,
+            range=(self.min_e, self.max_e),
+        )
+        h.histogram = h.histogram.astype(np.float64)
+        self.config["smearing_model"] = "mono_" + self.config["smearing_model"]
+        return h
     
+    
+class CESFlatSource(CESTemplateSource):
+    def _load_inputs(self):
+        self.ces_space = self.config["analysis_space"][0][1]
+        self.max_e = np.max(self.ces_space)
+        self.min_e = np.min(self.ces_space)
+    def _load_true_histogram(self):
+        number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
+        h = Hist1d(data=np.linspace(self.min_e, self.max_e, number_of_bins))
+        h.histogram = h.histogram.astype(np.float64)
+        return h
+
+    # The histogram is already normalized within the analysis space during the production
+    def _normalize_histogram(self, h: Hist1d):
+        total_integration = np.sum(h.histogram * h.bin_volumes())
+        h.histogram /= total_integration
+        self._bin_volumes = h.bin_volumes()
+        self._n_events_histogram = h.similar_blank_histogram()
+        self.events_per_year = self.config["rate_multiplier"]
+        self.events_per_day = self.events_per_year / 365
+        return h
+
+    def _transform_histogram(self, h: Hist1d):
+        # Only efficiency is applicable for flat source
+        efficiency_transformation = self._create_transformation("efficiency")
+
+        if efficiency_transformation is not None:
+            h = efficiency_transformation.apply_transformation(h)

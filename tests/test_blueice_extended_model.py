@@ -124,12 +124,22 @@ class TestBlueiceExtendedModel(TestCase):
             for key, summed_val in summed_vals.items():
                 self.assertEqual(summed_val, vals_total[key])
 
+    def test_store_data(self):
+        """Test of the generate_data method."""
+        for model, n in zip(self.models, self.n_likelihood_terms):
+            data = model.generate_data()
+            model.data = data
+            data_list_of_dict = [data]
+            data_list_of_ordereddict = [model.data]
+            data_list_of_list = [[data[k] for k in data.keys()]]
+            for d in [data_list_of_dict, data_list_of_ordereddict, data_list_of_list]:
+                model.store_data(self.toydata_filename, d)
+                remove(self.toydata_filename)
+
     def test_generate_data(self):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            model.store_data(self.toydata_filename, [data])
-            remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
             if not (("ancillary" in data) and ("generate_values" in data)):
                 raise ValueError("Data does not contain ancillary and generate_values.")
@@ -239,3 +249,19 @@ class TestBlueiceExtendedModel(TestCase):
             # check that invalid likelihood names fail
             with self.assertRaises(ValueError):
                 model.get_source_histograms("alea_iacta_est")
+
+    def test_sorted_returns(self):
+        """Test if sources are sorted in the same way for all return dicts."""
+        for model in self.models:
+            mus_per_ll = model.get_expectation_values(per_likelihood_term=True)
+            mus = model.get_expectation_values()
+            hist_per_ll = {}
+            for ll_name in model.likelihood_names[:-1]:
+                hist_per_ll[ll_name] = model.get_source_histograms(ll_name)
+            # check that keys are the same for each SR
+            for ll_name in model.likelihood_names[:-1]:
+                self.assertEqual(mus_per_ll[ll_name].keys(), hist_per_ll[ll_name].keys())
+            # check that global keys are the same
+            all_keys = {v for d in mus_per_ll.values() for v in d.keys()}
+            all_keys = sorted(all_keys)
+            self.assertEqual(all_keys, sorted(mus.keys()))

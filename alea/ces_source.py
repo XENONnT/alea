@@ -201,7 +201,7 @@ class CESTemplateSource(HistogramPdfSource):
             ("source", int),
         ]
 
-class CESGaussianSource(CESTemplateSource):
+class CESMonoenergySource(CESTemplateSource):
     def _load_inputs(self):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)

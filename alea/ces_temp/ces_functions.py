@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator, validate_call, ConfigDict
+from pydantic import BaseModel, validator
 from typing import List, Dict, Optional, Union, Any, Literal, Callable, Iterable
 import numpy as np
 from scipy import stats
@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 import numba
 from multihist import Hist1d
+from alea.ces_temp.ceseff import shaped_efficiency
 
 
 def energy_res(energy, a=25.8, b=1.429):
@@ -51,7 +52,6 @@ def smearing_mono_gaussian(
         
     return hist_smeared
 
-@validate_call
 def smearing_hist_gaussian(
     hist: Any,
     smearing_a: float,
@@ -199,7 +199,6 @@ def _smear_skew_array(e_true_s, rates, bin_volumes, bins, sa, sp, wa, wb):
     return smeared
 
 
-@validate_call
 def smearing_hist_skew_gaussian(
     hist: Any, sa: float, sp: float, wa: float, wb: float, bins=None
 ):
@@ -223,7 +222,6 @@ def smearing_hist_skew_gaussian(
     return hist_smeared
 
 
-@validate_call
 def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     """
     Apply a constant bias to a histogram
@@ -240,7 +238,6 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     return h_bias
 
 
-@validate_call
 def biasing_hist_sigmoid(hist: Any, A: float =0.0513, k: float =0.0247):
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
@@ -252,7 +249,6 @@ def biasing_hist_sigmoid(hist: Any, A: float =0.0513, k: float =0.0247):
     return h_bias
 
 
-@validate_call
 def efficiency_hist_constant(hist: Any, efficiency: float):
     """
     Apply a constant efficiency to a histogram
@@ -263,8 +259,18 @@ def efficiency_hist_constant(hist: Any, efficiency: float):
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     assert 0 <= efficiency <= 1, "Efficiency must be between 0 and 1"
-    return hist * efficiency
+    hist.histogram = hist.histogram * efficiency
+    return hist
 
+def efficiency_shaped_sr0(hist: Any, eff_shaper: float):
+    """
+    Apply a shaped efficiency to a histogram. 
+    The values are determined by the shaped_efficiency function in nton.lower.ceseff
+    """
+    assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
+    newhist = deepcopy(hist)
+    newhist.histogram = newhist.histogram * shaped_efficiency(newhist.bin_centers, a=eff_shaper)
+    return newhist
 
 MODELS: Dict[str, Dict[str, Callable]] = {
     "smearing": {
@@ -273,7 +279,8 @@ MODELS: Dict[str, Dict[str, Callable]] = {
         "mono_gaussian": smearing_mono_gaussian,
     },
     "bias": {"arctan": biasing_hist_arctan, "sigmoid": biasing_hist_sigmoid},
-    "efficiency": {"constant": efficiency_hist_constant},
+    "efficiency": {"constant": efficiency_hist_constant,
+                   "shaped_sr0": efficiency_shaped_sr0},
 }
 
 

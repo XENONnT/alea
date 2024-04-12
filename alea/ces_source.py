@@ -7,9 +7,10 @@ from blueice import HistogramPdfSource, Source
 from blueice.exceptions import PDFNotComputedException
 
 from multihist import Hist1d
-from alea.ces_functions import Transformation
+from alea.ces_temp.ces_functions import Transformation
 
 MINIMAL_ENERGY_RESOLUTION = 0.05
+
 
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
@@ -25,7 +26,7 @@ class CESTemplateSource(HistogramPdfSource):
         self.min_e = np.min(self.ces_space)
         self.templatename = self.config["templatename"]
         self.histname = self.config["histname"]
-        
+
     def _load_true_histogram(self):
         h = template_to_multihist(self.templatename, self.histname)
         return h
@@ -78,7 +79,7 @@ class CESTemplateSource(HistogramPdfSource):
                 combined_parameter_dict = {
                     k: self.config.get(k) for k in parameter_list
                 }
-            
+
             # Also take the peak_energy parameter if it is a mono smearing model
             if "mono" in self.config[model_key]:
                 combined_parameter_dict["peak_energy"] = self.config["peak_energy"]
@@ -125,7 +126,7 @@ class CESTemplateSource(HistogramPdfSource):
         self._n_events_histogram = h.similar_blank_histogram()
 
         # Note that it already does what "fraction_in_roi" does in the old code. So no need to calculate that again
-        integration_after_transformation_in_roi = np.trapz(h.histogram, h.bin_centers)
+        integration_after_transformation_in_roi = np.sum(h.histogram * h.bin_volumes())
 
         self.events_per_year = (
             integration_after_transformation_in_roi * self.config["rate_multiplier"]
@@ -143,10 +144,10 @@ class CESTemplateSource(HistogramPdfSource):
         """
         print("Building histogram")
         self._load_inputs()
-        h = self._load_true_histogram()      
+        h = self._load_true_histogram()
         self._check_histogram(h)
         h = self._normalize_histogram(h)
-        self._pdf_histogram = h 
+        self._pdf_histogram = h
         self.set_dtype()
 
     def simulate(self, n_events: int):
@@ -201,12 +202,14 @@ class CESTemplateSource(HistogramPdfSource):
             ("source", int),
         ]
 
+
 class CESMonoenergySource(CESTemplateSource):
     def _load_inputs(self):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         self.mu = self.config["peak_energy"]
+
     def _load_true_histogram(self):
         number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
@@ -217,27 +220,22 @@ class CESMonoenergySource(CESTemplateSource):
         h.histogram = h.histogram.astype(np.float64)
         self.config["smearing_model"] = "mono_" + self.config["smearing_model"]
         return h
-    
-    
+
+
 class CESFlatSource(CESTemplateSource):
     def _load_inputs(self):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
+
     def _load_true_histogram(self):
         number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
-        h = Hist1d(data=np.linspace(self.min_e, self.max_e, number_of_bins))
+        h = Hist1d(
+            data=np.linspace(self.min_e, self.max_e, number_of_bins),
+            bins=number_of_bins,ß
+            range=(self.min_e, self.max_e),
+        )
         h.histogram = h.histogram.astype(np.float64)
-        return h
-
-    # The histogram is already normalized within the analysis space during the production
-    def _normalize_histogram(self, h: Hist1d):
-        total_integration = np.sum(h.histogram * h.bin_volumes())
-        h.histogram /= total_integration
-        self._bin_volumes = h.bin_volumes()
-        self._n_events_histogram = h.similar_blank_histogram()
-        self.events_per_year = self.config["rate_multiplier"]
-        self.events_per_day = self.events_per_year / 365
         return h
 
     def _transform_histogram(self, h: Hist1d):
@@ -246,3 +244,4 @@ class CESFlatSource(CESTemplateSource):
 
         if efficiency_transformation is not None:
             h = efficiency_transformation.apply_transformation(h)
+        return h

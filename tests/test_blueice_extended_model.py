@@ -21,6 +21,7 @@ class TestBlueiceExtendedModel(TestCase):
         cls.configs = [
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
+            load_yaml("unbinned_wimp_statistical_model_index_fitting.yaml"),
         ]
         ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
         cls.n_likelihood_terms = ns

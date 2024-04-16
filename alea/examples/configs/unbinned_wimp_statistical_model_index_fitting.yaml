@@ -1,0 +1,79 @@
+parameter_definition:
+  wimp_mass:
+    nominal_value: 50
+    fittable: false
+    description: WIMP mass in GeV/c^2
+
+  livetime:
+    nominal_value: 2.
+    ptype: livetime
+    fittable: false
+    description: Livetime in years
+
+  wimp_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    parameter_interval_bounds:
+      - 0
+      - 50
+
+  er_rate_multiplier:
+    nominal_value: 1.0
+    ptype: rate
+    uncertainty: 0.2
+    relative_uncertainty: true
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    fit_guess: 1.0
+
+  er_band_shift:
+    nominal_value: 0
+    ptype: index
+    uncertainty: null
+    fittable: true
+    blueice_anchors:
+      - -2
+      - -1
+      - 0
+      - 1
+      - 2
+    fit_limits:
+      - -2
+      - 2
+    description: ER band shape parameter (shifts the ER band up and down)
+
+likelihood_config:
+  template_folder: null  # will try to find the templates in alea
+  likelihood_terms:
+    - name: science_run
+      default_source_class: alea.template_source.TemplateSource
+      likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
+      likelihood_config: {"morpher": "IndexMorpher"}
+      analysis_space:
+        - cs1: np.arange(0, 102, 2)
+        - cs2: np.geomspace(100, 100000, 51)
+      in_events_per_bin: true
+      livetime_parameter: livetime
+      slice_args: {}
+      sources:
+      - name: er
+        histname: er_template
+        parameters:
+          - er_rate_multiplier
+          - er_band_shift
+        named_parameters:
+          - er_band_shift
+        template_filename: er_template_{er_band_shift}.ii.h5
+
+      - name: wimp
+        histname: wimp_template
+        parameters:
+          - wimp_rate_multiplier
+          - wimp_mass
+        template_filename: wimp50gev_template.ii.h5

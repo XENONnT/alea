@@ -92,7 +92,7 @@ class TestRunner(TestCase):
             kwonlyargs,
             kwonlydefaults,
             annotations,
-        ) = inspect.getfullargspec(Runner.__init__)
+        ) = inspect.getfullargspec(Runner.single_init)
         if (len(annotations) != len(args[1:])) or (len(defaults) != len(args[1:])):
             raise ValueError(
                 "The number of annotations and defaults of Runner.__init__ must be the same!"

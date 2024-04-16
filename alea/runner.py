@@ -114,7 +114,7 @@ class Runner:
         raise NotImplementedError("statistical_model must be string or list of strings")
 
     @__init__.register
-    def _(
+    def single_init(
         self,
         statistical_model: str = "alea.examples.gaussian_model.GaussianModel",
         poi: str = "mu",
@@ -211,7 +211,7 @@ class Runner:
         )
 
     @__init__.register
-    def _(
+    def multiple_init(
         self,
         statistical_models: list,
         poi: str = "mu",

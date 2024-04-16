@@ -28,7 +28,7 @@ class CESTemplateSource(HistogramPdfSource):
         self.histname = self.config["histname"]
 
     def _load_true_histogram(self):
-        h = template_to_multihist(self.templatename, self.histname)
+        h = template_to_multihist(self.templatename, self.histname, hist_to_read=Hist1d)
         return h
 
     def _check_histogram(self, h: Hist1d):
@@ -73,7 +73,6 @@ class CESTemplateSource(HistogramPdfSource):
                     f"{transformation_type.capitalize()} parameters are not provided"
                 )
             else:
-                # self.config[parameters_key] is a list showing the parameter names
                 parameter_list = self.config[parameters_key]
                 # to get the values we need to iterate over the list and use self.config.get
                 combined_parameter_dict = {
@@ -134,8 +133,7 @@ class CESTemplateSource(HistogramPdfSource):
         self.events_per_day = self.events_per_year / 365
 
         # For pdf, we need to normalize the histogram to 1 again
-        h.histogram /= integration_after_transformation_in_roi
-        return h
+        return h, integration_after_transformation_in_roi
 
     def build_histogram(self):
         """Build the histogram of the source.
@@ -146,8 +144,10 @@ class CESTemplateSource(HistogramPdfSource):
         self._load_inputs()
         h = self._load_true_histogram()
         self._check_histogram(h)
-        h = self._normalize_histogram(h)
-        self._pdf_histogram = h
+        h, frac_in_roi = self._normalize_histogram(h)
+        h_pdf = h
+        h_pdf /= frac_in_roi
+        self._pdf_histogram = h_pdf
         self.set_dtype()
 
     def simulate(self, n_events: int):
@@ -232,7 +232,7 @@ class CESFlatSource(CESTemplateSource):
         number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
             data=np.linspace(self.min_e, self.max_e, number_of_bins),
-            bins=number_of_bins,ß
+            bins=number_of_bins,
             range=(self.min_e, self.max_e),
         )
         h.histogram = h.histogram.astype(np.float64)

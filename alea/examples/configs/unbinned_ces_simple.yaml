@@ -106,7 +106,7 @@ likelihood_config:
           - test_flat_rate_multiplier
       - name: test_gaussian
         class: alea.ces_source.CESMonoenergySource
-        peak_energy: 1500
+        peak_energy: 100
         parameters:
           - test_gaussian_rate_multiplier
           - smearing_a

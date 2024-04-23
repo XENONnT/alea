@@ -263,15 +263,15 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
-        blueice_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
-        blueice_config["livetime_days"] = self.parameters[
-            blueice_config["livetime_parameter"]
+        pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        pdf_base_config["livetime_days"] = self.parameters[
+            pdf_base_config["livetime_parameter"]
         ].nominal_value
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters
             if p.ptype != "rate":
-                blueice_config[p.name] = blueice_config.get(p.name, p.nominal_value)
+                pdf_base_config[p.name] = pdf_base_config.get(p.name, p.nominal_value)
 
         # sanity checks
         for source in config["sources"]:
@@ -287,19 +287,30 @@ class BlueiceExtendedModel(StatisticalModel):
 
         # add all parameters to extra_dont_hash for each source unless it is used:
         for i, source in enumerate(config["sources"]):
-            parameters_to_ignore: List[str] = [
-                p.name
-                for p in self.parameters
-                if (p.ptype == "shape") and (p.name not in source["parameters"])
-            ]
-            # no efficiency affects PDF:
-            parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
-            parameters_to_ignore += source.get("extra_dont_hash_settings", [])
-
+            parameters_to_ignore = self._get_parameters_to_ignore(source)
             # ignore all shape parameters known to this model not named specifically
             # in the source:
-            blueice_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+            pdf_base_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+
+        # get blueice likelihood_config if it's given
+        likelihood_config = config.get("likelihood_config", None)
+
+        blueice_config = {
+            "pdf_base_config": pdf_base_config,
+            "likelihood_config": likelihood_config,
+        }
         return blueice_config
+
+    def _get_parameters_to_ignore(self, source):
+        parameters_to_ignore: List[str] = [
+            p.name
+            for p in self.parameters
+            if (p.ptype in ["shape", "index"]) and (p.name not in source["parameters"])
+        ]
+        # no efficiency affects PDF:
+        parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+        parameters_to_ignore += source.get("extra_dont_hash_settings", [])
+        return parameters_to_ignore
 
     def _build_ll_from_config(
         self, likelihood_config: dict, template_path: Optional[str] = None
@@ -326,7 +337,7 @@ class BlueiceExtendedModel(StatisticalModel):
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")
-            ll = likelihood_class(blueice_config)
+            ll = likelihood_class(**blueice_config)
 
             for source in config["sources"]:
                 # set rate parameters
@@ -354,7 +365,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
                 # set shape parameters
                 shape_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].ptype == "shape"
+                    p
+                    for p in source["parameters"]
+                    if self.parameters[p].ptype in ["shape", "index"]
                 ]
                 for p in shape_parameters:
                     anchors = self.parameters[p].blueice_anchors
@@ -513,7 +526,7 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "efficiency", "livetime", "needs_reinit"]
+        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

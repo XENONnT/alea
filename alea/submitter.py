@@ -583,7 +583,18 @@ class Submitter:
                 the arguments of Runner.__init__.
 
         """
-        signatures = inspect.signature(Runner.__init__)
+        if sys_argv is None:
+            signatures = inspect.signature(Runner.single_init)
+        elif ("--statistical_model" in sys_argv) and ("--statistical_models" in sys_argv):
+            raise ValueError("you must provide either statistical_model or statistical_models")
+        elif "--statistical_model" in sys_argv:
+            signatures = inspect.signature(Runner.single_init)
+        elif "--statistical_models" in sys_argv:
+            signatures = inspect.signature(Runner.multiple_init)
+        else:
+            raise ValueError("you must provide either statistical_model or statistical_models")
+
+
         args = list(signatures.parameters.keys())[1:]
         parser = ArgumentParser(description="Command line running of alea-run_toymc")
 

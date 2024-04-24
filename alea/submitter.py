@@ -594,7 +594,6 @@ class Submitter:
         else:
             raise ValueError("you must provide either statistical_model or statistical_models")
 
-
         args = list(signatures.parameters.keys())[1:]
         parser = ArgumentParser(description="Command line running of alea-run_toymc")
 

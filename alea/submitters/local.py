@@ -50,7 +50,9 @@ class SubmitterLocal(Submitter):
         if pop_limit_threshold:
             kwargs["statistical_model_args"].pop("limit_threshold", None)
         if "statistical_model" in kwargs and "statistical_models" in kwargs:
-            raise ValueError("you must provide either statistical_model or statistical_models not both")
+            raise ValueError(
+                "you must provide either statistical_model or statistical_models not both"
+            )
         statistical_model = kwargs.pop("statistical_model", None)
         statistical_model = kwargs.pop("statistical_models", statistical_model)
         runner = Runner(statistical_model, **kwargs)

@@ -5,7 +5,8 @@ from alea.submitter import Submitter
 
 def main():
     kwargs = Submitter.runner_kwargs_from_script()
-    runner = Runner(**kwargs)
+    statistical_model = kwargs.pop("statistical_model")
+    runner = Runner(statistical_model, **kwargs)
     runner.run()
 
 

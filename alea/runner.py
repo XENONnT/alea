@@ -139,6 +139,8 @@ class Runner:
     ):
         """Initialize statistical model, parameters list, and generate values list."""
 
+        self.initialiser = self.single_init
+
         statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
         # if statistical_model_config is provided
@@ -249,6 +251,7 @@ class Runner:
                 in particular, any neyman threshold
         """
         print("hello! we are overriding the runner!", statistical_models)
+        self.initialiser = self.multiple_init
 
         statistical_model_classes = [
             StatisticalModel.get_model_from_name(sm) for sm in statistical_models
@@ -402,10 +405,21 @@ class Runner:
         self._hypotheses = values
 
     @staticmethod
-    def runner_arguments():
-        """Get runner arguments and annotations."""
+    def runner_arguments(model_type: str):
+        """Get runner arguments and annotations.
+
+        args:
+            model_type (str): either single or combined
+
+        """
         # find run toyMC default args and annotations:
         # reference: https://docs.python.org/3/library/inspect.html#inspect.getfullargspec
+        if model_type == "single":
+            initialiser = Runner.single_init
+        elif model_type == "combined":
+            initialiser = Runner.multiple_init
+        else:
+            raise ValueError("argument must be one of single, combined")
         (
             args,
             varargs,
@@ -414,7 +428,7 @@ class Runner:
             kwonlyargs,
             kwonlydefaults,
             annotations,
-        ) = inspect.getfullargspec(Runner.__init__)
+        ) = inspect.getfullargspec(initialiser)
         # skip the first one because it is self(Runner itself)
         default_args = dict(zip(args[1:], defaults))
         return args, default_args, annotations

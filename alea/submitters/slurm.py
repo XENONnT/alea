@@ -30,7 +30,7 @@ class SubmitterSlurm(Submitter):
         self._eval_partition()
         # suggested default arguments for utilix.batchq.submit_job
         # for XENONnT collaboration
-        BATCHQ_DEFAULT_ARGUMENTS = {
+        batchq_default_arguments = {
             "hours": 1,  # in the unit of hours
             "mem_per_cpu": 2000,  # in the unit of Mb
             "container": "xenonnt-development.simg",
@@ -40,7 +40,7 @@ class SubmitterSlurm(Submitter):
             "exclude_nodes": self.exclude_nodes,
         }
 
-        self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
+        self.batchq_arguments = {**batchq_default_arguments, **self.slurm_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
         self.log_dir = self.outputfolder
@@ -51,11 +51,13 @@ class SubmitterSlurm(Submitter):
         if "midway3" in hostname:
             self.partition = "lgrandi"
             self.qos = "lgrandi"
-            self.exclude_nodes = ""
-        else:
+            self.exclude_nodes = "null"
+        elif "midway2" in hostname or "dali" in hostname:
             self.partition = "xenon1t"
             self.qos = "xenon1t"
             self.exclude_nodes = "dali[028-030],midway2-0048"
+        else:
+            raise ValueError(f"Unknown hostname: {hostname}, please specify partition, qos, and exclude_nodes explicitly.")
 
     def _submit(self, job, **kwargs):
         """Submits job to batch queue which actually runs the analysis.

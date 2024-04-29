@@ -40,7 +40,10 @@ class SubmitterSlurm(Submitter):
             "exclude_nodes": self.exclude_nodes,
         }
 
-        self.batchq_arguments = {**batchq_default_arguments, **self.slurm_configurations}
+        self.batchq_arguments = {
+            **batchq_default_arguments,
+            **self.slurm_configurations,
+        }
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
         self.log_dir = self.outputfolder
@@ -57,7 +60,10 @@ class SubmitterSlurm(Submitter):
             self.qos = "xenon1t"
             self.exclude_nodes = "dali[028-030],midway2-0048"
         else:
-            raise ValueError(f"Unknown hostname: {hostname}, please specify partition, qos, and exclude_nodes explicitly.")
+            raise ValueError(
+                f"Unknown hostname: {hostname},"
+                f"please specify partition, qos, and exclude_nodes explicitly."
+            )
 
     def _submit(self, job, **kwargs):
         """Submits job to batch queue which actually runs the analysis.
@@ -87,7 +93,9 @@ class SubmitterSlurm(Submitter):
             kwargs.pop(kw)
 
         self.logging.debug(f"Submitting the following job: '{job}'")
-        batchq.submit_job(job, jobname=jobname, log=log, **{**self.batchq_arguments, **kwargs})
+        batchq.submit_job(
+            job, jobname=jobname, log=log, **{**self.batchq_arguments, **kwargs}
+        )
 
     def _check_batchq_arguments(self):
         """Check if the self.batchq_arguments are valid."""
@@ -108,7 +116,9 @@ class SubmitterSlurm(Submitter):
         """
         _jobname = kwargs.pop("jobname", self.name.lower())
         batchq_kwargs = {}
-        for job, (script, last_output_filename) in enumerate(self.combined_tickets_generator()):
+        for job, (script, last_output_filename) in enumerate(
+            self.combined_tickets_generator()
+        ):
             if self.debug:
                 print(script)
                 if job > 0:
@@ -118,6 +128,10 @@ class SubmitterSlurm(Submitter):
                 time.sleep(30)
             batchq_kwargs["jobname"] = f"{_jobname}_{job:03d}"
             if last_output_filename is not None:
-                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{last_output_filename}.log")
-            self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
+                batchq_kwargs["log"] = os.path.join(
+                    self.log_dir, f"{last_output_filename}.log"
+                )
+            self.logging.debug(
+                f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}."
+            )
             self._submit(script, **batchq_kwargs)

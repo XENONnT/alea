@@ -57,7 +57,9 @@ class SubmitterSlurm(Submitter):
             self.qos = "xenon1t"
             self.exclude_nodes = "dali[028-030],midway2-0048"
         else:
-            raise ValueError(f"Unknown hostname: {hostname}, please specify partition, qos, and exclude_nodes explicitly.")
+            raise ValueError(
+                f"Unknown hostname: {hostname}, please specify partition, qos, and exclude_nodes explicitly."
+            )
 
     def _submit(self, job, **kwargs):
         """Submits job to batch queue which actually runs the analysis.

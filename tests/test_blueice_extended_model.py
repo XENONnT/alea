@@ -21,6 +21,7 @@ class TestBlueiceExtendedModel(TestCase):
         cls.configs = [
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
+            load_yaml("unbinned_wimp_statistical_model_index_fitting.yaml"),
         ]
         ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
         cls.n_likelihood_terms = ns
@@ -124,12 +125,22 @@ class TestBlueiceExtendedModel(TestCase):
             for key, summed_val in summed_vals.items():
                 self.assertEqual(summed_val, vals_total[key])
 
+    def test_store_data(self):
+        """Test of the generate_data method."""
+        for model, n in zip(self.models, self.n_likelihood_terms):
+            data = model.generate_data()
+            model.data = data
+            data_list_of_dict = [data]
+            data_list_of_ordereddict = [model.data]
+            data_list_of_list = [[data[k] for k in data.keys()]]
+            for d in [data_list_of_dict, data_list_of_ordereddict, data_list_of_list]:
+                model.store_data(self.toydata_filename, d)
+                remove(self.toydata_filename)
+
     def test_generate_data(self):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            model.store_data(self.toydata_filename, [data])
-            remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
             if not (("ancillary" in data) and ("generate_values" in data)):
                 raise ValueError("Data does not contain ancillary and generate_values.")

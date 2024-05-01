@@ -56,7 +56,7 @@ def smearing_hist_gaussian(
     hist: Any,
     smearing_a: float,
     smearing_b: float,
-    bins: Optional[Iterable[float]] = None,
+    bins: Optional[np.ndarray] = None,
 ):
     """Smear a histogram. This allows for non-uniform histogram binning.
 
@@ -68,6 +68,8 @@ def smearing_hist_gaussian(
     if bins is None:
         # set the bins to the bin edges of the input histogram
         bins = hist.bin_edges
+    elif bins.size <= 1:
+        raise ValueError("bins must have at least 2 elements")
     bins = np.array(bins)
 
     e_true_s, rates, bin_volumes = hist.bin_centers, hist.histogram, hist.bin_volumes()

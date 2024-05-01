@@ -7,11 +7,10 @@ from multihist import Hist1d
 
 
 def energy_res(energy, a=25.8, b=1.429):
-    """
-    Return energy resolution in keV.
+    """Return energy resolution in keV.
 
-    :param energy: true energy in keV
-    :return: energy resolution in keV
+    :param energy: true energy in keV :return: energy resolution in keV
+
     """
     # Reference for the values of a,b:
     # xenon:xenonnt:analysis:ntsciencerun0:g1g2_update#standard_gaussian_vs_skew-gaussian_yue
@@ -57,12 +56,11 @@ def smearing_hist_gaussian(
     smearing_b: float,
     bins: Optional[Iterable[float]] = None,
 ):
-    """
-    Smear a histogram. This allows for non-uniform histogram binning.
+    """Smear a histogram. This allows for non-uniform histogram binning.
 
-    :param hist: the spectrum we want to smear
-    :param bins: bin edges of the returned spectrum
+    :param hist: the spectrum we want to smear :param bins: bin edges of the returned spectrum
     :return: smeared histogram in the same unit as input spectrum
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
@@ -96,12 +94,11 @@ def smearing_hist_gaussian(
 
 
 def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
-    """
-    Apply a constant bias to a histogram
+    """Apply a constant bias to a histogram.
 
-    :param hist: the spectrum we want to apply the bias to
-    :param bias: the bias to apply to the spectrum
-    :return: the spectrum with the bias applied
+    :param hist: the spectrum we want to apply the bias to :param bias: the bias to apply to the
+    spectrum :return: the spectrum with the bias applied
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
@@ -112,12 +109,11 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
 
 
 def efficiency_hist_constant(hist: Any, efficiency: float):
-    """
-    Apply a constant efficiency to a histogram
+    """Apply a constant efficiency to a histogram.
 
-    :param hist: the spectrum we want to apply the efficiency to
-    :param efficiency: the efficiency to apply to the spectrum
-    :return: the spectrum with the efficiency applied
+    :param hist: the spectrum we want to apply the efficiency to :param efficiency: the efficiency
+    to apply to the spectrum :return: the spectrum with the efficiency applied
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     assert 0 <= efficiency <= 1, "Efficiency must be between 0 and 1"

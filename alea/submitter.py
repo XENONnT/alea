@@ -124,9 +124,7 @@ class Submitter:
             )
 
         # Initialize the statistical model
-        statistical_model_class = StatisticalModel.get_model_from_name(
-            self.statistical_model
-        )
+        statistical_model_class = StatisticalModel.get_model_from_name(self.statistical_model)
         self.model = statistical_model_class.from_config(
             self.statistical_model_config, template_path=self.template_path
         )
@@ -198,9 +196,7 @@ class Submitter:
             return "{:.4f}".format(value)
         elif can_assign_to_typing(bool, annotation):
             return str(value)
-        elif can_assign_to_typing(dict, annotation) or can_assign_to_typing(
-            list, annotation
-        ):
+        elif can_assign_to_typing(dict, annotation) or can_assign_to_typing(list, annotation):
             # the replacement is needed because the json.dumps adds spaces
             return dumps(value).replace(" ", "")
         else:
@@ -236,12 +232,8 @@ class Submitter:
             elif value == "False":
                 return False
             else:
-                raise ValueError(
-                    f"Unknown value type: {value}, it can only be True or False"
-                )
-        elif can_assign_to_typing(dict, annotation) or can_assign_to_typing(
-            list, annotation
-        ):
+                raise ValueError(f"Unknown value type: {value}, it can only be True or False")
+        elif can_assign_to_typing(dict, annotation) or can_assign_to_typing(list, annotation):
             # the replacement is needed because the json.dumps adds spaces
             return loads(value)
         else:
@@ -267,9 +259,7 @@ class Submitter:
                 )
             )
 
-        merged_args_list = compute_variations(
-            to_zip=to_zip, to_vary=to_vary, in_common=in_common
-        )
+        merged_args_list = compute_variations(to_zip=to_zip, to_vary=to_vary, in_common=in_common)
 
         common_runner_args = {
             "statistical_model": self.statistical_model,
@@ -285,9 +275,7 @@ class Submitter:
             )
 
         if self.debug:
-            print(
-                "\n\n" + f"Will submit {len(merged_args_list)} argument combinations:"
-            )
+            print("\n\n" + f"Will submit {len(merged_args_list)} argument combinations:")
             for merged_args in merged_args_list:
                 print(merged_args)
         for merged_args in tqdm(merged_args_list):
@@ -394,16 +382,12 @@ class Submitter:
                 "toydata_filename should be provided when toydata_mode is generate_and_store."
             )
         if (not only_toydata) and (output_filename is None):
-            raise ValueError(
-                "output_filename should be provided when only_toydata is False."
-            )
+            raise ValueError("output_filename should be provided when only_toydata is False.")
 
         is_done = True
         if self.resubmit or (self.computation == "threshold"):
             is_done = False
-        if (toydata_mode == "generate_and_store") and (
-            not os.path.exists(toydata_filename)
-        ):
+        if (toydata_mode == "generate_and_store") and (not os.path.exists(toydata_filename)):
             is_done = False
         if (not only_toydata) and (not os.path.exists(output_filename)):
             is_done = False
@@ -452,9 +436,7 @@ class Submitter:
 
         """
         if "n_mc" not in runner_args:
-            logging.warn(
-                "n_mc is not provided, it will be set to the default value of Runner"
-            )
+            logging.warn("n_mc is not provided, it will be set to the default value of Runner")
             return
         if "n_batch" in runner_args:
             if runner_args["n_mc"] % runner_args["n_batch"] != 0:
@@ -466,9 +448,7 @@ class Submitter:
         for f in ["output_filename", "toydata_filename"]:
             if (f in runner_args) and (runner_args[f] is not None):
                 if ("n_batch" in runner_args) and (runner_args["n_batch"] != 1):
-                    runner_args[f] = os.path.join(
-                        outputfolder, add_i_batch(runner_args[f])
-                    )
+                    runner_args[f] = os.path.join(outputfolder, add_i_batch(runner_args[f]))
                 else:
                     runner_args[f] = os.path.join(outputfolder, runner_args[f])
 
@@ -505,22 +485,12 @@ class Submitter:
                 f"should be a subset of the fittable parameters "
                 f"{parameters_fittable} in the statistical model."
             )
-        if not all(
-            [
-                isinstance(v, (float, int))
-                for v in runner_args["generate_values"].values()
-            ]
-        ):
+        if not all([isinstance(v, (float, int)) for v in runner_args["generate_values"].values()]):
             raise ValueError(
                 f"The generate_values {runner_args['generate_values']} "
                 "should be all float or int."
             )
-        if not all(
-            [
-                isinstance(v, (float, int))
-                for v in runner_args["nominal_values"].values()
-            ]
-        ):
+        if not all([isinstance(v, (float, int)) for v in runner_args["nominal_values"].values()]):
             raise ValueError(
                 f"The nominal_values {runner_args['nominal_values']} should be all float or int."
             )
@@ -562,9 +532,7 @@ class Submitter:
     @staticmethod
     def check_redunant_arguments(runner_args, allowed_special_args: List[str] = []):
         signatures = inspect.signature(Runner.__init__)
-        args = (
-            list(signatures.parameters.keys())[1:] + ["n_batch"] + allowed_special_args
-        )
+        args = list(signatures.parameters.keys())[1:] + ["n_batch"] + allowed_special_args
         intended_args = set(runner_args.keys())
         allowed_args = set(args)
         if not intended_args.issubset(allowed_args):
@@ -577,9 +545,7 @@ class Submitter:
 
     def submit(self, *arg, **kwargs):
         """Submit the jobs to the destinations."""
-        raise NotImplementedError(
-            "You must write a submit function your submitter class"
-        )
+        raise NotImplementedError("You must write a submit function your submitter class")
 
     def all_runner_kwargs(self):
         """Parse all the runner arguments from the submission script."""
@@ -610,11 +576,5 @@ class Submitter:
         parsed_args = parser.parse_args(args=sys_argv)
         kwargs = {}
         for arg, value in parsed_args.__dict__.items():
-            kwargs.update(
-                {
-                    arg: Submitter.str_to_arg(
-                        value, signatures.parameters[arg].annotation
-                    )
-                }
-            )
+            kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
         return kwargs

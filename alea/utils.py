@@ -140,9 +140,7 @@ def adapt_likelihood_config_for_blueice(
     if "default_source_class" in likelihood_config_copy:
         default_source_class = locate(likelihood_config_copy["default_source_class"])
         if default_source_class is None:
-            raise ValueError(
-                f"Could not find {likelihood_config_copy['default_source_class']}!"
-            )
+            raise ValueError(f"Could not find {likelihood_config_copy['default_source_class']}!")
         likelihood_config_copy["default_source_class"] = default_source_class
 
     for source in likelihood_config_copy["sources"]:
@@ -195,9 +193,7 @@ def _package_path(sub_directory):
     return importlib_resources.files("alea") / sub_directory
 
 
-def formatted_to_asterisked(
-    formatted, wildcards: Optional[Union[str, List[str]]] = None
-):
+def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):
     """Convert formatted string to asterisk Sometimes a parameter(usually shape parameter) is not
     specified in formatted string, this function replace the parameter with asterisk.
 
@@ -287,9 +283,7 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
     raise RuntimeError(f"Can not find {fname}, please check your file system")
 
 
-def get_template_folder_list(
-    likelihood_config, extra_template_path: Optional[str] = None
-):
+def get_template_folder_list(likelihood_config, extra_template_path: Optional[str] = None):
     """Get a list of template_folder from likelihood_config."""
     if "template_folder" not in likelihood_config:
         # return empty list if template_folder is not specified
@@ -301,9 +295,7 @@ def get_template_folder_list(
     elif likelihood_config["template_folder"] is None:
         template_folder_list = []
     else:
-        raise ValueError(
-            "template_folder must be either a string or a list of strings."
-        )
+        raise ValueError("template_folder must be either a string or a list of strings.")
     # Add extra_template_path to the end of template_folder_list
     if extra_template_path is not None:
         template_folder_list.append(extra_template_path)
@@ -516,9 +508,7 @@ def convert_variations(variations: dict, iteration) -> list:
         if not isinstance(v, list):
             raise ValueError(f"variations {k} must be a list, not {v} with {type(v)}")
         variations[k] = expand_grid_dict(v)
-    result = [
-        dict(zip(variations, deepcopy(t))) for t in iteration(*variations.values())
-    ]
+    result = [dict(zip(variations, deepcopy(t))) for t in iteration(*variations.values())]
     if result:
         return result
     else:
@@ -593,8 +583,7 @@ def compute_variations(to_zip, to_vary, in_common) -> list:
     varied = convert_to_vary(to_vary=to_vary)
 
     combined = [
-        {**convert_to_in_common(in_common), **v, **z}
-        for z, v in itertools.product(zipped, varied)
+        {**convert_to_in_common(in_common), **v, **z} for z, v in itertools.product(zipped, varied)
     ]
     return combined
 
@@ -659,9 +648,7 @@ def signal_multiplier_estimator(
     """
     mask = (signal > 0) | (background > 0)
     if np.any(data[~mask] > 0):
-        raise ValueError(
-            "Data has non-zero values where signal and background is zero."
-        )
+        raise ValueError("Data has non-zero values where signal and background is zero.")
 
     sig = signal[mask].ravel()
     bkg = background[mask].ravel()

@@ -16,9 +16,7 @@ class TestParameters(TestCase):
 
     def test_from_list(self):
         """Test of the from_list method."""
-        only_name_parameters = Parameters.from_list(
-            self.config["parameter_definition"].keys()
-        )
+        only_name_parameters = Parameters.from_list(self.config["parameter_definition"].keys())
         # it is false because only names are assigned
         self.assertFalse(only_name_parameters == self.parameters)
 
@@ -26,9 +24,7 @@ class TestParameters(TestCase):
         """Test of the __repr__ method."""
         for p in self.parameters:
             if not isinstance(repr(p), str):
-                raise ValueError(
-                    "The __repr__ method does not return the correct string."
-                )
+                raise ValueError("The __repr__ method does not return the correct string.")
         if not isinstance(repr(self.parameters), str):
             raise TypeError("The __repr__ method does not return a string.")
 

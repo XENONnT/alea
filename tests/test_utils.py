@@ -37,20 +37,14 @@ class TestUtils(TestCase):
     def test_formatted_to_asterisked(self):
         """Test of the formatted_to_asterisked function."""
         self.assertEqual(formatted_to_asterisked("a_{a:.2f}_b_{b:d}"), "a_*_b_*")
-        self.assertEqual(
-            formatted_to_asterisked("a_{a:.2f}_b_{b:d}", wildcards="a"), "a_*_b_{b:d}"
-        )
+        self.assertEqual(formatted_to_asterisked("a_{a:.2f}_b_{b:d}", wildcards="a"), "a_*_b_{b:d}")
 
     def test_asymptotic_critical_value(self):
         """Test of the asymptotic_critical_value function."""
         confidence_level = 0.9
         critical_value = chi2(1).isf(2 * (1.0 - confidence_level))
-        self.assertEqual(
-            asymptotic_critical_value("lower", confidence_level), critical_value
-        )
-        self.assertEqual(
-            asymptotic_critical_value("upper", confidence_level), critical_value
-        )
+        self.assertEqual(asymptotic_critical_value("lower", confidence_level), critical_value)
+        self.assertEqual(asymptotic_critical_value("upper", confidence_level), critical_value)
         with self.assertRaises(ValueError):
             asymptotic_critical_value("invalid", confidence_level)
         with self.assertRaises(ValueError):
@@ -120,6 +114,4 @@ class TestUtils(TestCase):
         )
         data = (bkg + sig * 1e-1).get_random(size=np.random.poisson(bkg.n))
         data = mh.Histdd(*data.T, bins=bkg.bin_edges)
-        signal_multiplier_estimator(
-            sig.histogram, bkg.histogram, data.histogram, diagnostic=True
-        )
+        signal_multiplier_estimator(sig.histogram, bkg.histogram, data.histogram, diagnostic=True)

@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Union, Literal
+from typing import Dict, Literal
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -45,9 +45,7 @@ class CESTemplateSource(HistogramPdfSource):
                 f"There are bins for source {self.templatename} with negative entries."
             )
 
-        # check if the histogram contains the analysis space. The range of histogram should be larger
-        # than the analysis space. The min and max of the histogram should be smaller/larger than the
-        # min/max of the analysis space
+        # check if the histogram contains the analysis space.
         histogram_max = np.max(h.bin_edges)
         histogram_min = np.min(h.bin_edges)
         if self.min_e < histogram_min or self.max_e > histogram_max:
@@ -114,8 +112,8 @@ class CESTemplateSource(HistogramPdfSource):
         # Apply the transformations to the histogram
         h = self._transform_histogram(h)
 
-        # Calculate the integration of the histogram after all transformations to estimate the event rate
-        # And only from min_e to max_e
+        # Calculate the integration of the histogram after all transformations
+        # Only from min_e to max_e
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
         outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
@@ -124,7 +122,8 @@ class CESTemplateSource(HistogramPdfSource):
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
 
-        # Note that it already does what "fraction_in_roi" does in the old code. So no need to calculate that again
+        # Note that it already does what "fraction_in_roi" does in the old code
+        # So no need to do again
         integration_after_transformation_in_roi = np.sum(h.histogram * h.bin_volumes())
 
         self.events_per_year = (
@@ -180,9 +179,6 @@ class CESTemplateSource(HistogramPdfSource):
                     self._pdf_histogram.bin_centers,
                     self._pdf_histogram.histogram,
                 )
-            # The interpolator works only within the bin centers region: clip the input data to that.
-            # Assuming you've cut the data to the analysis space first (which you should have!)
-            # this is equivalent to assuming constant density in the outer half of boundary bins
             bcs = self._pdf_histogram.bin_centers
             clipped_data = np.clip(args, bcs.min(), bcs.max())
 

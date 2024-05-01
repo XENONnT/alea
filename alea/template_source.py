@@ -103,15 +103,11 @@ class TemplateSource(HistogramPdfSource):
 
     def build_histogram(self):
         """Build the histogram of the source."""
-        templatename = self.config["templatename"].format(
-            **self.format_named_parameters
-        )
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
         histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
         if np.min(h.histogram) < 0:
-            raise AssertionError(
-                f"There are bins for source {templatename} with negative entries."
-            )
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
 
         if self.config.get("normalise_template", False):
             h /= h.n
@@ -160,9 +156,7 @@ class TemplateSource(HistogramPdfSource):
             slice_axis = sa["slice_axis"]
             sum_axis = sa.get("sum_axis", False)
             bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
-            slice_axis_limits = sa.get(
-                "slice_axis_limits", [bin_edges[0], bin_edges[-1]]
-            )
+            slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
 
             # slice and/or sum over axis
             if sum_axis:
@@ -272,17 +266,11 @@ class CombinedSource(TemplateSource):
         # Check if all the necessary parameters, like weights are specified
         if "weight_names" not in self.config:
             raise ValueError("weight_names must be specified")
-        find_weight = [
-            weight_name in self.config for weight_name in self.config["weight_names"]
-        ]
+        find_weight = [weight_name in self.config for weight_name in self.config["weight_names"]]
         if not all(find_weight):
             missing_weight = self.config["weight_names"][find_weight]
-            raise ValueError(
-                f"All weight_names must be specified, but {missing_weight} are not. "
-            )
-        weights = [
-            self.config[weight_name] for weight_name in self.config["weight_names"]
-        ]
+            raise ValueError(f"All weight_names must be specified, but {missing_weight} are not. ")
+        weights = [self.config[weight_name] for weight_name in self.config["weight_names"]]
         histnames = self.config["histnames"]
         templatenames = self.config["templatenames"]
         if len(histnames) != len(templatenames):
@@ -302,9 +290,7 @@ class CombinedSource(TemplateSource):
 
         histograms = []
         slice_fractions = []
-        for histname, templatename, slice_args in zip(
-            histnames, templatenames, slice_argss
-        ):
+        for histname, templatename, slice_args in zip(histnames, templatenames, slice_argss):
             templatename = templatename.format(**self.format_named_parameters)
             histname = histname.format(**self.format_named_parameters)
             h = template_to_multihist(templatename, histname)
@@ -342,14 +328,10 @@ class CombinedSource(TemplateSource):
 
         # Set pdf values that are below 0 to zero:
         if np.min(h.histogram) < 0:
-            raise AssertionError(
-                f"There are bins for source {templatename} with negative entries."
-            )
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
         # Fix the bin sizes
         if can_check_binning:
-            histogram_info = (
-                f"combined template {histnames} in hdf5 file {templatenames}"
-            )
+            histogram_info = f"combined template {histnames} in hdf5 file {templatenames}"
             self._check_binning(h, histogram_info)
 
         self.set_dtype()
@@ -394,9 +376,7 @@ class SpectrumTemplateSource(TemplateSource):
 
     def build_histogram(self):
         """Build the histogram of the source."""
-        templatename = self.config["templatename"].format(
-            **self.format_named_parameters
-        )
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
         histname = self.config["histname"].format(**self.format_named_parameters)
         h = template_to_multihist(templatename, histname)
 
@@ -414,14 +394,10 @@ class SpectrumTemplateSource(TemplateSource):
         bin_centers = h.bin_centers(axis=axis)
         slices = [None] * h.histogram.ndim
         slices[axis] = slice(None)
-        h.histogram = (
-            h.histogram * (spectrum(bin_centers) * np.diff(bin_edges))[tuple(slices)]
-        )
+        h.histogram = h.histogram * (spectrum(bin_centers) * np.diff(bin_edges))[tuple(slices)]
 
         if np.min(h.histogram) < 0:
-            raise AssertionError(
-                f"There are bins for source {templatename} with negative entries."
-            )
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
 
         if self.config.get("normalise_template", False):
             h /= h.n

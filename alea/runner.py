@@ -97,9 +97,7 @@ class Runner:
         """Initialize statistical model, parameters list, and generate values list."""
         self.poi = poi
 
-        statistical_model_class = StatisticalModel.get_model_from_name(
-            statistical_model
-        )
+        statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
         # if statistical_model_config is provided
         # overwrite parameter_definition and likelihood_config
@@ -155,17 +153,15 @@ class Runner:
         # find confidence_interval_thresholds function for the hypotheses
         from alea.submitters.local import NeymanConstructor
 
-        self.confidence_interval_thresholds = (
-            NeymanConstructor.get_confidence_interval_thresholds(
-                self.poi,
-                self._hypotheses_values,
-                statistical_model_args.get("limit_threshold", None),
-                nominal_values,
-                confidence_interval_kind,
-                confidence_level,
-                statistical_model_args.get("limit_threshold_interpolation", False),
-                statistical_model_args.get("asymptotic_dof", 1),
-            )
+        self.confidence_interval_thresholds = NeymanConstructor.get_confidence_interval_thresholds(
+            self.poi,
+            self._hypotheses_values,
+            statistical_model_args.get("limit_threshold", None),
+            nominal_values,
+            confidence_interval_kind,
+            confidence_level,
+            statistical_model_args.get("limit_threshold_interpolation", False),
+            statistical_model_args.get("asymptotic_dof", 1),
         )
 
     def pre_process_poi(self, value, attribute_name):
@@ -343,9 +339,7 @@ class Runner:
                 h.update(hypothesis)
 
             if not all([isinstance(v, (float, int)) for v in h.values()]):
-                raise ValueError(
-                    f"hypothesis should be a dict of float! But {h} is provided."
-                )
+                raise ValueError(f"hypothesis should be a dict of float! But {h} is provided.")
             hypotheses_values.append(h)
 
         # check if the length of hypotheses and hypotheses_values are the same
@@ -439,10 +433,7 @@ class Runner:
             toydata_names = None
         # generate toydata
         for i_mc in range(self._n_mc):
-            if (
-                self._toydata_mode == "generate"
-                or self._toydata_mode == "generate_and_store"
-            ):
+            if self._toydata_mode == "generate" or self._toydata_mode == "generate_and_store":
                 # generate toydata
                 data = self.model.generate_data(**self.generate_values)
                 # set fit guesses as generate values
@@ -472,10 +463,7 @@ class Runner:
         Todo:
             Implement per-hypothesis switching on whether to compute confidence intervals
         """
-        results = [
-            np.zeros(self._n_mc, dtype=self._result_dtype)
-            for _ in self._hypotheses_values
-        ]
+        results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):
             self.model.data = data
             fit_results = []
@@ -484,9 +472,7 @@ class Runner:
                 fit_result["ll"] = max_llh
                 fit_result["valid_fit"] = self.model.minuit_object.valid
 
-                if self._compute_confidence_interval and (
-                    self.poi not in hypothesis_values
-                ):
+                if self._compute_confidence_interval and (self.poi not in hypothesis_values):
                     # hypothesis_values should only be a fittable subset of parameters
                     non_fittable = set(hypothesis_values.keys()) - set(
                         self.model.parameters.fittable
@@ -503,9 +489,7 @@ class Runner:
                         poi_name=self.poi,
                         best_fit_args=self._hypotheses_values[0],
                         confidence_interval_args=hypothesis_values,
-                        confidence_interval_threshold=self.confidence_interval_thresholds[
-                            i_hypo
-                        ],
+                        confidence_interval_threshold=self.confidence_interval_thresholds[i_hypo],
                     )
                 else:
                     dl, ul = np.nan, np.nan

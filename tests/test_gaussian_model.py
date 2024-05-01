@@ -30,9 +30,7 @@ class TestGaussianModel(TestCase):
     @classmethod
     def setUp(cls):
         """Initialise the GaussianModel instance."""
-        cls.model = GaussianModel(
-            parameter_definition=gaussian_model_parameter_definition
-        )
+        cls.model = GaussianModel(parameter_definition=gaussian_model_parameter_definition)
 
     def test_data_generation(self):
         """Test generation of data."""

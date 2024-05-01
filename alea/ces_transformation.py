@@ -22,7 +22,7 @@ def smearing_mono_gaussian(
     smearing_a: float,
     smearing_b: float,
     peak_energy: float,
-    bins: Optional[Iterable[float]] = None,
+    bins: Optional[np.ndarray] = None,
 ):
 
     if bins is None:

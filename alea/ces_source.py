@@ -7,7 +7,7 @@ from blueice import HistogramPdfSource, Source
 from blueice.exceptions import PDFNotComputedException
 
 from multihist import Hist1d
-from alea.ces_temp.ces_functions import Transformation
+from alea.ces_transformation import Transformation
 
 MINIMAL_ENERGY_RESOLUTION = 0.05
 

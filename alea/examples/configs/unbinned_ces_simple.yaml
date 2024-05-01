@@ -16,7 +16,7 @@ parameter_definition:
       - 0
       - 50
     fit_guess: 1.0
-  
+
   test_flat_rate_multiplier:
     nominal_value: 1000
     ptype: rate
@@ -25,7 +25,7 @@ parameter_definition:
       - 0
       - null
     parameter_interval_bounds:
-      - 0 
+      - 0
       - 50
     fit_guess: 1.0
 
@@ -111,6 +111,3 @@ likelihood_config:
           - test_gaussian_rate_multiplier
           - smearing_a
           - smearing_b
-
-
-

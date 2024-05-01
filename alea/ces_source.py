@@ -32,9 +32,7 @@ class CESTemplateSource(HistogramPdfSource):
         return h
 
     def _check_histogram(self, h: Hist1d):
-        """
-        Check if the histogram has expected binning
-        """
+        """Check if the histogram has expected binning."""
         # We only take 1d histogram in the ces axes
         if not isinstance(h, Hist1d):
             raise ValueError("Only Hist1d object is supported")
@@ -64,20 +62,14 @@ class CESTemplateSource(HistogramPdfSource):
             model_key = f"{transformation_type}_model"
 
             if model_key not in self.config:
-                raise ValueError(
-                    f"{transformation_type.capitalize()} model is not provided"
-                )
+                raise ValueError(f"{transformation_type.capitalize()} model is not provided")
 
             if parameters_key not in self.config:
-                raise ValueError(
-                    f"{transformation_type.capitalize()} parameters are not provided"
-                )
+                raise ValueError(f"{transformation_type.capitalize()} parameters are not provided")
             else:
                 parameter_list = self.config[parameters_key]
                 # to get the values we need to iterate over the list and use self.config.get
-                combined_parameter_dict = {
-                    k: self.config.get(k) for k in parameter_list
-                }
+                combined_parameter_dict = {k: self.config.get(k) for k in parameter_list}
 
             # Also take the peak_energy parameter if it is a mono smearing model
             if "mono" in self.config[model_key]:
@@ -137,8 +129,9 @@ class CESTemplateSource(HistogramPdfSource):
 
     def build_histogram(self):
         """Build the histogram of the source.
-        It's always called during the initialization of the source.
-        So the attributes are set here.
+
+        It's always called during the initialization of the source. So the attributes are set here.
+
         """
         print("Building histogram")
         self._load_inputs()
@@ -192,9 +185,7 @@ class CESTemplateSource(HistogramPdfSource):
             return self._pdf_histogram.lookup(*args)
 
         else:
-            raise NotImplementedError(
-                "PDF Interpolation method %s not implemented" % method
-            )
+            raise NotImplementedError("PDF Interpolation method %s not implemented" % method)
 
     def set_dtype(self):
         self.dtype = [

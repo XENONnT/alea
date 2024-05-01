@@ -17,6 +17,7 @@ def energy_res(energy, a=25.8, b=1.429):
     # xenon:xenonnt:analysis:ntsciencerun0:g1g2_update#standard_gaussian_vs_skew-gaussian_yue
     return (np.sqrt(energy) * a + energy * b) / 100
 
+
 def smearing_mono_gaussian(
     hist: Any,
     smearing_a: float,
@@ -24,28 +25,31 @@ def smearing_mono_gaussian(
     peak_energy: float,
     bins: Optional[Iterable[float]] = None,
 ):
-    
+
     if bins is None:
         # create an emptyzero histogram with the same binning as the input histogram
         data = stats.norm.pdf(
-                hist.bin_centers,
-                loc=peak_energy,
-                scale=energy_res(peak_energy, smearing_a, smearing_b))
-        hist_smeared = Hist1d(data = np.zeros_like(data), bins = hist.bin_edges)
+            hist.bin_centers,
+            loc=peak_energy,
+            scale=energy_res(peak_energy, smearing_a, smearing_b),
+        )
+        hist_smeared = Hist1d(data=np.zeros_like(data), bins=hist.bin_edges)
         hist_smeared.histogram = data
     else:
         # use the bins that set by the user
         bins = np.array(bins)
         bin_centers = 0.5 * (bins[1:] + bins[:-1])
         data = stats.norm.pdf(
-                bin_centers,
-                loc=peak_energy,
-                scale=energy_res(peak_energy, smearing_a, smearing_b))
+            bin_centers,
+            loc=peak_energy,
+            scale=energy_res(peak_energy, smearing_a, smearing_b),
+        )
         # create an empty histogram with the user-defined binning
         hist_smeared = Hist1d(data=np.zeros_like(data), bins=bins)
         hist_smeared.histogram = data
-        
+
     return hist_smeared
+
 
 def smearing_hist_gaussian(
     hist: Any,
@@ -90,6 +94,7 @@ def smearing_hist_gaussian(
 
     return hist_smeared
 
+
 def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     """
     Apply a constant bias to a histogram
@@ -105,6 +110,7 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     h_bias.histogram *= 1 / (1 + bias_derivative)
     return h_bias
 
+
 def efficiency_hist_constant(hist: Any, efficiency: float):
     """
     Apply a constant efficiency to a histogram
@@ -118,13 +124,16 @@ def efficiency_hist_constant(hist: Any, efficiency: float):
     hist.histogram = hist.histogram * efficiency
     return hist
 
+
 MODELS: Dict[str, Dict[str, Callable]] = {
     "smearing": {
         "gaussian": smearing_hist_gaussian,
         "mono_gaussian": smearing_mono_gaussian,
     },
     "bias": {"arctan": biasing_hist_arctan},
-    "efficiency": {"constant": efficiency_hist_constant,},
+    "efficiency": {
+        "constant": efficiency_hist_constant,
+    },
 }
 
 

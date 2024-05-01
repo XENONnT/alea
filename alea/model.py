@@ -12,7 +12,12 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits, asymptotic_critical_value, ReadOnlyDict
+from alea.utils import (
+    within_limits,
+    clip_limits,
+    asymptotic_critical_value,
+    ReadOnlyDict,
+)
 
 
 class StatisticalModel:
@@ -92,7 +97,9 @@ class StatisticalModel:
             self.data = data
         self._confidence_level = confidence_level
         if confidence_interval_kind not in {"central", "upper", "lower"}:
-            raise ValueError("confidence_interval_kind must be one of central, upper, lower")
+            raise ValueError(
+                "confidence_interval_kind must be one of central, upper, lower"
+            )
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
@@ -124,7 +131,9 @@ class StatisticalModel:
         ll_params = set(inspect.signature(self._ll).parameters)
         generate_data_params = set(inspect.signature(self._generate_data).parameters)
         if ll_params != generate_data_params:
-            raise AssertionError("ll and generate_data must have the same signature (parameters)")
+            raise AssertionError(
+                "ll and generate_data must have the same signature (parameters)"
+            )
 
     def _ll(self, **kwargs) -> float:
         """Likelihood function, return the loglikelihood for the given parameters."""
@@ -308,7 +317,11 @@ class StatisticalModel:
 
     @_needs_data
     def fit(
-        self, verbose=False, disable_index_fitting=False, max_index_fitting_iter=10, **kwargs
+        self,
+        verbose=False,
+        disable_index_fitting=False,
+        max_index_fitting_iter=10,
+        **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
@@ -345,14 +358,18 @@ class StatisticalModel:
 
         # Get the index parameters, which could have problem if simply using migrad
         index_parameters = [
-            p for p in self.parameters if p.ptype == "index" and p.name not in fixed_params
+            p
+            for p in self.parameters
+            if p.ptype == "index" and p.name not in fixed_params
         ]
 
         if disable_index_fitting or (len(index_parameters) == 0):
             # Call migrad to do the actual minimization
             m = self._migrad_fit(m)
         else:
-            m = self._migrad_index_mixing_fit(m, index_parameters, max_index_fitting_iter, verbose)
+            m = self._migrad_index_mixing_fit(
+                m, index_parameters, max_index_fitting_iter, verbose
+            )
 
         self.minuit_object = m
         if verbose:
@@ -364,7 +381,9 @@ class StatisticalModel:
         m.migrad()
         return m
 
-    def _migrad_index_mixing_fit(self, m, index_parameters, max_index_fitting_iter, verbose):
+    def _migrad_index_mixing_fit(
+        self, m, index_parameters, max_index_fitting_iter, verbose
+    ):
         index_anchors = [p.blueice_anchors for p in index_parameters]
         index_names = [p.name for p in index_parameters]
         index_grid = [
@@ -488,7 +507,11 @@ class StatisticalModel:
         if not callable(confidence_interval_threshold):
             raise ValueError("confidence_interval_threshold must be a callable")
 
-        return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
+        return (
+            confidence_interval_kind,
+            confidence_interval_threshold,
+            parameter_interval_bounds,
+        )
 
     def confidence_interval(
         self,
@@ -607,7 +630,9 @@ class StatisticalModel:
         if not inspect.isclass(statistical_model_class):
             raise ValueError(f"{statistical_model_class} is not a class!")
         if not issubclass(statistical_model_class, StatisticalModel):
-            raise ValueError(f"{statistical_model_class} is not a subclass of StatisticalModel!")
+            raise ValueError(
+                f"{statistical_model_class} is not a subclass of StatisticalModel!"
+            )
         return statistical_model_class
 
 

@@ -63,7 +63,9 @@ class Parameter:
         self._check_parameter_consistency()
 
     def __repr__(self) -> str:
-        parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
+        parameter_str = ", ".join(
+            [f"{k}={v}" for k, v in self.__dict__.items() if v is not None]
+        )
         _repr = f"{self.__class__.__module__}.{self.__class__.__qualname__}"
         _repr += f"({parameter_str})"
         return _repr
@@ -116,7 +118,9 @@ class Parameter:
         """Return the initial guess for fitting the parameter."""
         # make sure to only return fit_guess if fittable
         if self._fit_guess is not None and not self.fittable:
-            raise ValueError(f"Parameter {self.name} is not fittable, but has a fit_guess.")
+            raise ValueError(
+                f"Parameter {self.name} is not fittable, but has a fit_guess."
+            )
         else:
             return self._fit_guess
 
@@ -183,7 +187,9 @@ class Parameter:
                 "This may cause numerical overflow when calculating confidential interval."
             )
         value = clip_limits(value)
-        if not (self.value_in_fit_limits(value[0]) and self.value_in_fit_limits(value[1])):
+        if not (
+            self.value_in_fit_limits(value[0]) and self.value_in_fit_limits(value[1])
+        ):
             raise ValueError(
                 f"parameter_interval_bounds {value} not within "
                 f"fit_limits {self.fit_limits} for parameter {self.name}."
@@ -349,7 +355,11 @@ class Parameters:
         Caution: this is not the same as the parameter.uncertainty property.
 
         """
-        return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
+        return {
+            k: i.uncertainty
+            for k, i in self.parameters.items()
+            if i.uncertainty is not None
+        }
 
     @property
     def with_uncertainty(self) -> "Parameters":
@@ -358,7 +368,9 @@ class Parameters:
         The parameters are the same objects as in the original Parameters object, not a copy.
 
         """
-        param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
+        param_dict = {
+            k: i for k, i in self.parameters.items() if i.uncertainty is not None
+        }
         params = Parameters()
         for param in param_dict.values():
             params.add_parameter(param)
@@ -368,7 +380,9 @@ class Parameters:
     def nominal_values(self) -> dict:
         """A dict of nominal values for all parameters with a nominal value."""
         return {
-            k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
+            k: i.nominal_value
+            for k, i in self.parameters.items()
+            if i.nominal_value is not None
         }
 
     def set_nominal_values(self, **nominal_values):
@@ -420,7 +434,11 @@ class Parameters:
 
         for name, param in self.parameters.items():
             new_val = kwargs.get(name, None)
-            if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
+            if (
+                param.needs_reinit
+                and new_val != param.nominal_value
+                and new_val is not None
+            ):
                 raise ValueError(
                     f"{name} is a parameter that requires re-initialization "
                     "to override its nominal value "
@@ -492,5 +510,6 @@ class Parameters:
 
         """
         return all(
-            self.parameters[name].value_in_fit_limits(value) for name, value in kwargs.items()
+            self.parameters[name].value_in_fit_limits(value)
+            for name, value in kwargs.items()
         )

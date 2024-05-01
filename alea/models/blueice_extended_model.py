@@ -13,7 +13,11 @@ from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import ReadOnlyDict
-from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
+from alea.utils import (
+    adapt_likelihood_config_for_blueice,
+    get_template_folder_list,
+    load_yaml,
+)
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -54,10 +58,13 @@ class BlueiceExtendedModel(StatisticalModel):
         self._likelihood = self._build_ll_from_config(
             likelihood_config, template_path=kwargs.get("template_path", None)
         )
-        self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
+        self.likelihood_names = [
+            t["name"] for t in likelihood_config["likelihood_terms"]
+        ]
         self.likelihood_names.append("ancillary")
         self.livetime_parameter_names = [
-            t.get("livetime_parameter", None) for t in likelihood_config["likelihood_terms"]
+            t.get("livetime_parameter", None)
+            for t in likelihood_config["likelihood_terms"]
         ]
         self.livetime_parameter_names += [None]  # ancillary likelihood
         self.data_generators = self._build_data_generators()
@@ -114,7 +121,9 @@ class BlueiceExtendedModel(StatisticalModel):
                         "You should at least provide data for all likelihood terms, "
                         "including science data and ancillary."
                     )
-            data = dict(zip((self.likelihood_names + ["generate_values"])[: len(data)], data))
+            data = dict(
+                zip((self.likelihood_names + ["generate_values"])[: len(data)], data)
+            )
         for i, (dataset_name, d) in enumerate(data.items()):
             if dataset_name != "generate_values":
                 ll_term = self.likelihood_list[i]
@@ -151,7 +160,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         source_names = set(
-            itertools.chain.from_iterable([ll.source_name_list for ll in self.likelihood_list[:-1]])
+            itertools.chain.from_iterable(
+                [ll.source_name_list for ll in self.likelihood_list[:-1]]
+            )
         )
         return sorted(source_names)
 
@@ -198,7 +209,9 @@ class BlueiceExtendedModel(StatisticalModel):
             ll_index = self.likelihood_names.index(ll_name)
             lt = generate_values.pop(lt_name, None)
             # compute the mus
-            self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values, livetime_days=lt)
+            self.data_generators[ll_index].compute_pdfs_and_mus(
+                **generate_values, livetime_days=lt
+            )
             mus = self.data_generators[ll_index].mus
             for n, mu in zip(self.likelihood_list[ll_index].source_name_list, mus):
                 ret[ll_name][n] = mu
@@ -213,7 +226,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         return ret
 
-    def get_source_histograms(self, likelihood_name: str, expected_events=False, **kwargs) -> dict:
+    def get_source_histograms(
+        self, likelihood_name: str, expected_events=False, **kwargs
+    ) -> dict:
         """Return the pdfs or histograms of all sources for a given likelihood term.
 
         Args:
@@ -249,7 +264,9 @@ class BlueiceExtendedModel(StatisticalModel):
         if expected_events:
             mus = self.data_generators[ll_index].mus
             for source_name, hist in source_histograms.items():
-                source_index = self.get_source_name_list(likelihood_name).index(source_name)
+                source_index = self.get_source_name_list(likelihood_name).index(
+                    source_name
+                )
                 hist.histogram *= mus[source_index]
         # for unbinned likelihoods we need to divide by the bin volumes
         elif not expected_events and not self.data_generators[ll_index].binned:
@@ -257,13 +274,17 @@ class BlueiceExtendedModel(StatisticalModel):
                 hist.histogram /= hist.bin_volumes()
 
         # sort the source_histograms by source name
-        source_histograms = dict(sorted(source_histograms.items(), key=lambda item: item[0]))
+        source_histograms = dict(
+            sorted(source_histograms.items(), key=lambda item: item[0])
+        )
 
         return source_histograms
 
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
-        pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        pdf_base_config = adapt_likelihood_config_for_blueice(
+            config, template_folder_list
+        )
         pdf_base_config["livetime_days"] = self.parameters[
             pdf_base_config["livetime_parameter"]
         ].nominal_value
@@ -278,7 +299,9 @@ class BlueiceExtendedModel(StatisticalModel):
             if "name" not in source:
                 raise ValueError("No name specified for source.")
             if "parameters" not in source:
-                raise ValueError(f"No parameters specified for source {source['name']}.")
+                raise ValueError(
+                    f"No parameters specified for source {source['name']}."
+                )
             if set(source.get("named_parameters", [])) - set(source["parameters"]):
                 raise ValueError(
                     f"Named parameters {source['named_parameters']} are not all in the "
@@ -290,7 +313,9 @@ class BlueiceExtendedModel(StatisticalModel):
             parameters_to_ignore = self._get_parameters_to_ignore(source)
             # ignore all shape parameters known to this model not named specifically
             # in the source:
-            pdf_base_config["sources"][i]["extra_dont_hash_settings"] = parameters_to_ignore
+            pdf_base_config["sources"][i][
+                "extra_dont_hash_settings"
+            ] = parameters_to_ignore
 
         # get blueice likelihood_config if it's given
         likelihood_config = config.get("likelihood_config", None)
@@ -308,7 +333,9 @@ class BlueiceExtendedModel(StatisticalModel):
             if (p.ptype in ["shape", "index"]) and (p.name not in source["parameters"])
         ]
         # no efficiency affects PDF:
-        parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
+        parameters_to_ignore += [
+            p.name for p in self.parameters if (p.ptype == "efficiency")
+        ]
         parameters_to_ignore += source.get("extra_dont_hash_settings", [])
         return parameters_to_ignore
 
@@ -342,7 +369,9 @@ class BlueiceExtendedModel(StatisticalModel):
             for source in config["sources"]:
                 # set rate parameters
                 rate_parameters = [
-                    p for p in source["parameters"] if self.parameters[p].ptype == "rate"
+                    p
+                    for p in source["parameters"]
+                    if self.parameters[p].ptype == "rate"
                 ]
                 if len(rate_parameters) != 1:
                     raise ValueError(
@@ -372,7 +401,9 @@ class BlueiceExtendedModel(StatisticalModel):
                 for p in shape_parameters:
                     anchors = self.parameters[p].blueice_anchors
                     if anchors is None:
-                        raise ValueError(f"Shape parameter {p} does not have any anchors.")
+                        raise ValueError(
+                            f"Shape parameter {p} does not have any anchors."
+                        )
                     # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
@@ -399,10 +430,14 @@ class BlueiceExtendedModel(StatisticalModel):
         # last one is AncillaryLikelihood
         data_generators = []
         for ll_term in self.likelihood_list[:-1]:
-            methods = [s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources]
+            methods = [
+                s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources
+            ]
             # make sure that all sources have the same pdf_interpolation_method
             if len(set(methods)) != 1:
-                raise ValueError("All sources must have the same pdf_interpolation_method.")
+                raise ValueError(
+                    "All sources must have the same pdf_interpolation_method."
+                )
             method = methods[0]
             if method == "piecewise":
                 data_generators.append(BlueiceDataGenerator(ll_term))
@@ -416,7 +451,9 @@ class BlueiceExtendedModel(StatisticalModel):
         return data_generators
 
     def _ll(self, **generate_values) -> float:
-        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
+        livetime_days = [
+            generate_values.get(ln, None) for ln in self.livetime_parameter_names
+        ]
         return self._likelihood(livetime_days=livetime_days, **generate_values)
 
     def _generate_data(self, **generate_values) -> dict:
@@ -433,7 +470,9 @@ class BlueiceExtendedModel(StatisticalModel):
         # generate_values are already filtered and filled by the nominal values
         data = self._generate_science_data(**generate_values)
         ancillary_keys = self.parameters.with_uncertainty.names
-        generate_values_anc = {k: v for k, v in generate_values.items() if k in ancillary_keys}
+        generate_values_anc = {
+            k: v for k, v in generate_values.items() if k in ancillary_keys
+        }
         data["ancillary"] = self._generate_ancillary(**generate_values_anc)
         data["generate_values"] = dict_to_structured_array(generate_values)
         return data
@@ -450,7 +489,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
     def _generate_science_data(self, **generate_values) -> dict:
         """Generate the science data for all likelihood terms except the ancillary likelihood."""
-        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
+        livetime_days = [
+            generate_values.get(ln, None) for ln in self.livetime_parameter_names
+        ]
         science_data = [
             gen.simulate(livetime_days=lt, **generate_values)
             for gen, lt in zip(self.data_generators, livetime_days)
@@ -475,9 +516,15 @@ class BlueiceExtendedModel(StatisticalModel):
             # correct parameter_meas if out of bounds
             param = self.parameters[name]
             if not param.value_in_fit_limits(parameter_meas):
-                if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:
+                if (
+                    param.fit_limits[0] is not None
+                    and parameter_meas < param.fit_limits[0]
+                ):
                     parameter_meas = param.fit_limits[0]
-                elif param.fit_limits[1] is not None and parameter_meas > param.fit_limits[1]:
+                elif (
+                    param.fit_limits[1] is not None
+                    and parameter_meas > param.fit_limits[1]
+                ):
                     parameter_meas = param.fit_limits[1]
             ancillary[name] = parameter_meas
 
@@ -495,7 +542,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         if "efficiency_name" not in source:
-            raise ValueError(f"Unspecified efficiency_name for source {source['name']:s}")
+            raise ValueError(
+                f"Unspecified efficiency_name for source {source['name']:s}"
+            )
         efficiency_name = source["efficiency_name"]
 
         if efficiency_name not in source["parameters"]:
@@ -526,7 +575,14 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
+        allowed_ptypes = [
+            "rate",
+            "shape",
+            "index",
+            "efficiency",
+            "livetime",
+            "needs_reinit",
+        ]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:
@@ -588,7 +644,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self.parameters = parameters
         # check that there are no None values in the uncertainties dict
         if set(self.parameters.uncertainties.keys()) != set(self.parameters.names):
-            raise ValueError("The uncertainties dict must contain all parameters as keys.")
+            raise ValueError(
+                "The uncertainties dict must contain all parameters as keys."
+            )
         parameter_list = self.parameters.names
 
         self.constraint_functions = self._get_constraint_functions()

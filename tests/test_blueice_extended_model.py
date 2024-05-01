@@ -47,7 +47,9 @@ class TestBlueiceExtendedModel(TestCase):
                 model.data = model.generate_data()
                 deepcopy(model)
             except Exception:
-                raise ValueError("BlueiceExtendedModel instance cannot be correctly deepcopied.")
+                raise ValueError(
+                    "BlueiceExtendedModel instance cannot be correctly deepcopied."
+                )
 
     def get_expectation_values(self):
         # normalization of templates
@@ -63,7 +65,9 @@ class TestBlueiceExtendedModel(TestCase):
                     name = source["name"]
                     this_expectation = nominal_values[name]
                     this_expectation *= source.get("histogram_scale_factor", 1.0)
-                    this_expectation *= model.parameters[f"{name}_rate_multiplier"].nominal_value
+                    this_expectation *= model.parameters[
+                        f"{name}_rate_multiplier"
+                    ].nominal_value
                     this_expectation *= livetime
                     if name in this_expectation_dict:
                         this_expectation_dict[name] += this_expectation
@@ -150,7 +154,8 @@ class TestBlueiceExtendedModel(TestCase):
                 elif "source" not in v.dtype.names:
                     raise ValueError("Data does not contain source information.")
             with self.assertRaises(
-                TypeError, msg="Should raise error when directly instantiating StatisticalModel"
+                TypeError,
+                msg="Should raise error when directly instantiating StatisticalModel",
             ):
                 model.data = data
                 model.data["ancillary"] = None
@@ -225,9 +230,13 @@ class TestBlueiceExtendedModel(TestCase):
         """Test of the get_source_histograms method."""
         for model in self.models:
             mus = model.get_expectation_values(per_likelihood_term=True)
-            for ll_name, ll_term in zip(model.likelihood_names[:-1], model.likelihood_list[:-1]):
+            for ll_name, ll_term in zip(
+                model.likelihood_names[:-1], model.likelihood_list[:-1]
+            ):
                 source_histograms = model.get_source_histograms(ll_name)
-                self.assertEqual(sorted(source_histograms.keys()), sorted(ll_term.source_name_list))
+                self.assertEqual(
+                    sorted(source_histograms.keys()), sorted(ll_term.source_name_list)
+                )
 
                 # check whether the correct source histograms are returned
                 for s_name, histogram in source_histograms.items():
@@ -237,7 +246,9 @@ class TestBlueiceExtendedModel(TestCase):
                     np.testing.assert_almost_equal(blueice_hist, histogram, decimal=10)
 
                 # check that expected_events boolean works
-                source_histograms = model.get_source_histograms(ll_name, expected_events=True)
+                source_histograms = model.get_source_histograms(
+                    ll_name, expected_events=True
+                )
                 for s_name, histogram in source_histograms.items():
                     mu = mus[ll_name][s_name]
                     sum_hist = histogram.n
@@ -261,7 +272,9 @@ class TestBlueiceExtendedModel(TestCase):
                 hist_per_ll[ll_name] = model.get_source_histograms(ll_name)
             # check that keys are the same for each SR
             for ll_name in model.likelihood_names[:-1]:
-                self.assertEqual(mus_per_ll[ll_name].keys(), hist_per_ll[ll_name].keys())
+                self.assertEqual(
+                    mus_per_ll[ll_name].keys(), hist_per_ll[ll_name].keys()
+                )
             # check that global keys are the same
             all_keys = {v for d in mus_per_ll.values() for v in d.keys()}
             all_keys = sorted(all_keys)

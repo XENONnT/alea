@@ -9,7 +9,9 @@ class TestTemplateSource(TestCase):
 
     def test_init_templates(self):
         """Test whether we can initialize template sources."""
-        model_configs = load_yaml("unbinned_wimp_statistical_model_template_source_test.yaml")
+        model_configs = load_yaml(
+            "unbinned_wimp_statistical_model_template_source_test.yaml"
+        )
         parameter_definition = model_configs["parameter_definition"]
         likelihood_config = model_configs["likelihood_config"]
         model = BlueiceExtendedModel(parameter_definition, likelihood_config)
@@ -17,7 +19,9 @@ class TestTemplateSource(TestCase):
 
     def test_wrong_analysis_space(self):
         """Test whether initializing with a wrong analysis_space raises error."""
-        model_configs = load_yaml("unbinned_wimp_statistical_model_template_source_test.yaml")
+        model_configs = load_yaml(
+            "unbinned_wimp_statistical_model_template_source_test.yaml"
+        )
         parameter_definition = model_configs["parameter_definition"]
         likelihood_config = model_configs["likelihood_config"]
         # Change the analysis space to a wrong one

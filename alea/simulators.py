@@ -133,7 +133,11 @@ class BlueiceDataGenerator:
 
         """
         if filter_kwargs:
-            kwargs = {k: v for k, v in kwargs.items() if k in self.parameters + ["livetime_days"]}
+            kwargs = {
+                k: v
+                for k, v in kwargs.items()
+                if k in self.parameters + ["livetime_days"]
+            }
 
         # check if the cached generator may be used:
         unmatched_item = set(self.last_kwargs.items()) ^ set(kwargs.items())

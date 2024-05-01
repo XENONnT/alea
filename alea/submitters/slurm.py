@@ -39,7 +39,10 @@ class SubmitterSlurm(Submitter):
         self.slurm_configurations = kwargs.get("slurm_configurations", {})
         self.template_path = self.slurm_configurations.pop("template_path", None)
         self.combine_n_jobs = self.slurm_configurations.pop("combine_n_jobs", 1)
-        self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
+        self.batchq_arguments = {
+            **BATCHQ_DEFAULT_ARGUMENTS,
+            **self.slurm_configurations,
+        }
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
         self.log_dir = self.outputfolder
@@ -72,7 +75,9 @@ class SubmitterSlurm(Submitter):
             kwargs.pop(kw)
 
         self.logging.debug(f"Submitting the following job: '{job}'")
-        batchq.submit_job(job, jobname=jobname, log=log, **{**self.batchq_arguments, **kwargs})
+        batchq.submit_job(
+            job, jobname=jobname, log=log, **{**self.batchq_arguments, **kwargs}
+        )
 
     def _check_batchq_arguments(self):
         """Check if the self.batchq_arguments are valid."""
@@ -93,7 +98,9 @@ class SubmitterSlurm(Submitter):
         """
         _jobname = kwargs.pop("jobname", self.name.lower())
         batchq_kwargs = {}
-        for job, (script, last_output_filename) in enumerate(self.combined_tickets_generator()):
+        for job, (script, last_output_filename) in enumerate(
+            self.combined_tickets_generator()
+        ):
             if self.debug:
                 print(script)
                 if job > 0:
@@ -103,6 +110,10 @@ class SubmitterSlurm(Submitter):
                 time.sleep(30)
             batchq_kwargs["jobname"] = f"{_jobname}_{job:03d}"
             if last_output_filename is not None:
-                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{last_output_filename}.log")
-            self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
+                batchq_kwargs["log"] = os.path.join(
+                    self.log_dir, f"{last_output_filename}.log"
+                )
+            self.logging.debug(
+                f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}."
+            )
             self._submit(script, **batchq_kwargs)

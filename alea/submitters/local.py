@@ -148,7 +148,9 @@ class NeymanConstructor(SubmitterLocal):
             self.logging.info(f"Overwrite confidence_levels to {confidence_levels}.")
 
         # extract limit_threshold from the statistical_model_args
-        limit_threshold = runner_args["statistical_model_args"].get("limit_threshold", None)
+        limit_threshold = runner_args["statistical_model_args"].get(
+            "limit_threshold", None
+        )
         if limit_threshold is None:
             raise ValueError("Please specify the limit_threshold at in_common.")
         if os.path.splitext(limit_threshold)[-1] != ".json":
@@ -166,8 +168,12 @@ class NeymanConstructor(SubmitterLocal):
                 raise ValueError("free_name" + message)
             if runner_args.pop("true_name", true_name) != true_name:
                 raise ValueError("true_name" + message)
-            new_confidence_levels = runner_args.pop("confidence_levels", confidence_levels)
-            mask = any([n_c != c for n_c, c in zip(new_confidence_levels, confidence_levels)])
+            new_confidence_levels = runner_args.pop(
+                "confidence_levels", confidence_levels
+            )
+            mask = any(
+                [n_c != c for n_c, c in zip(new_confidence_levels, confidence_levels)]
+            )
             mask |= len(new_confidence_levels) != len(confidence_levels)
             if mask:
                 raise ValueError("confidence_levels" + message)
@@ -289,7 +295,9 @@ class NeymanConstructor(SubmitterLocal):
         poi_expectation = kwargs.pop("poi_expectation", None)
         poi_value = kwargs.get(self.poi, None)
         if poi_value is None:
-            raise ValueError("Can not find the poi value in the generate_values in metadata!")
+            raise ValueError(
+                "Can not find the poi value in the generate_values in metadata!"
+            )
         # read expectation_values from metadata
         expectation_values = metadata["expectation_values"]
         # check if the poi_expectation is in expectation_values
@@ -343,12 +351,20 @@ class NeymanConstructor(SubmitterLocal):
         names = list(generate_values.keys())
         inputs = threshold.values()
         # filter out the inputs with different nominal_values
-        inputs = [i for i in inputs if i["hashed_keys"]["nominal_values"] == nominal_values]
+        inputs = [
+            i for i in inputs if i["hashed_keys"]["nominal_values"] == nominal_values
+        ]
         # filter out the inputs with different confidence_level
-        inputs = [i for i in inputs if i["hashed_keys"]["confidence_level"] == confidence_level]
+        inputs = [
+            i
+            for i in inputs
+            if i["hashed_keys"]["confidence_level"] == confidence_level
+        ]
         # filter out the inputs with different generate_values keys
         inputs = [
-            i for i in inputs if set(i["hashed_keys"]["generate_values"].keys()) == set(names)
+            i
+            for i in inputs
+            if set(i["hashed_keys"]["generate_values"].keys()) == set(names)
         ]
 
         if len(inputs) == 0:
@@ -374,7 +390,9 @@ class NeymanConstructor(SubmitterLocal):
         points = []
         for n in names:
             points.append(
-                np.unique([i["hashed_keys"]["generate_values"][n] for i in inputs]).tolist()
+                np.unique(
+                    [i["hashed_keys"]["generate_values"][n] for i in inputs]
+                ).tolist()
             )
         # check if the poi_values have the same length in the limit_threshold file
         if any([len(i[poi]) != len(poi_values) for i in inputs]):
@@ -507,7 +525,10 @@ class NeymanConstructor(SubmitterLocal):
                         f"But previously find {set(names)} and now find "
                         f"{set(hashed_keys['generate_values'].keys())}!"
                     )
-                pts = [list(hashed_keys["generate_values"].values()) + [p] for p in poi_values]
+                pts = [
+                    list(hashed_keys["generate_values"].values()) + [p]
+                    for p in poi_values
+                ]
                 try:
                     threshold_values = interpolator(pts)
                 except ValueError:

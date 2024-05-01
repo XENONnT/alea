@@ -37,6 +37,8 @@ def smearing_mono_gaussian(
     else:
         # use the bins that set by the user
         bins = np.array(bins)
+        if len(bins) <= 1:
+            raise ValueError("bins must have at least 2 elements")
         bin_centers = 0.5 * (bins[1:] + bins[:-1])
         data = stats.norm.pdf(
             bin_centers,

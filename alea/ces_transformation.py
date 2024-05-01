@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator
-from typing import Dict, Optional, Any, Literal, Callable, Iterable
+from typing import Dict, Optional, Any, Literal, Callable
 import numpy as np
 from scipy import stats
 from copy import deepcopy

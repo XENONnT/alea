@@ -71,6 +71,16 @@ parameter_definition:
       - 1.6
     description: smearing shaping parameter
 
+  efficiency_constant:
+    nominal_value: 0.7
+    ptype: shape
+    uncertainty: 0.05
+    relative_uncertainty: false
+    fittable: ture
+    blueice_anchors:
+      - 0.5
+      - 1.0
+
 likelihood_config:
   template_folder: null  # will try to find the templates in alea
   likelihood_terms:
@@ -83,7 +93,7 @@ likelihood_config:
       apply_efficiency: true
       efficiency_model: constant
       efficiency_parameters:
-        - efficiency
+        - efficiency_constant
       apply_smearing: true
       smearing_model: gaussian
       smearing_parameters:
@@ -99,15 +109,18 @@ likelihood_config:
           - xe133_rate_multiplier
           - smearing_a
           - smearing_b
+          - efficiency_constant
         template_filename: xe133_template.ii.h5
-      - name: test_flat
-        class: alea.ces_source.CESFlatSource
-        parameters:
-          - test_flat_rate_multiplier
       - name: test_gaussian
         class: alea.ces_source.CESMonoenergySource
-        peak_energy: 100
+        peak_energy: 300
         parameters:
           - test_gaussian_rate_multiplier
           - smearing_a
           - smearing_b
+          - efficiency_constant
+      - name: test_flat
+        class: alea.ces_source.CESFlatSource
+        parameters:
+          - test_flat_rate_multiplier
+          - efficiency_constant

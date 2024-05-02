@@ -165,9 +165,7 @@ class TemplateSource(HistogramPdfSource):
                     f"to {slice_axis_limits[1]}"
                 )
                 h = h.slicesum(
-                    start=slice_axis_limits[0],
-                    stop=slice_axis_limits[1],
-                    axis=slice_axis,
+                    start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis
                 )
             else:
                 logging.debug(
@@ -175,11 +173,7 @@ class TemplateSource(HistogramPdfSource):
                     f"to {slice_axis_limits[1]}"
                 )
                 logging.debug(f"Normalization before slicing: {h.n}.")
-                h = h.slice(
-                    start=slice_axis_limits[0],
-                    stop=slice_axis_limits[1],
-                    axis=slice_axis,
-                )
+                h = h.slice(start=slice_axis_limits[0], stop=slice_axis_limits[1], axis=slice_axis)
                 logging.debug(f"Normalization after slicing: {h.n}.")
 
         if isinstance(h, Hist1d):
@@ -367,10 +361,7 @@ class SpectrumTemplateSource(TemplateSource):
         if "map" not in contents:
             raise ValueError("Map not in JSON file.")
         ret = interp1d(
-            contents["coordinate_system"],
-            contents["map"],
-            bounds_error=False,
-            fill_value=0.0,
+            contents["coordinate_system"], contents["map"], bounds_error=False, fill_value=0.0
         )
         return ret
 

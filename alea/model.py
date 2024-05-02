@@ -12,12 +12,7 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import (
-    within_limits,
-    clip_limits,
-    asymptotic_critical_value,
-    ReadOnlyDict,
-)
+from alea.utils import within_limits, clip_limits, asymptotic_critical_value, ReadOnlyDict
 
 
 class StatisticalModel:
@@ -313,11 +308,7 @@ class StatisticalModel:
 
     @_needs_data
     def fit(
-        self,
-        verbose=False,
-        disable_index_fitting=False,
-        max_index_fitting_iter=10,
-        **kwargs,
+        self, verbose=False, disable_index_fitting=False, max_index_fitting_iter=10, **kwargs
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
@@ -497,11 +488,7 @@ class StatisticalModel:
         if not callable(confidence_interval_threshold):
             raise ValueError("confidence_interval_threshold must be a callable")
 
-        return (
-            confidence_interval_kind,
-            confidence_interval_threshold,
-            parameter_interval_bounds,
-        )
+        return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
 
     def confidence_interval(
         self,

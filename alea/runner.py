@@ -229,10 +229,7 @@ class Runner:
 
     @staticmethod
     def update_poi(
-        model,
-        poi: str,
-        generate_values: Dict[str, float],
-        nominal_values: Dict[str, float] = {},
+        model, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float] = {}
     ):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
         provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it

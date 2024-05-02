@@ -13,11 +13,7 @@ from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
 from alea.utils import ReadOnlyDict
-from alea.utils import (
-    adapt_likelihood_config_for_blueice,
-    get_template_folder_list,
-    load_yaml,
-)
+from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 
 class BlueiceExtendedModel(StatisticalModel):
@@ -530,14 +526,7 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = [
-            "rate",
-            "shape",
-            "index",
-            "efficiency",
-            "livetime",
-            "needs_reinit",
-        ]
+        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

@@ -109,8 +109,7 @@ class Submitter:
         # Find statistical model config file
         if not os.path.exists(self.statistical_model_config):
             self.statistical_model_config = os.path.join(
-                os.path.dirname(get_file_path(self.config_file_path)),
-                self.statistical_model_config,
+                os.path.dirname(get_file_path(self.config_file_path)), self.statistical_model_config
             )
         if not (
             os.path.exists(self.statistical_model_config)

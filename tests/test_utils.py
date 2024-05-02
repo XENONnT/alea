@@ -52,8 +52,7 @@ class TestUtils(TestCase):
 
         critical_value_central = chi2(2).isf((1.0 - confidence_level))
         self.assertEqual(
-            asymptotic_critical_value("central", confidence_level, 2),
-            critical_value_central,
+            asymptotic_critical_value("central", confidence_level, 2), critical_value_central
         )
 
     def test_within_limits(self):
@@ -101,8 +100,7 @@ class TestUtils(TestCase):
         self.assertEqual(deterministic_hash(np.array([0, 1])), "si3ifpvg2u")
         self.assertEqual(deterministic_hash({"a": 1, "b": 2}), "shhkapn4q7")
         self.assertEqual(
-            deterministic_hash({"a": np.array([0, 1]), "b": np.array([0, 1])}),
-            "anxefavaju",
+            deterministic_hash({"a": np.array([0, 1]), "b": np.array([0, 1])}), "anxefavaju"
         )
 
     def test_signal_multiplier_estimator(self):

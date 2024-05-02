@@ -150,8 +150,7 @@ class TestBlueiceExtendedModel(TestCase):
                 elif "source" not in v.dtype.names:
                     raise ValueError("Data does not contain source information.")
             with self.assertRaises(
-                TypeError,
-                msg="Should raise error when directly instantiating StatisticalModel",
+                TypeError, msg="Should raise error when directly instantiating StatisticalModel"
             ):
                 model.data = data
                 model.data["ancillary"] = None

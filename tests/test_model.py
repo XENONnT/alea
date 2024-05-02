@@ -8,7 +8,6 @@ class TestStatisticalModel(TestCase):
 
     def test_statistical_model(self):
         with self.assertRaises(
-            RuntimeError,
-            msg="Should raise error when directly instantiating StatisticalModel",
+            RuntimeError, msg="Should raise error when directly instantiating StatisticalModel"
         ):
             StatisticalModel()

@@ -115,7 +115,7 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     return h_bias
 
 
-def efficiency_hist_constant(hist: Any, efficiency: float):
+def efficiency_hist_constant(hist: Any, efficiency_constant: float):
     """Apply a constant efficiency to a histogram.
 
     :param hist: the spectrum we want to apply the efficiency to :param efficiency: the efficiency
@@ -123,8 +123,8 @@ def efficiency_hist_constant(hist: Any, efficiency: float):
 
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
-    assert 0 <= efficiency <= 1, "Efficiency must be between 0 and 1"
-    hist.histogram = hist.histogram * efficiency
+    assert 0 <= efficiency_constant <= 1, "Efficiency must be between 0 and 1"
+    hist.histogram = hist.histogram * efficiency_constant
     return hist
 
 

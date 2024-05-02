@@ -15,7 +15,7 @@ parameter_definition:
     parameter_interval_bounds:
       - 0
       - 50
-    fit_guess: 1.0
+    fit_guess: 1000
 
   test_flat_rate_multiplier:
     nominal_value: 1000
@@ -27,7 +27,7 @@ parameter_definition:
     parameter_interval_bounds:
       - 0
       - 50
-    fit_guess: 1.0
+    fit_guess: 1000
 
   test_gaussian_rate_multiplier:
     nominal_value: 300
@@ -39,7 +39,7 @@ parameter_definition:
     parameter_interval_bounds:
       - 0
       - 50
-    fit_guess: 1.0
+    fit_guess: 300
 
   smearing_a:
     nominal_value: 24.8
@@ -72,14 +72,14 @@ parameter_definition:
     description: smearing shaping parameter
 
   efficiency_constant:
-    nominal_value: 0.7
+    nominal_value: 0.8
     ptype: shape
     uncertainty: 0.05
     relative_uncertainty: false
     fittable: ture
     blueice_anchors:
-      - 0.5
-      - 1.0
+      - 0.7
+      - 0.9
 
 likelihood_config:
   template_folder: null  # will try to find the templates in alea

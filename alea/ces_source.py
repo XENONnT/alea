@@ -59,7 +59,7 @@ class CESTemplateSource(HistogramPdfSource):
             )
 
     def _create_transformation(
-        self, transformation_type: Literal["smearing", "bias","efficiency"]
+        self, transformation_type: Literal["smearing", "bias", "efficiency"]
     ):
         """
         Create a transformation object based on the transformation type
@@ -100,17 +100,17 @@ class CESTemplateSource(HistogramPdfSource):
         Apply the transformations to the histogram
         """
         # Create transformations for efficiency, smearing, and bias
-        efficiency_transformation = self._create_transformation("efficiency")
         smearing_transformation = self._create_transformation("smearing")
         bias_transformation = self._create_transformation("bias")
+        efficiency_transformation = self._create_transformation("efficiency")
 
         # Apply the transformations to the histogram
-        if efficiency_transformation is not None:
-            h = efficiency_transformation.apply_transformation(h)
         if smearing_transformation is not None:
             h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
             h = bias_transformation.apply_transformation(h)
+        if efficiency_transformation is not None:
+            h = efficiency_transformation.apply_transformation(h)
         return h
 
     def _normalize_histogram(self, h: Hist1d):

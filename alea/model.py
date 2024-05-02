@@ -308,7 +308,12 @@ class StatisticalModel:
 
     @_needs_data
     def fit(
-        self, verbose=False, disable_index_fitting=False, max_index_fitting_iter=10, **kwargs
+        self,
+        verbose=False,
+        disable_index_fitting=False,
+        max_index_fitting_iter=10,
+        minimizer_routine="migrad",
+        **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
@@ -320,6 +325,8 @@ class StatisticalModel:
             disable_index_fitting (bool): if True, disable the index fitting
                 even if the model has index parameters.
             max_index_fitting_iter (int): maximum number of iterations for index fitting
+            minimizer_routine (str): the minimizer routine to use, either
+                "migrad", "simplex", or "simplex_migrad" (first run simplex, then migrad).
 
         Returns:
             dict, float: best-fit values of each parameter,
@@ -349,10 +356,11 @@ class StatisticalModel:
         ]
 
         if disable_index_fitting or (len(index_parameters) == 0):
-            # Call migrad to do the actual minimization
-            m = self._migrad_fit(m)
+            m = self._standard_fit(m, minimizer_routine)
         else:
-            m = self._migrad_index_mixing_fit(m, index_parameters, max_index_fitting_iter, verbose)
+            m = self._index_mixing_fit(
+                m, index_parameters, max_index_fitting_iter, verbose, minimizer_routine
+            )
 
         self.minuit_object = m
         if verbose:
@@ -360,11 +368,13 @@ class StatisticalModel:
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
 
-    def _migrad_fit(self, m):
-        m.migrad()
+    def _standard_fit(self, m, minimizer_routine):
+        m = self._run_minimizer_routine(m, minimizer_routine)
         return m
 
-    def _migrad_index_mixing_fit(self, m, index_parameters, max_index_fitting_iter, verbose):
+    def _index_mixing_fit(
+        self, m, index_parameters, max_index_fitting_iter, verbose, minimizer_routine
+    ):
         index_anchors = [p.blueice_anchors for p in index_parameters]
         index_names = [p.name for p in index_parameters]
         index_grid = [
@@ -381,8 +391,7 @@ class StatisticalModel:
         # parameters given the optimized parameters. We repeat the optimization
         # and grid search until the optimization converges
         for itr in range(max_index_fitting_iter):
-            m.migrad()
-
+            m = self._run_minimizer_routine(m, minimizer_routine)
             # Find the best-fit index parameters
             lls = np.zeros(len(index_grid))
             for i in range(len(lls)):
@@ -402,6 +411,22 @@ class StatisticalModel:
             print(
                 "The index searching iteration times reached the maximum! "
                 "The optimization could not converge!"
+            )
+        return m
+
+    @staticmethod
+    def _run_minimizer_routine(m, minimizer_routine):
+        if minimizer_routine == "migrad":
+            m.migrad()
+        elif minimizer_routine == "simplex":
+            m.simplex()
+        elif minimizer_routine == "simplex_migrad":
+            m.simplex().migrad()
+        else:
+            raise ValueError(
+                "minimizer_routine must be one of "
+                "'migrad', 'simplex', 'simplex_migrad' "
+                f"but got {minimizer_routine}"
             )
         return m
 
@@ -500,6 +525,7 @@ class StatisticalModel:
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
         asymptotic_dof: Optional[int] = None,
+        fit_kwargs: Optional[dict] = None,
     ) -> Tuple[float, float]:
         """Uses self.fit to compute confidence intervals for a certain named parameter. If the
         parameter is a rate parameter, and the model has expectation values implemented, the bounds
@@ -534,6 +560,8 @@ class StatisticalModel:
             confidence_interval_args = {}
         if best_fit_args is None:
             best_fit_args = confidence_interval_args
+        if fit_kwargs is None:
+            fit_kwargs = {}
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,
@@ -550,10 +578,10 @@ class StatisticalModel:
         ) = ci_objects
 
         # best_fit_args only provides the best-fit likelihood
-        _, best_ll = self.fit(**best_fit_args)
+        _, best_ll = self.fit(**best_fit_args, **fit_kwargs)
         # the optimization of profile-likelihood under
         # confidence_interval_args provides the best_parameter
-        best_result, _ = self.fit(**confidence_interval_args)
+        best_result, _ = self.fit(**confidence_interval_args, **fit_kwargs)
         best_parameter = best_result[poi_name]
         mask = within_limits(best_parameter, parameter_interval_bounds)
         if not mask:
@@ -568,7 +596,9 @@ class StatisticalModel:
             # between the profile-log-likelihood curve and the rejection threshold
             _confidence_interval_args = deepcopy(confidence_interval_args)
             _confidence_interval_args[poi_name] = hypothesis_value
-            _, ll = self.fit(**_confidence_interval_args)  # ll is + log-likelihood here
+            _, ll = self.fit(
+                **_confidence_interval_args, **fit_kwargs
+            )  # ll is + log-likelihood here
             ret = 2.0 * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded
             return ret - confidence_interval_threshold(hypothesis_value)

@@ -80,7 +80,7 @@ likelihood_config:
       analysis_space:
         - ces: np.arange(0, 500, 1)
       # smearing and efficiency are applied to all of the sources, unless overridden
-      apply_efficiency: false
+      apply_efficiency: true
       efficiency_model: constant
       efficiency_parameters:
         - efficiency

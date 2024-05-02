@@ -24,6 +24,9 @@ def smearing_mono_gaussian(
     peak_energy: float,
     bins: Optional[np.ndarray] = None,
 ):
+    """
+    Smear a mono-energetic peak with a Gaussian
+    """
 
     if bins is None:
         # create an emptyzero histogram with the same binning as the input histogram
@@ -58,7 +61,7 @@ def smearing_hist_gaussian(
     smearing_b: float,
     bins: Optional[np.ndarray] = None,
 ):
-    """Smear a histogram. This allows for non-uniform histogram binning.
+    """Smear a histogram with Gaussian. This allows for non-uniform histogram binning.
 
     :param hist: the spectrum we want to smear :param bins: bin edges of the returned spectrum
     :return: smeared histogram in the same unit as input spectrum
@@ -146,6 +149,9 @@ class Transformation(BaseModel):
     @validator("model")
     @classmethod
     def check_model(cls, v, values):
+        """
+        Check if the model exists for the given action
+        """
         if v not in MODELS[values["action"]]:
             raise ValueError(f"Model {v} not found for action {values['action']}")
         return v

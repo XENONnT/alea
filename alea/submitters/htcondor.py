@@ -4,6 +4,9 @@ import getpass
 import threading
 import tempfile
 import time
+import tarfile
+import shlex
+import json
 from alea.submitter import Submitter
 import logging
 from pathlib import Path
@@ -33,11 +36,24 @@ class SubmitterHTCondor(Submitter):
         self._initial_dir = os.getcwd()
         self.work_dir = WORK_DIR
         self.top_dir = TOP_DIR
+        self._output_folder = kwargs.get("outputfolder", "alea_output_folder")
         self._setup_wf_id()
 
         # Job input configurations
+        self.running_configuration_filename = kwargs.get("running_configuration_filename")
+        self.statistical_model_config = kwargs.get("statistical_model_config")
         self.template_path = self.htcondor_configurations.pop("template_path", None)
-        
+        assert self.template_path, "Please provide a template path."
+        # This path must exists locally, and it will be used to stage the input files
+        assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
+        # This folder must not have any subdirectories
+        assert not self._contains_subdirectories(self.template_path), f"Path {self.template_path} must not have subdirectories. Please dump all files in one folder."
+        # Make tarball of the templates if not exists
+        self.template_tarball_filename = self.htcondor_configurations.pop("template_tarball_filename", None)
+        assert self.template_tarball_filename, "Please provide a template tarball filename."
+        if not os.path.exists(self.template_tarball_filename):
+            self._tar_h5_files(self.template_path, self.template_tarball_filename)
+
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
         self.request_memory = self.htcondor_configurations.pop("request_memory", "2 GB")
@@ -47,6 +63,59 @@ class SubmitterHTCondor(Submitter):
         self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100000)
         self.dagman_retry = self.htcondor_configurations.pop("dagman_retry", 2)
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100000)
+
+        # Pegasus configurations
+        self._pegasus_properties()
+
+        # Workflow directory
+        self.wf_dir = os.path.join(self._generated_dir(), 'workflows')
+
+
+    def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
+        """
+        Tar all templates in the directory into a tarball.
+        """
+        # Create a tar.gz archive
+        with tarfile.open(output_filename, "w:gz") as tar:
+            # Walk through the directory
+            for dirpath, dirnames, filenames in os.walk(directory):
+                for filename in filenames:
+                    if filename.endswith(".h5"):
+                        # Get the path to the file
+                        filepath = os.path.join(dirpath, filename)
+                        # Add the file to the tar, specifying the arcname to avoid storing full path
+                        tar.add(filepath, arcname=os.path.relpath(filepath, start=directory))
+
+
+    def _generated_dir(self, work_dir=WORK_DIR):
+        return os.path.join(work_dir, 'generated', self._wf_id)
+    
+    
+    def _contains_subdirectories(self, directory):
+        """
+        Check if the specified directory contains any subdirectories.
+
+        Args:
+        directory (str): The path to the directory to check.
+
+        Returns:
+        bool: True if there are subdirectories inside the given directory, False otherwise.
+        """
+        # List all entries in the directory
+        try:
+            for entry in os.listdir(directory):
+                # Check if the entry is a directory
+                if os.path.isdir(os.path.join(directory, entry)):
+                    return True
+        except FileNotFoundError:
+            print("The specified directory does not exist.")
+            return False
+        except PermissionError:
+            print("Permission denied for accessing the directory.")
+            return False
+    
+        # If no subdirectories are found
+        return False
 
 
     def _setup_wf_id(self):
@@ -100,6 +169,26 @@ class SubmitterHTCondor(Submitter):
         # write properties file to ./pegasus.properties
         props.write()
         self.pegasus_properties = props
+
+    
+    def _make_pegasus_config(self):
+        """
+        Make the Pegasus configuration into a dict to pass as keywords argument later.
+        """
+        pconfig = {}
+
+        pconfig["pegasus.metrics.app"] = "XENON"
+        pconfig["pegasus.data.configuration"] = "nonsharedfs"
+        pconfig["dagman.retry"] = self.dagman_retry
+        pconfig["dagman.maxidle"] = self.dagman_maxidle
+        pconfig["dagman.maxjobs"] = self.dagman_maxjobs
+        pconfig["pegasus.transfer.threads"] = 4
+
+        # Help Pegasus developers by sharing performance data (optional)
+        pconfig["pegasus.monitord.encoding"] = "json"
+        pconfig["pegasus.catalog.workflow.amqp.url"] = "amqp://friend:donatedata@msgs.pegasus.isi.edu:5672/prod/workflows"
+
+        self.pegasus_config = pconfig
 
 
     def _generate_sc(self):
@@ -180,20 +269,21 @@ class SubmitterHTCondor(Submitter):
         return sc
 
 
-    def _generate_tc(self):
+    def _generate_tc(self, cluster_size=1):
         """
-        Generates the TransformationCatalog for the workflow.
+        Generates the TransformationCatalog for the workflow. 
+        Every executable that is used in the workflow should be here.
         """
-        run_toymc  = Transformation(
+        run_toymc_wrapper  = Transformation(
             name="alea-run_toymc",
             site="local",
-            pfn=TOP_DIR / "bin/alea-run_toymc",
+            pfn=TOP_DIR / "bin/alea/submitters/run_toymc_wrapper.sh",
             is_stageable=True,
             arch=Arch.X86_64 
-        ).add_pegasus_profile(clusters_size=1)
+        ).add_pegasus_profile(clusters_size=cluster_size)
 
         tc = TransformationCatalog()
-        tc.add_transformations(run_toymc)
+        tc.add_transformations(run_toymc_wrapper)
 
         # Write TransformationCatalog to ./transformations.yml
         tc.write()
@@ -201,25 +291,239 @@ class SubmitterHTCondor(Submitter):
 
 
     def _generate_rc(self):
-        raise NotImplementedError
+        """
+        Generate the ReplicaCatalog for the workflow. 
+        1. The input files for the job, which are the templates in tarball, the yaml files and alea-run_toymc.
+        2. The output files for the job, which are the toydata and the output files.
+        Since the outputs are not known in advance, we will add them in the job definition.
+        """
+        rc = ReplicaCatalog()
 
+        # Add the templates
+        rc.add_replica('local', self.template_tarball_filename, 'file://{}'.format(self.template_tarball_filename))
+        # Add the yaml files
+        rc.add_replica('local', self.running_configuration_filename, 'file://{}'.format(self.running_configuration_filename))
+        rc.add_replica('local', self.statistical_model_config, 'file://{}'.format(self.statistical_model_config))
+        # Add alea-run_toymc
+        rc.add_replica('local', "alea-run_toymc", 'file://{}'.format(TOP_DIR / "bin/alea/submitters/run_toymc_wrapper.sh"))
 
-    def _generate_workflow(self):
-        self.wf = Workflow('alea')
+        return rc
+    
+
+    def _generate_workflow(self, name="alea-run_toymc"):
+        self.wf = Workflow('alea-workflow')
         self.sc = self._generate_sc()
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
 
+        # Generate jobstring and output names from tickets generator
+        # _script for example: 
+        # alea-submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
+        # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5
+        # _script for example: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None
+        for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
+            executable, args_dict = self._reorganize_script(_script)
+
+            logger.info(f"Adding job {jobid} to the workflow")
+            logger.debug(f"Naked Script: {_script}")
+            logger.debug(f"Output: {args_dict['output_filename']}")
+            logger.debug(f"Executable: {executable}")
+            logger.debug(f"Toydata: {args_dict['toydata_filename']}")
+            logger.debug(f"Arguments: {args_dict}")
+
+            job = self._initialize_job(
+                name=name, 
+                cores=self.request_cpus, 
+                memory=self.request_memory, 
+                disk=self.request_disk
+            )
+            requirements = self._make_requirements()
+            job.add_profiles(Namespace.CONDOR, 'requirements', requirements)
+            for ifile in self._get_input_files():
+                job.add_inputs(ifile)
+
+            # FIXME: This may be problematic, as we are adding the output files here
+            job.add_outputs(File(args_dict['output_filename']))
+            job.add_outputs(File(args_dict['toydata_filename']))
+
+            _extract_all_to_tuple = lambda d: tuple(d[key] for key in d.keys())
+            args_tuple = _extract_all_to_tuple(args_dict)
+            job.add_args(*args_tuple)
+
+            self.wf.add_job(job)
+            self.wf.add_replica_catalog(self.rc)
+            self.wf.add_transformation_catalog(self.tc)
+            self.wf.add_site_catalog(self.sc)
+            self.wf.write()
+
+
+    def _initialize_job(
+            self, 
+            name="alea-run_toymc", 
+            run_on_submit_node=False, 
+            cores=1, 
+            memory=1_700, 
+            disk=1_000_000
+        ):
+        """
+        Initilize a Pegasus job, also sets resource profiles. Memory in unit of MB, and 
+        disk in unit of MB.
+        """
+        job = Job(name)
+        job.add_profiles(Namespace.CONDOR, 'request_cpus', str(cores))
+
+        if run_on_submit_node:
+            job.add_selector_profile(execution_site='local')
+            # no other attributes on a local job
+            return job
+
+        # Set memory and disk requirements
+        # If the job fails, retry with more memory and disk
+        memory = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
+        disk_str = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
+        job.add_profiles(Namespace.CONDOR, 'request_disk', disk_str)
+        job.add_profiles(Namespace.CONDOR, 'request_memory', memory)
+
+        return job
+
+
+    def _make_requirements(self):
+        """
+        Make the requirements for the job.
+        """
+        # Minimal requirements on singularity/cvmfs/ports/microarchitecture
+        requirements_base = 'HAS_SINGULARITY && HAS_CVMFS_xenon_opensciencegrid_org' + \
+                                ' && PORT_2880 && PORT_8000 && PORT_27017' + \
+                                ' && (Microarch >= "x86_64-v3")'
+        
+        # If in debug mode, use the MWT2 site because we own it
+        if self.debug:
+            requirements_base = requirements_base + ' && GLIDEIN_ResourceName == "MWT2" && regexp("uct2-c4[1-7]", Machine)'
+        
+        requirements = requirements_base
+        return requirements
+
+
+    def _reorganize_script(self, _script):
+        """
+        Extract executable and arguments from the naked scripts.
+        Correct the paths on the fly.
+        """
+        script_fragments = _script.split(" ")
+        _executable = script_fragments[1]
+        # Remove the directory and only keep the file name
+        executable = self._get_file_name(_executable)
+
+        args_dict = self._parse_command_args(_script)
+        # Correct the paths in the arguments
+        args_dict = self._correct_paths_args_dict(args_dict)
+
+        return executable, args_dict
     
+
+    def _correct_paths_args_dict(self, args_dict):
+        args_dict['statistical_model_args']['template_path'] = "templates/"
+        
+        toydata_filename = self._get_file_name(args_dict['toydata_filename'])
+        args_dict['toydata_filename'] = os.join("output_folder", toydata_filename)
+
+        output_filename = self._get_file_name(args_dict['output_filename'])
+        args_dict['output_filename'] = os.join("output_folder", output_filename)
+
+        return args_dict
+
+    def _parse_command_args(self, command):
+        """
+        Parse the command line arguments and return a dictionary with the flags and their values.
+        Example command: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None
+        """
+        # Use shlex to handle spaces within quotes correctly
+        parts = shlex.split(command)
+        
+        # Dictionary to store command flags and their values
+        args_dict = {}
+        
+        # Iterator to go through all parts
+        it = iter(parts)
+        for part in it:
+            if part.startswith('--'):
+                flag = part[2:]  # Remove '--' from the flag name
+                next_part = next(it, None)
+                # Check if the next part is also a flag or end of the command
+                if next_part is None or next_part.startswith('--'):
+                    args_dict[flag] = True  # No value means boolean flag set to True
+                    continue
+                # Try to handle JSON values correctly
+                if next_part.startswith('{'):
+                    # Reconstruct the complete JSON by consuming parts until the closing '}'
+                    json_value = next_part
+                    while not json_value.strip().endswith('}'):
+                        json_value += ' ' + next(it, '')
+                    try:
+                        args_dict[flag] = json.loads(json_value)
+                    except json.JSONDecodeError:
+                        args_dict[flag] = json_value  # Store raw string if JSON parsing fails
+                else:
+                    args_dict[flag] = next_part
+        
+        return args_dict
+
+
+    def _get_file_name(file_path):
+        return os.path.basename(file_path)
+
+
+    def _get_input_files(self):
+        """
+        Get the input files for the job.
+        """
+        input_files = []
+        for root, _, files in os.walk(self.template_path):
+            for f in files:
+                input_files.append(File(f))
+
+
+    def _us_sites_only(self):
+        raise NotImplementedError
+
+
+    def _exclude_sites(self):
+        raise NotImplementedError
+
+
+    def _this_site_only(self):
+        raise NotImplementedError
+
+
     def _plan_and_submit(self):
-        raise NotImplementedError  
+        """
+        Plan and submit the workflow.
+        """
+        os.chdir(self._generated_dir())
+        self.wf.plan(
+            submit=not self.debug,
+            sites=["condorpool"],
+            verbose=3 if self.debug else 0,
+            staging_sites={'condorpool': 'staging-davs'},
+            output_sites=['local'],
+            dir=os.path.dirname(self.wf_dir),
+            relative_dir=self._wf_id,
+        )
+
+        print(f"Worfklow written to \n\n\t{self.wf_dir}\n\n")
 
 
-    def submit_workflow(self):
-        self._pegasus_properties()
-
+    def submit(self, **kwargs):
+        """
+        Serve as the main function to submit the workflow.
+        """
         # Return to initial dir, as we are done.
         logger.info('We are done. Returning to initial directory.')
+        os.chdir(self._initial_dir)
+
+        self._generate_workflow()
+        self._plan_and_submit()
+
         os.chdir(self._initial_dir)
 
 

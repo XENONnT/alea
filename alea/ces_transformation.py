@@ -24,9 +24,7 @@ def smearing_mono_gaussian(
     peak_energy: float,
     bins: Optional[np.ndarray] = None,
 ):
-    """
-    Smear a mono-energetic peak with a Gaussian
-    """
+    """Smear a mono-energetic peak with a Gaussian."""
 
     if bins is None:
         # create an emptyzero histogram with the same binning as the input histogram
@@ -149,9 +147,7 @@ class Transformation(BaseModel):
     @validator("model")
     @classmethod
     def check_model(cls, v, values):
-        """
-        Check if the model exists for the given action
-        """
+        """Check if the model exists for the given action."""
         if v not in MODELS[values["action"]]:
             raise ValueError(f"Model {v} not found for action {values['action']}")
         return v

@@ -59,7 +59,7 @@ class CESTemplateSource(HistogramPdfSource):
             )
 
     def _create_transformation(
-        self, transformation_type: Literal["efficiency", "smearing", "bias"]
+        self, transformation_type: Literal["smearing", "bias","efficiency"]
     ):
         """
         Create a transformation object based on the transformation type

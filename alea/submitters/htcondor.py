@@ -35,10 +35,12 @@ class SubmitterHTCondor(Submitter):
         self.top_dir = TOP_DIR
 
         # User can provide a name for the workflow, otherwise it will be the current time
-        self._setup_wf_id() 
+        self._setup_wf_id()
 
         # Job input configurations
-        self.running_configuration_filename = self.htcondor_configurations.pop("running_configuration_filename")
+        self.running_configuration_filename = self.htcondor_configurations.pop(
+            "running_configuration_filename"
+        )
         self.statistical_model_config_filename = kwargs.get("statistical_model_config")
 
         # Handling templates as part of the inputs
@@ -74,7 +76,6 @@ class SubmitterHTCondor(Submitter):
             self.template_path
         ), f"Path {self.template_path} must not have subdirectories. Please dump all files in one folder."
 
-
     def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
         """Tar all templates in the directory into a tarball."""
         # Create a tar.gz archive
@@ -88,7 +89,6 @@ class SubmitterHTCondor(Submitter):
                         # Add the file to the tar, specifying the arcname to avoid storing full path
                         tar.add(filepath, arcname=os.path.relpath(filepath, start=directory))
 
-
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""
         self.template_tarball_filename = self.htcondor_configurations.pop(
@@ -97,12 +97,10 @@ class SubmitterHTCondor(Submitter):
         assert self.template_tarball_filename, "Please provide a template tarball filename."
         if not os.path.exists(self.template_tarball_filename):
             self._tar_h5_files(self.template_path, self.template_tarball_filename)
-    
-    
-    def _generated_dir(self, work_dir=WORK_DIR):
-        """Directory for generated files"""
-        return os.path.join(work_dir, "generated", self._wf_id)
 
+    def _generated_dir(self, work_dir=WORK_DIR):
+        """Directory for generated files."""
+        return os.path.join(work_dir, "generated", self._wf_id)
 
     def _contains_subdirectories(self, directory):
         """Check if the specified directory contains any subdirectories.
@@ -330,11 +328,12 @@ class SubmitterHTCondor(Submitter):
         return rc
 
     def _generate_workflow(self, name="alea-run_toymc"):
-        """
-        Generate the workflow.
+        """Generate the workflow.
+
         1. Define catalogs
         2. Generate jobs by iterating over the path-modified tickets
         3. Add jobs to the workflow
+
         """
         # Initialize the workflow
         self.wf = Workflow("alea-workflow")
@@ -366,23 +365,23 @@ class SubmitterHTCondor(Submitter):
             )
             requirements = self._make_requirements()
             job.add_profiles(Namespace.CONDOR, "requirements", requirements)
-            
+
             # Add the inputs and outputs
             job.add_inputs(
-                self.f_template_tarball, 
-                self.f_running_configuration, 
-                self.f_statistical_model_config, 
-                self.f_run_toymc_wrapper, 
-                self.f_alea_run_toymc
+                self.f_template_tarball,
+                self.f_running_configuration,
+                self.f_statistical_model_config,
+                self.f_run_toymc_wrapper,
+                self.f_alea_run_toymc,
             )
             job.add_outputs(File(args_dict["output_filename"]), stage_out=True)
-            job.add_outputs(File(args_dict['toydata_filename']), stage_out=True)
+            job.add_outputs(File(args_dict["toydata_filename"]), stage_out=True)
 
             # Add the arguments into the job
             _extract_all_to_tuple = lambda d: tuple(d[key] for key in d.keys())
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)
-            
+
             # Add the job to the workflow
             self.wf.add_jobs(job)
 
@@ -455,9 +454,7 @@ class SubmitterHTCondor(Submitter):
         return executable, args_dict
 
     def _correct_paths_args_dict(self, args_dict):
-        """
-        Correct the paths in the arguments dictionary in a hardcoding way.
-        """
+        """Correct the paths in the arguments dictionary in a hardcoding way."""
         args_dict["statistical_model_args"]["template_path"] = "templates/"
 
         toydata_filename = self._get_file_name(args_dict["toydata_filename"])
@@ -506,11 +503,9 @@ class SubmitterHTCondor(Submitter):
         return args_dict
 
     def _get_file_name(self, file_path):
-        """
-        Get the filename from the file path.
-        """
+        """Get the filename from the file path."""
         return os.path.basename(file_path)
-    
+
     def _us_sites_only(self):
         raise NotImplementedError
 
@@ -519,7 +514,7 @@ class SubmitterHTCondor(Submitter):
 
     def _this_site_only(self):
         raise NotImplementedError
-    
+
     def _check_workflow_exists(self):
         """Check if the workflow already exists."""
         if os.path.exists(self.wf_dir):
@@ -551,7 +546,7 @@ class SubmitterHTCondor(Submitter):
         except FileExistsError:
             logger.error(f"Workflow directory {self._generated_dir()} already exists. Exiting.")
         os.makedirs(self.runs_dir, 0o755, exist_ok=True)
-        
+
         self._generate_workflow()
         self._plan_and_submit()
 

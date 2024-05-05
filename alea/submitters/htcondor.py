@@ -68,10 +68,12 @@ class SubmitterHTCondor(Submitter):
         self.wf_dir = os.path.join(self.runs_dir, self._wf_id)
 
         super().__init__(*args, **kwargs)
-    
+
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $HOME/user_cert exists and has enough time left.
+
         This is necessary only if you are going to use Rucio.
+
         """
         logger.debug("Verifying that the ~/user_cert proxy has enough lifetime")
         shell = Shell("grid-proxy-info -timeleft -file ~/user_cert")
@@ -239,7 +241,7 @@ class SubmitterHTCondor(Submitter):
             LD_LIBRARY_PATH="/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib",
         )
         local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
-        local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ['HOME'] + '/user_cert')
+        local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["HOME"] + "/user_cert")
 
         # Staging sites: for XENON it is physically at dCache in UChicago
         # You will be able to download results from there via gfal commands
@@ -273,8 +275,9 @@ class SubmitterHTCondor(Submitter):
         condorpool.add_profiles(Namespace.ENV, PERL5LIB="")
         condorpool.add_profiles(Namespace.ENV, LD_LIBRARY_PATH="")
         condorpool.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
-        condorpool.add_profiles(Namespace.CONDOR, key='x509userproxy',
-                                value=os.environ['HOME'] + '/user_cert')
+        condorpool.add_profiles(
+            Namespace.CONDOR, key="x509userproxy", value=os.environ["HOME"] + "/user_cert"
+        )
 
         # Add the sites to the SiteCatalog
         sc.add_sites(local, staging_davs, condorpool)
@@ -319,13 +322,17 @@ class SubmitterHTCondor(Submitter):
             "file://{}".format(self.template_tarball_filename),
         )
         # Add the yaml files
-        self.f_running_configuration = File(str(self._get_file_name(self.running_configuration_filename)))
+        self.f_running_configuration = File(
+            str(self._get_file_name(self.running_configuration_filename))
+        )
         rc.add_replica(
             "local",
             str(self._get_file_name(self.running_configuration_filename)),
             "file://{}".format(self.running_configuration_filename),
         )
-        self.f_statistical_model_config = File(str(self._get_file_name(self.statistical_model_config_filename)))
+        self.f_statistical_model_config = File(
+            str(self._get_file_name(self.statistical_model_config_filename))
+        )
         rc.add_replica(
             "local",
             str(self._get_file_name(self.statistical_model_config_filename)),
@@ -649,16 +656,15 @@ class Shell(object):
                 "Command exited with non-zero exit code (%d): %s\n%s"
                 % (self._process.returncode, self._cmd, self._outerr)
             )
-        
+
     def get_outerr(self):
         """Returns the combined stdout and stderr from the command."""
         return self._outerr
-    
+
     def get_exit_code(self):
         """Returns the exit code from the process."""
         return self._process.returncode
-    
+
     def get_duration(self):
         """Returns the timing of the command (seconds)"""
         return self._duration
-    

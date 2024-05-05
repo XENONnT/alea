@@ -3,6 +3,10 @@ import getpass
 import tarfile
 import shlex
 import json
+import tempfile
+import time
+import threading
+import subprocess
 from alea.submitter import Submitter
 import logging
 from pathlib import Path
@@ -11,7 +15,7 @@ from datetime import datetime
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = f"/scratch/{getpass.getuser()}/workflows"
-TOP_DIR = Path(__file__).resolve().parent
+TOP_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # Set up logging
@@ -49,8 +53,8 @@ class SubmitterHTCondor(Submitter):
 
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
-        self.request_memory = self.htcondor_configurations.pop("request_memory", "2 GB")
-        self.request_disk = self.htcondor_configurations.pop("request_disk", "2 GB")
+        self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
+        self.request_disk = self.htcondor_configurations.pop("request_disk", 2000000)
 
         # Dagman configurations
         self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100000)
@@ -64,6 +68,20 @@ class SubmitterHTCondor(Submitter):
         self.wf_dir = os.path.join(self.runs_dir, self._wf_id)
 
         super().__init__(*args, **kwargs)
+    
+    def _validate_x509_proxy(self, min_valid_hours=20):
+        """Ensure $HOME/user_cert exists and has enough time left.
+        This is necessary only if you are going to use Rucio.
+        """
+        logger.debug("Verifying that the ~/user_cert proxy has enough lifetime")
+        shell = Shell("grid-proxy-info -timeleft -file ~/user_cert")
+        shell.run()
+        valid_hours = int(shell.get_outerr()) / 60 / 60
+        if valid_hours < min_valid_hours:
+            raise RuntimeError(
+                "User proxy is only valid for %d hours. Minimum required is %d hours."
+                % (valid_hours, min_valid_hours)
+            )
 
     def _validate_template_path(self):
         """Validate the template path."""
@@ -221,6 +239,7 @@ class SubmitterHTCondor(Submitter):
             LD_LIBRARY_PATH="/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib",
         )
         local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
+        local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ['HOME'] + '/user_cert')
 
         # Staging sites: for XENON it is physically at dCache in UChicago
         # You will be able to download results from there via gfal commands
@@ -254,6 +273,8 @@ class SubmitterHTCondor(Submitter):
         condorpool.add_profiles(Namespace.ENV, PERL5LIB="")
         condorpool.add_profiles(Namespace.ENV, LD_LIBRARY_PATH="")
         condorpool.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
+        condorpool.add_profiles(Namespace.CONDOR, key='x509userproxy',
+                                value=os.environ['HOME'] + '/user_cert')
 
         # Add the sites to the SiteCatalog
         sc.add_sites(local, staging_davs, condorpool)
@@ -291,23 +312,23 @@ class SubmitterHTCondor(Submitter):
         rc = ReplicaCatalog()
 
         # Add the templates
-        self.f_template_tarball = File(self.template_tarball_filename)
+        self.f_template_tarball = File(str(self._get_file_name(self.template_tarball_filename)))
         rc.add_replica(
             "local",
-            self.template_tarball_filename,
+            str(self._get_file_name(self.template_tarball_filename)),
             "file://{}".format(self.template_tarball_filename),
         )
         # Add the yaml files
-        self.f_running_configuration = File(self.running_configuration_filename)
+        self.f_running_configuration = File(str(self._get_file_name(self.running_configuration_filename)))
         rc.add_replica(
             "local",
-            self.running_configuration_filename,
+            str(self._get_file_name(self.running_configuration_filename)),
             "file://{}".format(self.running_configuration_filename),
         )
-        self.f_statistical_model_config = File(self.statistical_model_config_filename)
+        self.f_statistical_model_config = File(str(self._get_file_name(self.statistical_model_config_filename)))
         rc.add_replica(
             "local",
-            self.statistical_model_config_filename,
+            str(self._get_file_name(self.statistical_model_config_filename)),
             "file://{}".format(self.statistical_model_config_filename),
         )
         # Add run_toymc_wrapper
@@ -458,10 +479,10 @@ class SubmitterHTCondor(Submitter):
         args_dict["statistical_model_args"]["template_path"] = "templates/"
 
         toydata_filename = self._get_file_name(args_dict["toydata_filename"])
-        args_dict["toydata_filename"] = os.path.join("output_folder", toydata_filename)
+        args_dict["toydata_filename"] = toydata_filename
 
         output_filename = self._get_file_name(args_dict["output_filename"])
-        args_dict["output_filename"] = os.path.join("output_folder", output_filename)
+        args_dict["output_filename"] = output_filename
 
         return args_dict
 
@@ -540,6 +561,7 @@ class SubmitterHTCondor(Submitter):
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
         self._check_workflow_exists()
+        self._validate_x509_proxy()
 
         #  0o755 means read/write/execute for owner, read/execute for everyone else
         try:
@@ -554,3 +576,89 @@ class SubmitterHTCondor(Submitter):
         # Return to initial dir, as we are done.
         logger.info("We are done. Returning to initial directory.")
         os.chdir(self._initial_dir)
+
+
+class Shell(object):
+    """Provides a shell callout with buffered stdout/stderr, error handling and timeout."""
+
+    def __init__(self, cmd, timeout_secs=1 * 60 * 60, log_cmd=False, log_outerr=False):
+        self._cmd = cmd
+        self._timeout_secs = timeout_secs
+        self._log_cmd = log_cmd
+        self._log_outerr = log_outerr
+        self._process = None
+        self._out_file = None
+        self._outerr = ""
+        self._duration = 0.0
+
+    def run(self):
+        def target():
+
+            self._process = subprocess.Popen(
+                self._cmd,
+                shell=True,
+                stdout=self._out_file,
+                stderr=subprocess.STDOUT,
+                preexec_fn=os.setpgrp,
+            )
+            self._process.communicate()
+
+        if self._log_cmd:
+            print(self._cmd)
+
+        # temp file for the stdout/stderr
+        self._out_file = tempfile.TemporaryFile(prefix="outsource-", suffix=".out")
+
+        ts_start = time.time()
+
+        thread = threading.Thread(target=target)
+        thread.start()
+
+        thread.join(self._timeout_secs)
+        if thread.is_alive():
+            # do our best to kill the whole process group
+            try:
+                kill_cmd = "kill -TERM -%d" % (os.getpgid(self._process.pid))
+                kp = subprocess.Popen(kill_cmd, shell=True)
+                kp.communicate()
+                self._process.terminate()
+            except:
+                pass
+            thread.join()
+            # log the output
+            self._out_file.seek(0)
+            stdout = self._out_file.read().decode("utf-8").strip()
+            if self._log_outerr and len(stdout) > 0:
+                print(stdout)
+            self._out_file.close()
+            raise RuntimeError(
+                "Command timed out after %d seconds: %s" % (self._timeout_secs, self._cmd)
+            )
+
+        self._duration = time.time() - ts_start
+
+        # log the output
+        self._out_file.seek(0)
+        self._outerr = self._out_file.read().decode("utf-8").strip()
+        if self._log_outerr and len(self._outerr) > 0:
+            print(self._outerr)
+        self._out_file.close()
+
+        if self._process.returncode != 0:
+            raise RuntimeError(
+                "Command exited with non-zero exit code (%d): %s\n%s"
+                % (self._process.returncode, self._cmd, self._outerr)
+            )
+        
+    def get_outerr(self):
+        """Returns the combined stdout and stderr from the command."""
+        return self._outerr
+    
+    def get_exit_code(self):
+        """Returns the exit code from the process."""
+        return self._process.returncode
+    
+    def get_duration(self):
+        """Returns the timing of the command (seconds)"""
+        return self._duration
+    

@@ -61,8 +61,6 @@ mv *.h5 templates/
 # Source the environment
 . /opt/XENONnT/setup.sh
 chmod +x alea-run_toymc
-echo "Outputs will be written to output_folder/"
-mkdir -p output_folder
 echo "Before running the toy MC, the work directory contains:"
 ls -lh
 echo "These are the contents of templates/:"
@@ -92,8 +90,9 @@ time python3 ./alea-run_toymc \
     --metadata $metadata
 
 # Check the output
-echo "Checking the output folder"
-ls -lh output_folder/
+echo "Checking the output"
+ls -lh $output_filename
+ls -lh $toydata_filename
 
 # Goodbye
 echo "Done. Exiting."

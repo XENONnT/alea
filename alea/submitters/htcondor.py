@@ -406,7 +406,7 @@ class SubmitterHTCondor(Submitter):
             job.add_outputs(File(args_dict["toydata_filename"]), stage_out=True)
 
             # Add the arguments into the job
-            _extract_all_to_tuple = lambda d: tuple(d[key] for key in d.keys())
+            _extract_all_to_tuple = lambda d: tuple(str(d[key]) for key in d.keys())
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)
 
@@ -492,6 +492,9 @@ class SubmitterHTCondor(Submitter):
 
         output_filename = self._get_file_name(args_dict["output_filename"])
         args_dict["output_filename"] = output_filename
+
+        statistical_model_config = self._get_file_name(args_dict["statistical_model_config"])
+        args_dict["statistical_model_config"] = statistical_model_config
 
         return args_dict
 

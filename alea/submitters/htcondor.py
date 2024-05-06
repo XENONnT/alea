@@ -406,7 +406,7 @@ class SubmitterHTCondor(Submitter):
             job.add_outputs(File(args_dict["toydata_filename"]), stage_out=True)
 
             # Add the arguments into the job
-            _extract_all_to_tuple = lambda d: tuple(str(d[key]) for key in d.keys())
+            _extract_all_to_tuple = lambda d: tuple(str(d[key]).replace(" ","") for key in d.keys())
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)
 

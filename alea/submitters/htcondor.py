@@ -290,9 +290,9 @@ class SubmitterHTCondor(Submitter):
 
         """
         run_toymc_wrapper = Transformation(
-            name="alea-run_toymc",
+            name="run_toymc_wrapper",
             site="local",
-            pfn=self.top_dir / "bin/alea/submitters/run_toymc_wrapper.sh",
+            pfn=self.top_dir / "alea/submitters/run_toymc_wrapper.sh",
             is_stageable=True,
             arch=Arch.X86_64,
         ).add_pegasus_profile(clusters_size=cluster_size)
@@ -355,7 +355,7 @@ class SubmitterHTCondor(Submitter):
 
         return rc
 
-    def _generate_workflow(self, name="alea-run_toymc"):
+    def _generate_workflow(self, name="run_toymc_wrapper"):
         """Generate the workflow.
 
         1. Define catalogs
@@ -421,7 +421,7 @@ class SubmitterHTCondor(Submitter):
         self.wf.write()
 
     def _initialize_job(
-        self, name="alea-run_toymc", run_on_submit_node=False, cores=1, memory=1_700, disk=1_000_000
+        self, name="run_toymc_wrapper", run_on_submit_node=False, cores=1, memory=1_700, disk=1_000_000
     ):
         """Initilize a Pegasus job, also sets resource profiles.
 

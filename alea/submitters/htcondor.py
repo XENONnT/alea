@@ -456,10 +456,7 @@ class SubmitterHTCondor(Submitter):
 
         # If in debug mode, use the MWT2 site because we own it
         if self.debug:
-            requirements_base = (
-                requirements_base
-                + ' && GLIDEIN_ResourceName == "MWT2" '
-            )
+            requirements_base = requirements_base + ' && GLIDEIN_ResourceName == "MWT2" '
 
         requirements = requirements_base
         return requirements

@@ -313,6 +313,7 @@ class StatisticalModel:
         disable_index_fitting=False,
         max_index_fitting_iter=10,
         minimizer_routine="migrad",
+        strategy=1,
         **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
@@ -345,6 +346,7 @@ class StatisticalModel:
         # Make the Minuit object
         m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
         m.errordef = Minuit.LIKELIHOOD
+        m.strategy = strategy
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:

@@ -458,7 +458,7 @@ class SubmitterHTCondor(Submitter):
         if self.debug:
             requirements_base = (
                 requirements_base
-                + ' && GLIDEIN_ResourceName == "MWT2" && regexp("uct2-c4[1-7]", Machine)'
+                + ' && GLIDEIN_ResourceName == "MWT2" '
             )
 
         requirements = requirements_base

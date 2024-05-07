@@ -408,7 +408,8 @@ class SubmitterHTCondor(Submitter):
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
             _extract_all_to_tuple = lambda d: tuple(
-               f"{json.dumps(str(d[key])).replace(' ', '')}".replace("\'", '\\"') for key in d.keys()
+                f"{json.dumps(str(d[key])).replace(' ', '')}".replace("'", '\\"')
+                for key in d.keys()
             )
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)

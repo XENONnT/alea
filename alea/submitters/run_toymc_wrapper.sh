@@ -5,14 +5,14 @@ set -e
 # Extract the arguments
 statistical_model=$1
 poi=$2
-hypotheses="'$3'"
+hypotheses=$3
 n_mc=$4
 common_hypothesis=$5
-generate_values="'$6'"
-nominal_values="'$7'"
+generate_values=$6
+nominal_values=$7
 statistical_model_config=$8
 parameter_definition=$9
-statistical_model_args="'${10}'"
+statistical_model_args=${10}
 likelihood_config=${11}
 compute_confidence_interval=${12}
 confidence_level=${13}

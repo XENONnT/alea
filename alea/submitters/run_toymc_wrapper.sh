@@ -44,6 +44,28 @@ echo "output_filename: $output_filename"
 echo "seed: $seed"
 echo "metadata: $metadata"
 
+# Escaped strings
+STATISTICAL_MODEL=$(echo "$statistical_model" | sed "s/'/\"/g")
+POI=$(echo "$poi" | sed "s/'/\"/g")
+HYPOTHESES=$(echo "$hypotheses" | sed "s/'/\"/g")
+N_MC=$(echo "$n_mc" | sed "s/'/\"/g")
+COMMON_HYPOTHESIS=$(echo "$common_hypothesis" | sed "s/'/\"/g")
+GENERATE_VALUES=$(echo "$generate_values" | sed "s/'/\"/g")
+NOMINAL_VALUES=$(echo "$nominal_values" | sed "s/'/\"/g")
+STATISTICAL_MODEL_CONFIG=$(echo "$statistical_model_config" | sed "s/'/\"/g")
+PARAMETER_DEFINITION=$(echo "$parameter_definition" | sed "s/'/\"/g")
+STATISTICAL_MODEL_ARGS=$(echo "$statistical_model_args" | sed "s/'/\"/g")
+LIKELIHOOD_CONFIG=$(echo "$likelihood_config" | sed "s/'/\"/g")
+COMPUTE_CONFIDENCE_INTERVAL=$(echo "$compute_confidence_interval" | sed "s/'/\"/g")
+CONFIDENCE_LEVEL=$(echo "$confidence_level" | sed "s/'/\"/g")
+CONFIDENCE_INTERVAL_KIND=$(echo "$confidence_interval_kind" | sed "s/'/\"/g")
+TOYDATA_MODE=$(echo "$toydata_mode" | sed "s/'/\"/g")
+TOYDATA_FILENAME=$(echo "$toydata_filename" | sed "s/'/\"/g")
+ONLY_TOYDATA=$(echo "$only_toydata" | sed "s/'/\"/g")
+OUTPUT_FILENAME=$(echo "$output_filename" | sed "s/'/\"/g")
+SEED=$(echo "$seed" | sed "s/'/\"/g")
+METADATA=$(echo "$metadata" | sed "s/'/\"/g")
+
 # Extract tarballs input
 START=$(date +%s)
 for TAR in `ls *.tar.gz`; do
@@ -68,49 +90,49 @@ ls -lh templates/
 
 # Print the command
 echo "Running command: python3 ./alea-run_toymc \\
-    --statistical_model $statistical_model \\
-    --poi $poi \\
-    --hypotheses $hypotheses \\
-    --n_mc $n_mc \\
-    --common_hypothesis $common_hypothesis \\
-    --generate_values $generate_values \\
-    --nominal_values $nominal_values \\
-    --statistical_model_config $statistical_model_config \\
-    --parameter_definition $parameter_definition \\
-    --statistical_model_args $statistical_model_args \\
-    --likelihood_config $likelihood_config \\
-    --compute_confidence_interval $compute_confidence_interval \\
-    --confidence_level $confidence_level \\
-    --confidence_interval_kind $confidence_interval_kind \\
-    --toydata_mode $toydata_mode \\
-    --toydata_filename $toydata_filename \\
-    --only_toydata $only_toydata \\
-    --output_filename $output_filename \\
-    --seed $seed \\
-    --metadata $metadata"
+    --statistical_model $STATISTICAL_MODEL \\
+    --poi $POI \\
+    --hypotheses $HYPOTHESES \\
+    --n_mc $N_MC \\
+    --common_hypothesis $COMMON_HYPOTHESIS \\
+    --generate_values $GENERATE_VALUES \\
+    --nominal_values $NOMINAL_VALUES \\
+    --statistical_model_config $STATISTICAL_MODEL_CONFIG \\
+    --parameter_definition $PARAMETER_DEFINITION \\
+    --statistical_model_args $STATISTICAL_MODEL_ARGS \\
+    --likelihood_config $LIKELIHOOD_CONFIG \\
+    --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \\
+    --confidence_level $CONFIDENCE_LEVEL \\
+    --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \\
+    --toydata_mode $TOYDATA_MODE \\
+    --toydata_filename $TOYDATA_FILENAME \\
+    --only_toydata $ONLY_TOYDATA \\
+    --output_filename $OUTPUT_FILENAME \\
+    --seed $SEED \\
+    --metadata $METADATA"
 
 # Run the toy MC
 time python3 ./alea-run_toymc \
-    --statistical_model $statistical_model \
-    --poi $poi \
-    --hypotheses $hypotheses \
-    --n_mc $n_mc \
-    --common_hypothesis $common_hypothesis \
-    --generate_values $generate_values \
-    --nominal_values $nominal_values \
-    --statistical_model_config $statistical_model_config \
-    --parameter_definition $parameter_definition \
-    --statistical_model_args $statistical_model_args \
-    --likelihood_config $likelihood_config \
-    --compute_confidence_interval $compute_confidence_interval \
-    --confidence_level $confidence_level \
-    --confidence_interval_kind $confidence_interval_kind \
-    --toydata_mode $toydata_mode \
-    --toydata_filename $toydata_filename \
-    --only_toydata $only_toydata \
-    --output_filename $output_filename \
-    --seed $seed \
-    --metadata $metadata
+    --statistical_model $STATISTICAL_MODEL \
+    --poi $POI \
+    --hypotheses $HYPOTHESES \
+    --n_mc $N_MC \
+    --common_hypothesis $COMMON_HYPOTHESIS \
+    --generate_values $GENERATE_VALUES \
+    --nominal_values $NOMINAL_VALUES \
+    --statistical_model_config $STATISTICAL_MODEL_CONFIG \
+    --parameter_definition $PARAMETER_DEFINITION \
+    --statistical_model_args $STATISTICAL_MODEL_ARGS \
+    --likelihood_config $LIKELIHOOD_CONFIG \
+    --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \
+    --confidence_level $CONFIDENCE_LEVEL \
+    --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \
+    --toydata_mode $TOYDATA_MODE \
+    --toydata_filename $TOYDATA_FILENAME \
+    --only_toydata $ONLY_TOYDATA \
+    --output_filename $OUTPUT_FILENAME \
+    --seed $SEED \
+    --metadata $METADATA
 
 # Check the output
 echo "Checking the output"

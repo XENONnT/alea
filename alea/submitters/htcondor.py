@@ -142,7 +142,7 @@ class SubmitterHTCondor(Submitter):
                 for key, value in node.items():
                     if key == "template_filename":
                         filename = value.split("/")[-1]
-                        node[key] = "templates/" + filename
+                        node[key] = filename
                     else:
                         update_template_filenames(value)
             elif isinstance(node, list):
@@ -537,7 +537,7 @@ class SubmitterHTCondor(Submitter):
         output_filename = self._get_file_name(args_dict["output_filename"])
         args_dict["output_filename"] = output_filename
 
-        statistical_model_config = self._get_file_name(args_dict["statistical_model_config"])
+        statistical_model_config = self._get_file_name(self.modified_statistical_model_config_filename)
         args_dict["statistical_model_config"] = statistical_model_config
 
         return args_dict

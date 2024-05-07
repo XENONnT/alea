@@ -6,6 +6,7 @@ import json
 import tempfile
 import time
 import threading
+import yaml
 import subprocess
 from alea.submitter import Submitter
 import logging
@@ -117,6 +118,44 @@ class SubmitterHTCondor(Submitter):
         assert self.template_tarball_filename, "Please provide a template tarball filename."
         if not os.path.exists(self.template_tarball_filename):
             self._tar_h5_files(self.template_path, self.template_tarball_filename)
+
+    def _modify_yaml(self):
+        """
+        Modify the statistical model config file to correct the 'template_filename' fields.
+        We will use the modified one to upload to OSG. This modification is necessary because 
+        the templates on the grid will have different path compared to the local ones, and the 
+        statistical model config file must reflect that.
+        """
+        input_file = self.statistical_model_config_filename
+        # Output file will have the same name as input file but with '_modified' appended
+        output_file = input_file.replace(".yaml", "_modified.yaml")
+        self.modified_statistical_model_config_filename = output_file
+
+        # Load the YAML data from the original file
+        with open(input_file, 'r') as file:
+            data = yaml.safe_load(file)
+        
+        # Recursive function to update 'template_filename' fields
+        def update_template_filenames(node):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key == 'template_filename':
+                        filename = value.split('/')[-1]
+                        node[key] = "templates/" + filename
+                    else:
+                        update_template_filenames(value)
+            elif isinstance(node, list):
+                for item in node:
+                    update_template_filenames(item)
+
+        # Update the data
+        update_template_filenames(data)
+
+        # Write the updated YAML data to the new file
+        # Overwrite if the file already exists
+        with open(output_file, 'w') as file:
+            yaml.safe_dump(data, file)
+        logger.info(f"Modified statistical model config file written to {output_file}")
 
     def _generated_dir(self, work_dir=WORK_DIR):
         """Directory for generated files."""
@@ -331,12 +370,12 @@ class SubmitterHTCondor(Submitter):
             "file://{}".format(self.running_configuration_filename),
         )
         self.f_statistical_model_config = File(
-            str(self._get_file_name(self.statistical_model_config_filename))
+            str(self._get_file_name(self.modified_statistical_model_config_filename))
         )
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.statistical_model_config_filename)),
-            "file://{}".format(self.statistical_model_config_filename),
+            str(self._get_file_name(self.modified_statistical_model_config_filename)),
+            "file://{}".format(self.modified_statistical_model_config_filename),
         )
         # Add run_toymc_wrapper
         self.f_run_toymc_wrapper = File("run_toymc_wrapper.sh")
@@ -578,6 +617,7 @@ class SubmitterHTCondor(Submitter):
         """Serve as the main function to submit the workflow."""
         self._check_workflow_exists()
         self._validate_x509_proxy()
+        self._modify_yaml()
 
         #  0o755 means read/write/execute for owner, read/execute for everyone else
         try:

@@ -537,7 +537,9 @@ class SubmitterHTCondor(Submitter):
         output_filename = self._get_file_name(args_dict["output_filename"])
         args_dict["output_filename"] = output_filename
 
-        statistical_model_config = self._get_file_name(self.modified_statistical_model_config_filename)
+        statistical_model_config = self._get_file_name(
+            self.modified_statistical_model_config_filename
+        )
         args_dict["statistical_model_config"] = statistical_model_config
 
         return args_dict

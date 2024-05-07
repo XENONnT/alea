@@ -5,14 +5,14 @@ set -e
 # Extract the arguments
 statistical_model=$1
 poi=$2
-hypotheses=$3
+hypotheses="'$3'"
 n_mc=$4
 common_hypothesis=$5
-generate_values=$6
-nominal_values=$7
+generate_values="'$6'"
+nominal_values="'$7'"
 statistical_model_config=$8
 parameter_definition=$9
-statistical_model_args=${10}
+statistical_model_args="'${10}'"
 likelihood_config=${11}
 compute_confidence_interval=${12}
 confidence_level=${13}
@@ -65,6 +65,29 @@ echo "Before running the toy MC, the work directory contains:"
 ls -lh
 echo "These are the contents of templates/:"
 ls -lh templates/
+
+# Print the command
+echo "Running command: python3 ./alea-run_toymc \\
+    --statistical_model $statistical_model \\
+    --poi $poi \\
+    --hypotheses $hypotheses \\
+    --n_mc $n_mc \\
+    --common_hypothesis $common_hypothesis \\
+    --generate_values $generate_values \\
+    --nominal_values $nominal_values \\
+    --statistical_model_config $statistical_model_config \\
+    --parameter_definition $parameter_definition \\
+    --statistical_model_args $statistical_model_args \\
+    --likelihood_config $likelihood_config \\
+    --compute_confidence_interval $compute_confidence_interval \\
+    --confidence_level $confidence_level \\
+    --confidence_interval_kind $confidence_interval_kind \\
+    --toydata_mode $toydata_mode \\
+    --toydata_filename $toydata_filename \\
+    --only_toydata $only_toydata \\
+    --output_filename $output_filename \\
+    --seed $seed \\
+    --metadata $metadata"
 
 # Run the toy MC
 time python3 ./alea-run_toymc \

@@ -120,11 +120,12 @@ class SubmitterHTCondor(Submitter):
             self._tar_h5_files(self.template_path, self.template_tarball_filename)
 
     def _modify_yaml(self):
-        """
-        Modify the statistical model config file to correct the 'template_filename' fields.
-        We will use the modified one to upload to OSG. This modification is necessary because 
-        the templates on the grid will have different path compared to the local ones, and the 
+        """Modify the statistical model config file to correct the 'template_filename' fields.
+
+        We will use the modified one to upload to OSG. This modification is necessary because the
+        templates on the grid will have different path compared to the local ones, and the
         statistical model config file must reflect that.
+
         """
         input_file = self.statistical_model_config_filename
         # Output file will have the same name as input file but with '_modified' appended
@@ -132,15 +133,15 @@ class SubmitterHTCondor(Submitter):
         self.modified_statistical_model_config_filename = output_file
 
         # Load the YAML data from the original file
-        with open(input_file, 'r') as file:
+        with open(input_file, "r") as file:
             data = yaml.safe_load(file)
-        
+
         # Recursive function to update 'template_filename' fields
         def update_template_filenames(node):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    if key == 'template_filename':
-                        filename = value.split('/')[-1]
+                    if key == "template_filename":
+                        filename = value.split("/")[-1]
                         node[key] = "templates/" + filename
                     else:
                         update_template_filenames(value)
@@ -153,7 +154,7 @@ class SubmitterHTCondor(Submitter):
 
         # Write the updated YAML data to the new file
         # Overwrite if the file already exists
-        with open(output_file, 'w') as file:
+        with open(output_file, "w") as file:
             yaml.safe_dump(data, file)
         logger.info(f"Modified statistical model config file written to {output_file}")
 

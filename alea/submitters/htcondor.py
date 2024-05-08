@@ -11,7 +11,23 @@ import subprocess
 from alea.submitter import Submitter
 import logging
 from pathlib import Path
-from Pegasus.api import *
+from Pegasus.api import (
+    Workflow,
+    Job,
+    File,
+    Site,
+    Directory,
+    FileServer,
+    Operation,
+    Namespace,
+    Arch,
+    Properties,
+    SiteCatalog,
+    Transformation,
+    TransformationCatalog,
+    ReplicaCatalog,
+)
+    
 from datetime import datetime
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"

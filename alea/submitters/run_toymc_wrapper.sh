@@ -44,6 +44,11 @@ echo "output_filename: $output_filename"
 echo "seed: $seed"
 echo "metadata: $metadata"
 
+# Overwrite the template path
+echo "Original statistical_model_args: $statistical_model_args"
+statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" '.template_path = $pwd + .template_path')
+echo "Modified statistical_model_args: $statistical_model_args"
+
 # Escaped strings
 STATISTICAL_MODEL=$(echo "$statistical_model" | sed "s/'/\"/g")
 POI=$(echo "$poi" | sed "s/'/\"/g")

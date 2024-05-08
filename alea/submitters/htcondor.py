@@ -31,6 +31,7 @@ class SubmitterHTCondor(Submitter):
         # General start
         self.name = self.__class__.__name__
         self.htcondor_configurations = kwargs.get("htcondor_configurations", {})
+        self.template_path = self.htcondor_configurations.pop("template_path", None)
         self.singularity_image = self.htcondor_configurations.pop(
             "singularity_image", DEFAULT_IMAGE
         )

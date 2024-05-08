@@ -47,7 +47,6 @@ class SubmitterHTCondor(Submitter):
         # General start
         self.name = self.__class__.__name__
         self.htcondor_configurations = kwargs.get("htcondor_configurations", {})
-        self.template_path = self.htcondor_configurations.pop("template_path", None)
         self.singularity_image = self.htcondor_configurations.pop(
             "singularity_image", DEFAULT_IMAGE
         )
@@ -86,6 +85,8 @@ class SubmitterHTCondor(Submitter):
         self.wf_dir = os.path.join(self.runs_dir, self._wf_id)
 
         super().__init__(*args, **kwargs)
+        # Override the script dir since it's always the same on the computing node
+        self.run_toymc = self.top_dir / "bin/alea-run_toymc"
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $HOME/user_cert exists and has enough time left.
@@ -105,14 +106,15 @@ class SubmitterHTCondor(Submitter):
 
     def _validate_template_path(self):
         """Validate the template path."""
-        self.template_path = self.htcondor_configurations.pop("template_path", None)
-        assert self.template_path, "Please provide a template path."
+        self.template_input_path = self.htcondor_configurations.pop("template_path", None)
+        self.template_path = "templates/"
+        assert self.template_input_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
-        assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
+        assert os.path.exists(self.template_input_path), f"Path {self.template_input_path} does not exist."
         # This folder must not have any subdirectories
         assert not self._contains_subdirectories(
-            self.template_path
-        ), f"Path {self.template_path} must not have subdirectories. Please dump all files in one folder."
+            self.template_input_path
+        ), f"Template path {self.template_input_path} must not have subdirectories. Please dump all files in one folder."
 
     def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
         """Tar all templates in the directory into a tarball."""
@@ -134,7 +136,7 @@ class SubmitterHTCondor(Submitter):
         )
         assert self.template_tarball_filename, "Please provide a template tarball filename."
         if not os.path.exists(self.template_tarball_filename):
-            self._tar_h5_files(self.template_path, self.template_tarball_filename)
+            self._tar_h5_files(self.template_input_path, self.template_tarball_filename)
 
     def _modify_yaml(self):
         """Modify the statistical model config file to correct the 'template_filename' fields.

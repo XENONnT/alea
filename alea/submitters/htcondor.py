@@ -110,9 +110,7 @@ class SubmitterHTCondor(Submitter):
         self.template_path = self.htcondor_configurations.pop("template_path", None)
         assert self.template_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
-        assert os.path.exists(
-            self.template_path
-        ), f"Path {self.template_path} does not exist."
+        assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
         # This folder must not have any subdirectories
         assert not self._contains_subdirectories(
             self.template_path

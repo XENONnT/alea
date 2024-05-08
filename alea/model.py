@@ -314,6 +314,7 @@ class StatisticalModel:
         max_index_fitting_iter=10,
         minimizer_routine="migrad",
         strategy=1,
+        refit_invalid=True,
         **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
@@ -359,6 +360,10 @@ class StatisticalModel:
 
         if disable_index_fitting or (len(index_parameters) == 0):
             m = self._standard_fit(m, minimizer_routine)
+            if not m.valid and refit_invalid:
+                # try to refit with more precision
+                m.strategy = 2
+                m = self._standard_fit(m, "simplex_migrad")
         else:
             m = self._index_mixing_fit(
                 m, index_parameters, max_index_fitting_iter, verbose, minimizer_routine

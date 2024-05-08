@@ -446,7 +446,7 @@ class SubmitterHTCondor(Submitter):
         self.sc = self._generate_sc()
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
-        
+
         # Job requirements
         requirements = self._make_requirements()
 
@@ -458,9 +458,9 @@ class SubmitterHTCondor(Submitter):
             disk=self.request_disk,
         )
         combine_job.add_profiles(Namespace.CONDOR, "requirements", requirements)
-        
+
         # Combine job configuration: all toymc results and files will be combined into one tarball
-        combine_job.add_outputs(File("%s-combined_output.tar.gz"%(self._wf_id)), stage_out=True)
+        combine_job.add_outputs(File("%s-combined_output.tar.gz" % (self._wf_id)), stage_out=True)
         combine_job.add_args(self._wf_id)
         self.wf.add_jobs(combine_job)
 

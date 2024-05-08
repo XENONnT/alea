@@ -8,7 +8,7 @@ wf_id=$1
 # Sanity check: these are the files in the current directory
 ls -lh
 
-# Make output filename 
+# Make output filename
 # This file will be used to store the output of the workflow
 output_filename=$wf_id-combined_output.tar.gz
 

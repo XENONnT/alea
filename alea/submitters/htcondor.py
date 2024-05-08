@@ -350,6 +350,7 @@ class SubmitterHTCondor(Submitter):
         Every executable that is used in the workflow should be here.
 
         """
+        # Wrappers that runs alea-run_toymc
         run_toymc_wrapper = Transformation(
             name="run_toymc_wrapper",
             site="local",
@@ -358,8 +359,17 @@ class SubmitterHTCondor(Submitter):
             arch=Arch.X86_64,
         ).add_pegasus_profile(clusters_size=cluster_size)
 
+        # Wrappers that collect outputs
+        combine = Transformation(
+            name="combine",
+            site="local",
+            pfn=self.top_dir / "alea/submitters/combine.sh",
+            is_stageable=True,
+            arch=Arch.X86_64,
+        )
+
         tc = TransformationCatalog()
-        tc.add_transformations(run_toymc_wrapper)
+        tc.add_transformations(run_toymc_wrapper, combine)
 
         # Write TransformationCatalog to ./transformations.yml
         tc.write()
@@ -413,6 +423,13 @@ class SubmitterHTCondor(Submitter):
             "alea-run_toymc",
             "file://{}".format(self.top_dir / "bin/alea-run_toymc"),
         )
+        #  Add combine executable
+        self.f_combine = File("combine.sh")
+        rc.add_replica(
+            "local",
+            "combine.sh",
+            "file://{}".format(self.top_dir / "alea/submitters/combine.sh"),
+        )
 
         return rc
 
@@ -429,6 +446,23 @@ class SubmitterHTCondor(Submitter):
         self.sc = self._generate_sc()
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
+        
+        # Job requirements
+        requirements = self._make_requirements()
+
+        # Define summary job
+        combine_job = self._initialize_job(
+            name="combine",
+            cores=self.request_cpus,
+            memory=self.request_memory,
+            disk=self.request_disk,
+        )
+        combine_job.add_profiles(Namespace.CONDOR, "requirements", requirements)
+        
+        # Combine job configuration: all toymc results and files will be combined into one tarball
+        combine_job.add_outputs(File("%s-combined_output.tar.gz"%(self._wf_id)), stage_out=True)
+        combine_job.add_args(self._wf_id)
+        self.wf.add_jobs(combine_job)
 
         # Generate jobstring and output names from tickets generator
         # _script for example:
@@ -452,7 +486,6 @@ class SubmitterHTCondor(Submitter):
                 memory=self.request_memory,
                 disk=self.request_disk,
             )
-            requirements = self._make_requirements()
             job.add_profiles(Namespace.CONDOR, "requirements", requirements)
 
             # Add the inputs and outputs
@@ -465,6 +498,8 @@ class SubmitterHTCondor(Submitter):
             )
             job.add_outputs(File(args_dict["output_filename"]), stage_out=True)
             job.add_outputs(File(args_dict["toydata_filename"]), stage_out=True)
+            combine_job.add_inputs(File(args_dict["output_filename"]))
+            combine_job.add_inputs(File(args_dict["toydata_filename"]))
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
@@ -626,6 +661,7 @@ class SubmitterHTCondor(Submitter):
         os.chdir(self._generated_dir())
         self.wf.plan(
             submit=not self.debug,
+            cleanup="none",
             sites=["condorpool"],
             verbose=3,
             staging_sites={"condorpool": "staging-davs"},

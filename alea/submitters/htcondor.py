@@ -499,8 +499,8 @@ class SubmitterHTCondor(Submitter):
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
             )
-            job.add_outputs(File(args_dict["output_filename"]), stage_out=True)
-            job.add_outputs(File(args_dict["toydata_filename"]), stage_out=True)
+            job.add_outputs(File(args_dict["output_filename"]), stage_out=False)
+            job.add_outputs(File(args_dict["toydata_filename"]), stage_out=False)
             combine_job.add_inputs(File(args_dict["output_filename"]))
             combine_job.add_inputs(File(args_dict["toydata_filename"]))
 

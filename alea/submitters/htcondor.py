@@ -27,7 +27,7 @@ from Pegasus.api import (
     TransformationCatalog,
     ReplicaCatalog,
 )
-    
+
 from datetime import datetime
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
@@ -110,7 +110,9 @@ class SubmitterHTCondor(Submitter):
         self.template_path = "templates/"
         assert self.template_input_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
-        assert os.path.exists(self.template_input_path), f"Path {self.template_input_path} does not exist."
+        assert os.path.exists(
+            self.template_input_path
+        ), f"Path {self.template_input_path} does not exist."
         # This folder must not have any subdirectories
         assert not self._contains_subdirectories(
             self.template_input_path

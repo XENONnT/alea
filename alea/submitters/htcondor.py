@@ -68,6 +68,9 @@ class SubmitterHTCondor(Submitter):
         self._validate_template_path()
         self._make_template_tarball()
 
+        # Cluster size for toymc jobs
+        self.cluster_size = self.htcondor_configurations.pop("cluster_size", 1)
+
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
         self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
@@ -444,7 +447,7 @@ class SubmitterHTCondor(Submitter):
         # Initialize the workflow
         self.wf = Workflow("alea-workflow")
         self.sc = self._generate_sc()
-        self.tc = self._generate_tc()
+        self.tc = self._generate_tc(cluster_size=self.cluster_size)
         self.rc = self._generate_rc()
 
         # Job requirements
@@ -661,9 +664,10 @@ class SubmitterHTCondor(Submitter):
         os.chdir(self._generated_dir())
         self.wf.plan(
             submit=not self.debug,
+            cluster=["horizontal"],
             cleanup="none",
             sites=["condorpool"],
-            verbose=3,
+            verbose=3 if self.debug else 0,
             staging_sites={"condorpool": "staging-davs"},
             output_sites=["local"],
             dir=os.path.dirname(self.wf_dir),

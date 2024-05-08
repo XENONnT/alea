@@ -141,7 +141,7 @@ class SubmitterHTCondor(Submitter):
             if isinstance(node, dict):
                 for key, value in node.items():
                     if key == "template_filename":
-                        filename = value.split("/")[-1]
+                        filename = "templates/"+value.split("/")[-1]
                         node[key] = filename
                     else:
                         update_template_filenames(value)

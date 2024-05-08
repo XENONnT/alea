@@ -46,7 +46,7 @@ echo "metadata: $metadata"
 
 # Overwrite the template path
 echo "Original statistical_model_args: $statistical_model_args"
-statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" '.template_path = $pwd + .template_path')
+statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" --compact-output '.template_path = $pwd + .template_path')
 echo "Modified statistical_model_args: $statistical_model_args"
 
 # Escaped strings

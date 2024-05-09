@@ -383,9 +383,7 @@ class SubmitterHTCondor(Submitter):
             "file://{}".format(self.template_tarball_filename),
         )
         # Add the yaml files
-        self.f_running_configuration = File(
-            str(self._get_file_name(self.config_file_path))
-        )
+        self.f_running_configuration = File(str(self._get_file_name(self.config_file_path)))
         rc.add_replica(
             "local",
             str(self._get_file_name(self.config_file_path)),

@@ -95,8 +95,11 @@ class SubmitterHTCondor(Submitter):
         This is necessary only if you are going to use Rucio.
 
         """
+        self.x509_user_proxy = os.getenv("X509_USER_PROXY")
+        assert self.x509_user_proxy, "Please provide a valid X509_USER_PROXY environment variable."
+
         logger.debug("Verifying that the ~/user_cert proxy has enough lifetime")
-        shell = Shell("grid-proxy-info -timeleft -file ~/user_cert")
+        shell = Shell("grid-proxy-info -timeleft -file %s"$(self.x509_user_proxy))
         shell.run()
         valid_hours = int(shell.get_outerr()) / 60 / 60
         if valid_hours < min_valid_hours:

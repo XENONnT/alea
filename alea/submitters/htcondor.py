@@ -531,10 +531,10 @@ class SubmitterHTCondor(Submitter):
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk
-        memory = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
+        memory_str = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
         disk_str = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
-        job.add_profiles(Namespace.CONDOR, "request_memory", memory)
+        job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
 
         return job
 

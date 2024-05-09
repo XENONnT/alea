@@ -30,8 +30,8 @@ htcondor_configurations:
 - `template_tarball_filename`: a filename of your choice, which is a tarball for all templates in `temp;ate_path` tarred by the submitter. It will be uploaded to the grid.
 - `cluster_size`: clustering multiple `alea-run_toymc` jobs into a single job. For example, now you expect to run 100 individual `alea-run_toymc` jobs, and you specified `cluster_size: 10`, there will be only 10 `alea-run_toymc` in the end, each containing 10 jobs to run in sequence. Unless you got crazy amount of jobs like >200, I don't recommend changing it from 1.
 - `request_cpus`: number of CPUs for each job. The default 1 should be good.
-- `request_memory`: requested memory for each job in unit of MB. Please don't put a number larger than what you need, because it will significantly reduce our available slots. 
-- `request_disk`: requested disk for each job in unit of KB. Please don't put a number larger than what you need, because it will significantly reduce our available slots. 
+- `request_memory`: requested memory for each job in unit of MB. Please don't put a number larger than what you need, because it will significantly reduce our available slots.
+- `request_disk`: requested disk for each job in unit of KB. Please don't put a number larger than what you need, because it will significantly reduce our available slots.
 - `dagman_maxidle`: maximum of jobs allowed to be idle. The default 100000 is good for most cases.
 - `dagman_retry`: number of automatic retry for each job when failure happen for whatever reason. Note that everytime it retries, we will have new resources requirement `n_retry * request_memory` and `n_retry * request_disk` to get rid of failure due to resource shortage.
 - `dagman_maxjobs`: maximum of jobs allowed to be running. The default 100000 is good for most cases.
@@ -76,7 +76,7 @@ If you want to know more details, like checking why the job failed, just do this
 pegasus-analyzer /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
 ```
 
-Let's say now the workflow is ended (you see nothing from `condor_q`). If it didn't finish successfully for weird error, a good thing to do is just to rerun it. However, keep in mind that the workflow itself will automatically retries up to `dagman_retry` times (defined in your running config). To rerun the failed jobs only, just do this. 
+Let's say now the workflow is ended (you see nothing from `condor_q`). If it didn't finish successfully for weird error, a good thing to do is just to rerun it. However, keep in mind that the workflow itself will automatically retries up to `dagman_retry` times (defined in your running config). To rerun the failed jobs only, just do this.
 ```
 pegasus-run /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
 ```

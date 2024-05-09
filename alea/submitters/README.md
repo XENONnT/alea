@@ -13,7 +13,6 @@ Following this as an example
 ```
 htcondor_configurations:
   template_path: "/home/yuanlq/alea_inputs/nt_cevns_templates/v7"
-  template_tarball_filename: "nt_cevns_templates_v7.tar.gz"
   cluster_size: 1
   request_cpus: 1
   request_memory: 2000
@@ -26,8 +25,7 @@ htcondor_configurations:
   running_configuration_filename: "/home/yuanlq/software/alea/lqtests/lq_b8_cevns_running.yaml"
   wf_id: "lq_b8_cevns_30"
 ```
-- `template_path`: where you put your input templates. Note that all files have to have unique names, and no subfolders is allowed in `template_path`.
-- `template_tarball_filename`: a filename of your choice, which is a tarball for all templates in `temp;ate_path` tarred by the submitter. It will be uploaded to the grid.
+- `template_path`: where you put your input templates. Note that all files have to have unique names, and no subfolders is allowed in `template_path`. All templates inside will be tarred and the tarball will be uploaded to the grid when computing.
 - `cluster_size`: clustering multiple `alea-run_toymc` jobs into a single job. For example, now you expect to run 100 individual `alea-run_toymc` jobs, and you specified `cluster_size: 10`, there will be only 10 `alea-run_toymc` in the end, each containing 10 jobs to run in sequence. Unless you got crazy amount of jobs like >200, I don't recommend changing it from 1.
 - `request_cpus`: number of CPUs for each job. The default 1 should be good.
 - `request_memory`: requested memory for each job in unit of MB. Please don't put a number larger than what you need, because it will significantly reduce our available slots.

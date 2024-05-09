@@ -64,10 +64,6 @@ class SubmitterHTCondor(Submitter):
         )
         self.statistical_model_config_filename = kwargs.get("statistical_model_config")
 
-        # Handling templates as part of the inputs
-        self._validate_template_path()
-        self._make_template_tarball()
-
         # Cluster size for toymc jobs
         self.cluster_size = self.htcondor_configurations.pop("cluster_size", 1)
 
@@ -134,12 +130,8 @@ class SubmitterHTCondor(Submitter):
 
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""
-        self.template_tarball_filename = self.htcondor_configurations.pop(
-            "template_tarball_filename", None
-        )
-        assert self.template_tarball_filename, "Please provide a template tarball filename."
-        if not os.path.exists(self.template_tarball_filename):
-            self._tar_h5_files(self.template_path, self.template_tarball_filename)
+        self.template_tarball_filename = os.path.join(self._generated_dir(), "templates.tar.gz")
+        self._tar_h5_files(self.template_path, self.template_tarball_filename)
 
     def _modify_yaml(self):
         """Modify the statistical model config file to correct the 'template_filename' fields.
@@ -687,6 +679,10 @@ class SubmitterHTCondor(Submitter):
         except FileExistsError:
             logger.error(f"Workflow directory {self._generated_dir()} already exists. Exiting.")
         os.makedirs(self.runs_dir, 0o755, exist_ok=True)
+
+        # Handling templates as part of the inputs
+        self._validate_template_path()
+        self._make_template_tarball()
 
         self._generate_workflow()
         self._plan_and_submit()

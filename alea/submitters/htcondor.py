@@ -54,6 +54,7 @@ class SubmitterHTCondor(Submitter):
         self.work_dir = WORK_DIR
         self.runs_dir = os.path.join(self.work_dir, "runs")
         self.top_dir = TOP_DIR
+        self.template_path = self.htcondor_configurations.pop("template_path", None)
 
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_wf_id()
@@ -106,7 +107,6 @@ class SubmitterHTCondor(Submitter):
 
     def _validate_template_path(self):
         """Validate the template path."""
-        self.template_path = self.htcondor_configurations.pop("template_path", None)
         assert self.template_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
         assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."

@@ -83,4 +83,4 @@ pegasus-run /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
 
 To collect the final outputs, there are two ways
 - Check your folder `/scratch/$USER/workflows/outputs/<wf_id>/`
-- A redundant way is to get files from dCache, in which you have to use `gfal` command to approach. For example ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/```
+- A redundant way is to get files from dCache, in which you have to use `gfal` command to approach. For example ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/``` and to get the files, for example do ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/lq_b8_cevns_30-combined_output.tar.gz```

@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script only works for XENONnT on ap23
 
 . /cvmfs/xenon.opensciencegrid.org/releases/nT/development/setup.sh
 

@@ -60,9 +60,6 @@ class SubmitterHTCondor(Submitter):
         self._setup_wf_id()
 
         # Job input configurations
-        self.running_configuration_filename = self.htcondor_configurations.pop(
-            "running_configuration_filename"
-        )
         self.statistical_model_config_filename = kwargs.get("statistical_model_config")
 
         # Cluster size for toymc jobs
@@ -387,12 +384,12 @@ class SubmitterHTCondor(Submitter):
         )
         # Add the yaml files
         self.f_running_configuration = File(
-            str(self._get_file_name(self.running_configuration_filename))
+            str(self._get_file_name(self.config_file_path))
         )
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.running_configuration_filename)),
-            "file://{}".format(self.running_configuration_filename),
+            str(self._get_file_name(self.config_file_path)),
+            "file://{}".format(self.config_file_path),
         )
         self.f_statistical_model_config = File(
             str(self._get_file_name(self.modified_statistical_model_config_filename))

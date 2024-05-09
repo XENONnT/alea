@@ -22,7 +22,6 @@ htcondor_configurations:
   dagman_maxjobs: 100000
   pegasus_transfer_threads: 4
   singularity_image: "/cvmfs/singularity.opensciencegrid.org/xenonnt/montecarlo:2024.04.1"
-  running_configuration_filename: "/home/yuanlq/software/alea/lqtests/lq_b8_cevns_running.yaml"
   wf_id: "lq_b8_cevns_30"
 ```
 - `template_path`: where you put your input templates. Note that all files have to have unique names, and no subfolders is allowed in `template_path`. All templates inside will be tarred and the tarball will be uploaded to the grid when computing.

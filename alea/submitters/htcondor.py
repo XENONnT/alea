@@ -107,22 +107,28 @@ class SubmitterHTCondor(Submitter):
         assert self.template_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
         assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
-        # This folder must not have any subdirectories
-        assert not self._contains_subdirectories(
-            self.template_path
-        ), f"Template path {self.template_path} must not have subdirectories. Please dump all files in one folder."
+        
+        # Printout the template path file structure
+        logger.info(f"Template path file structure:")
+        for dirpath, dirnames, filenames in os.walk(self.template_path):
+            for filename in filenames:
+                logger.info(f"File: {filename} in {dirpath}")
+        if self._contains_subdirectories(self.template_path):
+            logger.warning(
+                "The template path contains subdirectories. All .h5 files will be tarred."
+            )
 
     def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
-        """Tar all templates in the directory into a tarball."""
+        """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
         # Create a tar.gz archive
         with tarfile.open(output_filename, "w:gz") as tar:
             # Walk through the directory
             for dirpath, dirnames, filenames in os.walk(directory):
                 for filename in filenames:
                     if filename.endswith(".h5"):
-                        # Get the path to the file
+                        # Get the full path to the file
                         filepath = os.path.join(dirpath, filename)
-                        # Add the file to the tar, specifying the arcname to avoid storing full path
+                        # Add the file to the tar, specifying the arcname to store relative path within the tar
                         tar.add(filepath, arcname=os.path.relpath(filepath, start=directory))
 
     def _make_template_tarball(self):

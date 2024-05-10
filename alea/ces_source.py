@@ -106,7 +106,7 @@ class CESTemplateSource(HistogramPdfSource):
         total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram = h.histogram.astype(np.float64)
         total_integration = total_integration.astype(np.float64)
-        
+
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram

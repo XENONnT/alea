@@ -120,6 +120,9 @@ class CESTemplateSource(HistogramPdfSource):
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume
         # So the unit is always events/year/keV, the rate multipliers are always in terms of that
         total_integration = np.sum(h.histogram * h.bin_volumes())
+        h.histogram = h.histogram.astype(np.float64)
+        total_integration = total_integration.astype(np.float64)
+        
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
@@ -237,7 +240,10 @@ class CESMonoenergySource(CESTemplateSource):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
-        self.mu = self.config["peak_energy"]
+        try:
+            self.mu = self.config["peak_energy"]
+        except KeyError:
+            raise ValueError("peak_energy is not provided in the config")
 
     def _load_true_histogram(self):
         """
@@ -274,12 +280,4 @@ class CESFlatSource(CESTemplateSource):
             range=(self.min_e, self.max_e),
         )
         h.histogram = h.histogram.astype(np.float64)
-        return h
-
-    def _transform_histogram(self, h: Hist1d):
-        # Only efficiency is applicable for flat source
-        efficiency_transformation = self._create_transformation("efficiency")
-
-        if efficiency_transformation is not None:
-            h = efficiency_transformation.apply_transformation(h)
         return h

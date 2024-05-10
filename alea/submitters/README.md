@@ -79,5 +79,5 @@ pegasus-run /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
 ```
 
 To collect the final outputs, there are two ways
-- Check your folder `/scratch/$USER/workflows/outputs/<wf_id>/`
-- A redundant way is to get files from dCache, in which you have to use `gfal` command to approach. For example ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/``` and to get the files, for example do ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/lq_b8_cevns_30-combined_output.tar.gz```
+- Check your folder `/scratch/$USER/workflows/outputs/<wf_id>/`. There should be a single tarball containing all toymc files and computation results.
+- A redundant way is to get files from dCache, in which you have to use `gfal` command to approach. For example ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/``` and to get the files, for example do ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/```. This contains both the final tarball and all `.h5` files before tarballing. To get them you want to do something like ```gfal-copy davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/lq_b8_cevns_30-combined_output.tar.gz . -t 7200``` Note that this command works also on Midway/DaLI.

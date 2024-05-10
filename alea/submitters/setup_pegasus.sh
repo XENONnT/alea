@@ -3,6 +3,7 @@
 
 . /cvmfs/xenon.opensciencegrid.org/releases/nT/development/setup.sh
 
+# Copy the shared X509 proxy (same as the one used in midway)
 cp /ospool/uc-shared/project/xenon/grid_proxy/xenon_service_proxy $HOME/.xenon_service_proxy
 chmod 600 $HOME/.xenon_service_proxy
 

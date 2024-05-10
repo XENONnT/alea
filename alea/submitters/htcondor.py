@@ -129,7 +129,7 @@ class SubmitterHTCondor(Submitter):
                         # Get the full path to the file
                         filepath = os.path.join(dirpath, filename)
                         # Add the file to the tar, specifying the arcname to store relative path within the tar
-                        tar.add(filepath, arcname=os.path.relpath(filepath, start=directory))
+                        tar.add(filepath, arcname=os.path.basename(filename))
 
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""

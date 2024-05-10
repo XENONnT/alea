@@ -107,7 +107,7 @@ class SubmitterHTCondor(Submitter):
         assert self.template_path, "Please provide a template path."
         # This path must exists locally, and it will be used to stage the input files
         assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
-        
+
         # Printout the template path file structure
         logger.info(f"Template path file structure:")
         for dirpath, dirnames, filenames in os.walk(self.template_path):

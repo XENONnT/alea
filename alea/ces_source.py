@@ -124,6 +124,7 @@ class CESTemplateSource(HistogramPdfSource):
         h.histogram = h.histogram.astype(np.float64)
         total_integration = total_integration.astype(np.float64)
 
+
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
@@ -281,12 +282,4 @@ class CESFlatSource(CESTemplateSource):
             range=(self.min_e, self.max_e),
         )
         h.histogram = h.histogram.astype(np.float64)
-        return h
-
-    def _transform_histogram(self, h: Hist1d):
-        # Only efficiency is applicable for flat source
-        efficiency_transformation = self._create_transformation("efficiency")
-
-        if efficiency_transformation is not None:
-            h = efficiency_transformation.apply_transformation(h)
         return h

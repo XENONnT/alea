@@ -21,7 +21,9 @@ class CESTemplateSource(HistogramPdfSource):
         super().__init__(config, *args, **kwargs)
 
     def _load_inputs(self):
-        """Load the inputs needed for a histogram source from the config."""
+        """
+        Load the inputs needed for a histogram source from the config
+        """
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
@@ -29,7 +31,9 @@ class CESTemplateSource(HistogramPdfSource):
         self.histname = self.config["histname"]
 
     def _load_true_histogram(self):
-        """Load the true spectrum from the template (no transformation applied)"""
+        """
+        Load the true spectrum from the template (no transformation applied)
+        """
         h = template_to_multihist(self.templatename, self.histname, hist_to_read=Hist1d)
         return h
 
@@ -45,32 +49,41 @@ class CESTemplateSource(HistogramPdfSource):
                 f"There are bins for source {self.templatename} with negative entries."
             )
 
-        # check if the histogram contains the analysis space.
+        # check if the histogram overlaps the analysis space.
         histogram_max = np.max(h.bin_edges)
         histogram_min = np.min(h.bin_edges)
-        if self.min_e < histogram_min or self.max_e > histogram_max:
+        if self.min_e > histogram_max or self.max_e < histogram_min:
             raise ValueError(
                 f"The histogram edge ({histogram_min},{histogram_max}) \
-                does not contain the analysis space ({self.min_e},{self.max_e})"
+                does not overlap with the analysis space ({self.min_e},{self.max_e}) \
+                remove this background please:)"
             )
 
     def _create_transformation(
         self, transformation_type: Literal["smearing", "bias", "efficiency"]
     ):
-        """Create a transformation object based on the transformation type."""
+        """
+        Create a transformation object based on the transformation type
+        """
         if self.config.get(f"apply_{transformation_type}", True):
             parameters_key = f"{transformation_type}_parameters"
             model_key = f"{transformation_type}_model"
 
             if model_key not in self.config:
-                raise ValueError(f"{transformation_type.capitalize()} model is not provided")
+                raise ValueError(
+                    f"{transformation_type.capitalize()} model is not provided"
+                )
 
             if parameters_key not in self.config:
-                raise ValueError(f"{transformation_type.capitalize()} parameters are not provided")
+                raise ValueError(
+                    f"{transformation_type.capitalize()} parameters are not provided"
+                )
             else:
                 parameter_list = self.config[parameters_key]
                 # to get the values we need to iterate over the list and use self.config.get
-                combined_parameter_dict = {k: self.config.get(k) for k in parameter_list}
+                combined_parameter_dict = {
+                    k: self.config.get(k) for k in parameter_list
+                }
 
             # Also take the peak_energy parameter if it is a mono smearing model
             if "mono" in self.config[model_key]:
@@ -84,7 +97,9 @@ class CESTemplateSource(HistogramPdfSource):
         return None
 
     def _transform_histogram(self, h: Hist1d):
-        """Apply the transformations to the histogram."""
+        """
+        Apply the transformations to the histogram
+        """
         # Create transformations for efficiency, smearing, and bias
         smearing_transformation = self._create_transformation("smearing")
         bias_transformation = self._create_transformation("bias")
@@ -100,13 +115,15 @@ class CESTemplateSource(HistogramPdfSource):
         return h
 
     def _normalize_histogram(self, h: Hist1d):
-        """Normalize the histogram and calculate the rate of the source."""
+        """
+        Normalize the histogram and calculate the rate of the source
+        """
         # To avoid confusion, we always normalize the histogram, regardless of the bin volume
         # So the unit is always events/year/keV, the rate multipliers are always in terms of that
         total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram = h.histogram.astype(np.float64)
         total_integration = total_integration.astype(np.float64)
-        
+
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
@@ -169,12 +186,16 @@ class CESTemplateSource(HistogramPdfSource):
         return ret
 
     def compute_pdf(self):
-        """Compute the PDF of the source."""
+        """
+        Compute the PDF of the source
+        """
         self.build_histogram()
         Source.compute_pdf(self)
 
     def pdf(self, *args):
-        """Interpolate the PDF of the source to return a function."""
+        """
+        Interpolate the PDF of the source to return a function
+        """
         # override the default interpolation method in blueice (RegularGridInterpolator)
         if not self.pdf_has_been_computed:
             raise PDFNotComputedException(
@@ -200,7 +221,9 @@ class CESTemplateSource(HistogramPdfSource):
             return self._pdf_histogram.lookup(*args)
 
         else:
-            raise NotImplementedError("PDF Interpolation method %s not implemented" % method)
+            raise NotImplementedError(
+                "PDF Interpolation method %s not implemented" % method
+            )
 
     def set_dtype(self):
         """Set the data type of the source."""
@@ -212,7 +235,9 @@ class CESTemplateSource(HistogramPdfSource):
 
 class CESMonoenergySource(CESTemplateSource):
     def _load_inputs(self):
-        """Load needed inputs for a monoenergetic source from the config."""
+        """
+        Load needed inputs for a monoenergetic source from the config
+        """
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
@@ -222,7 +247,9 @@ class CESMonoenergySource(CESTemplateSource):
             raise ValueError("peak_energy is not provided in the config")
 
     def _load_true_histogram(self):
-        """Create a fake histogram with a single peak at the peak energy."""
+        """
+        Create a fake histogram with a single peak at the peak energy
+        """
         number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
             data=np.repeat(self.mu, 1),
@@ -236,13 +263,17 @@ class CESMonoenergySource(CESTemplateSource):
 
 class CESFlatSource(CESTemplateSource):
     def _load_inputs(self):
-        """Load needed inputs for a flat source from the config."""
+        """
+        Load needed inputs for a flat source from the config
+        """
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
 
     def _load_true_histogram(self):
-        """Create a histogram for the flat source."""
+        """
+        Create a histogram for the flat source
+        """
         number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
             data=np.linspace(self.min_e, self.max_e, number_of_bins),
@@ -250,4 +281,12 @@ class CESFlatSource(CESTemplateSource):
             range=(self.min_e, self.max_e),
         )
         h.histogram = h.histogram.astype(np.float64)
+        return h
+
+    def _transform_histogram(self, h: Hist1d):
+        # Only efficiency is applicable for flat source
+        efficiency_transformation = self._create_transformation("efficiency")
+
+        if efficiency_transformation is not None:
+            h = efficiency_transformation.apply_transformation(h)
         return h

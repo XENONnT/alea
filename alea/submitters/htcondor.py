@@ -84,7 +84,7 @@ class SubmitterHTCondor(Submitter):
         super().__init__(*args, **kwargs)
 
     def _validate_x509_proxy(self, min_valid_hours=20):
-        """Ensure $HOME/user_cert exists and has enough time left.
+        """Ensure $X509_USER_PROXY exists and has enough time left.
 
         This is necessary only if you are going to use Rucio.
 
@@ -92,7 +92,7 @@ class SubmitterHTCondor(Submitter):
         self.x509_user_proxy = os.getenv("X509_USER_PROXY")
         assert self.x509_user_proxy, "Please provide a valid X509_USER_PROXY environment variable."
 
-        logger.debug("Verifying that the ~/user_cert proxy has enough lifetime")
+        logger.debug("Verifying that the X509_USER_PROXY proxy has enough lifetime")
         shell = Shell("grid-proxy-info -timeleft -file %s" % (self.x509_user_proxy))
         shell.run()
         valid_hours = int(shell.get_outerr()) / 60 / 60
@@ -333,7 +333,7 @@ class SubmitterHTCondor(Submitter):
         condorpool.add_profiles(Namespace.ENV, LD_LIBRARY_PATH="")
         condorpool.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
         condorpool.add_profiles(
-            Namespace.CONDOR, key="x509userproxy", value=os.environ["HOME"] + "/user_cert"
+            Namespace.CONDOR, key="x509userproxy", value=os.environ["X509_USER_PROXY"]
         )
 
         # Add the sites to the SiteCatalog

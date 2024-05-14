@@ -298,7 +298,7 @@ class SubmitterHTCondor(Submitter):
             LD_LIBRARY_PATH="/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib",
         )
         local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
-        local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["HOME"] + "/user_cert")
+        local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["X509_USER_PROXY"])
 
         # Staging sites: for XENON it is physically at dCache in UChicago
         # You will be able to download results from there via gfal commands

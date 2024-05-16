@@ -56,6 +56,9 @@ class SubmitterHTCondor(Submitter):
         self.top_dir = TOP_DIR
         self.template_path = self.htcondor_configurations.pop("template_path", None)
 
+        # A flag to check if limit_threshold is added to the rc
+        self.added_limit_threshold = False
+
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_wf_id()
 
@@ -490,6 +493,9 @@ class SubmitterHTCondor(Submitter):
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
             )
+            if self.added_limit_threshold:
+                job.add_inputs(self.f_limit_threshold)
+
             job.add_outputs(File(args_dict["output_filename"]), stage_out=False)
             job.add_outputs(File(args_dict["toydata_filename"]), stage_out=False)
             combine_job.add_inputs(File(args_dict["output_filename"]))
@@ -572,14 +578,34 @@ class SubmitterHTCondor(Submitter):
         executable = self._get_file_name(_executable)
 
         args_dict = self._parse_command_args(_script)
+
+        # Add the limit_threshold to the replica catalog if not added
+        if not self.added_limit_threshold and "limit_threshold" in args_dict["statistical_model_args"].keys():
+            self.limit_threshold_filename = args_dict["statistical_model_args"]["limit_threshold"]
+            self._add_limit_threshold()
+
         # Correct the paths in the arguments
         args_dict = self._correct_paths_args_dict(args_dict)
 
         return executable, args_dict
+    
+    def _add_limit_threshold(self):
+        """Add the Neyman thresholds limit_threshold to the replica catalog."""
+        self.f_limit_threshold = File(str(self._get_file_name(self.limit_threshold_filename)))
+        self.rc.add_replica(
+            "local",
+            str(self._get_file_name(self.limit_threshold_filename)),
+            "file://{}".format(self.limit_threshold_filename),
+        )
+        self.added_limit_threshold = True
 
     def _correct_paths_args_dict(self, args_dict):
         """Correct the paths in the arguments dictionary in a hardcoding way."""
         args_dict["statistical_model_args"]["template_path"] = "templates/"
+        
+        if "limit_threshold" in args_dict["statistical_model_args"].keys():
+            limit_threshold_filename = self._get_file_name(args_dict["statistical_model_args"]["limit_threshold"])
+            args_dict["statistical_model_args"]["limit_threshold"] = limit_threshold_filename
 
         toydata_filename = self._get_file_name(args_dict["toydata_filename"])
         args_dict["toydata_filename"] = toydata_filename

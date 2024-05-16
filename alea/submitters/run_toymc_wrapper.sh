@@ -45,9 +45,20 @@ echo "seed: $seed"
 echo "metadata: $metadata"
 
 # Overwrite the template path
-echo "Original statistical_model_args: $statistical_model_args"
-statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" --compact-output '.template_path = $pwd + .template_path')
-echo "Modified statistical_model_args: $statistical_model_args"
+# Check if template_path exists in statistical_model_args
+if echo $statistical_model_args | jq -e .template_path > /dev/null; then
+    # Overwrite the template path
+    echo "Original statistical_model_args: $statistical_model_args"
+    statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" --compact-output '.template_path = $pwd + .template_path')
+    echo "Modified statistical_model_args: $statistical_model_args"
+fi
+# Check if limit_threshold exists in statistical_model_args
+if echo $statistical_model_args | jq -e .limit_threshold > /dev/null; then
+    # Overwrite the limit_threshold
+    echo "Original statistical_model_args: $statistical_model_args"
+    statistical_model_args=$(echo $statistical_model_args | jq --arg pwd "$PWD/" --compact-output '.limit_threshold = $pwd + .limit_threshold')
+    echo "Modified statistical_model_args: $statistical_model_args"
+fi
 
 # Escaped strings
 STATISTICAL_MODEL=$(echo "$statistical_model" | sed "s/'/\"/g")

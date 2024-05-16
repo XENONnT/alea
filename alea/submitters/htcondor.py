@@ -59,9 +59,6 @@ class SubmitterHTCondor(Submitter):
         # A flag to check if limit_threshold is added to the rc
         self.added_limit_threshold = False
 
-        # User can provide a name for the workflow, otherwise it will be the current time
-        self._setup_wf_id()
-
         # Job input configurations
         self.statistical_model_config_filename = kwargs.get("statistical_model_config")
 
@@ -81,10 +78,12 @@ class SubmitterHTCondor(Submitter):
         # Pegasus configurations
         self._make_pegasus_config()
 
-        # Pegasus workflow directory
-        self.wf_dir = os.path.join(self.runs_dir, self._wf_id)
-
         super().__init__(*args, **kwargs)
+
+        # User can provide a name for the workflow, otherwise it will be the current time
+        self._setup_wf_id()
+        # Pegasus workflow directory
+        self.wf_dir = os.path.join(self.runs_dir, self.wf_id)
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.
@@ -180,7 +179,7 @@ class SubmitterHTCondor(Submitter):
 
     def _generated_dir(self, work_dir=WORK_DIR):
         """Directory for generated files."""
-        return os.path.join(work_dir, "generated", self._wf_id)
+        return os.path.join(work_dir, "generated", self.wf_id)
 
     def _contains_subdirectories(self, directory):
         """Check if the specified directory contains any subdirectories.
@@ -213,7 +212,7 @@ class SubmitterHTCondor(Submitter):
         # If you have named the workflow, use that name. Otherwise, use the current time as name.
         self._wf_id = self.htcondor_configurations.pop("wf_id")
         if self._wf_id:
-            self.wf_id = self._wf_id
+            self.wf_id = self._wf_id + "-" + self.computation + "-" + datetime.now().strftime("%Y%m%d%H%M")
         else:
             self.wf_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -274,7 +273,7 @@ class SubmitterHTCondor(Submitter):
         local = Site("local")
         # Logs and pegasus output goes here. This place is called stash in OSG jargon.
         scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path="{}/scratch/{}".format(self.work_dir, self._wf_id)
+            Directory.SHARED_SCRATCH, path="{}/scratch/{}".format(self.work_dir, self.wf_id)
         )
         scratch_dir.add_file_servers(
             FileServer("file:///{}/scratch/{}".format(self.work_dir, self.wf_id), Operation.ALL)
@@ -457,8 +456,8 @@ class SubmitterHTCondor(Submitter):
         combine_job.add_profiles(Namespace.CONDOR, "requirements", requirements)
 
         # Combine job configuration: all toymc results and files will be combined into one tarball
-        combine_job.add_outputs(File("%s-combined_output.tar.gz" % (self._wf_id)), stage_out=True)
-        combine_job.add_args(self._wf_id)
+        combine_job.add_outputs(File("%s-combined_output.tar.gz" % (self.wf_id)), stage_out=True)
+        combine_job.add_args(self.wf_id)
         self.wf.add_jobs(combine_job)
 
         # Generate jobstring and output names from tickets generator
@@ -688,7 +687,7 @@ class SubmitterHTCondor(Submitter):
             staging_sites={"condorpool": "staging-davs"},
             output_sites=["local"],
             dir=os.path.dirname(self.wf_dir),
-            relative_dir=self._wf_id,
+            relative_dir=self.wf_id,
             **self.pegasus_config,
         )
 

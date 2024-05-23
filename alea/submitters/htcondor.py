@@ -468,6 +468,9 @@ class SubmitterHTCondor(Submitter):
         for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
             # Reorganize the script to get the executable and arguments, in which the paths are corrected
             executable, args_dict = self._reorganize_script(_script)
+            if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
+                raise NotImplementedError("Only generate_and_store toydata mode is supported on OSG.")
+
             logger.info(f"Adding job {jobid} to the workflow")
             logger.debug(f"Naked Script: {_script}")
             logger.debug(f"Output: {args_dict['output_filename']}")

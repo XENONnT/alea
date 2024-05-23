@@ -148,7 +148,9 @@ class SubmitterHTCondor(Submitter):
         """
         input_file = self.statistical_model_config_filename
         # Output file will have the same name as input file but with '_modified' appended
-        output_file = input_file.replace(".yaml", "_modified.yaml")
+        _output_file = self._get_file_name(input_file)
+        _output_file = _output_file.replace(".yaml", "_modified.yaml")
+        output_file = os.path.join(self._generated_dir(), _output_file)
         self.modified_statistical_model_config_filename = output_file
 
         # Load the YAML data from the original file
@@ -695,7 +697,6 @@ class SubmitterHTCondor(Submitter):
         """Serve as the main function to submit the workflow."""
         self._check_workflow_exists()
         self._validate_x509_proxy()
-        self._modify_yaml()
 
         #  0o755 means read/write/execute for owner, read/execute for everyone else
         try:
@@ -703,6 +704,9 @@ class SubmitterHTCondor(Submitter):
         except FileExistsError:
             logger.error(f"Workflow directory {self._generated_dir()} already exists. Exiting.")
         os.makedirs(self.runs_dir, 0o755, exist_ok=True)
+
+        # Modify the statistical model config file to correct the 'template_filename' fields
+        self._modify_yaml()
 
         # Handling templates as part of the inputs
         self._validate_template_path()

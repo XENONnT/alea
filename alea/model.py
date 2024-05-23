@@ -107,9 +107,9 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
-        self.fit_strategy = _DEFAULT_FIT_STRATEGY
+        self._fit_strategy = _DEFAULT_FIT_STRATEGY
         if fit_strategy is not None:
-            self.fit_strategy.update(fit_strategy)
+            self._fit_strategy.update(fit_strategy)
         nominal_values = kwargs.get("nominal_values", None)
         self._define_parameters(parameter_definition, nominal_values)
 
@@ -371,7 +371,6 @@ class StatisticalModel:
         index_parameters = [
             p for p in self.parameters if p.ptype == "index" and p.name not in fixed_params
         ]
-
         if fit_strategy["disable_index_fitting"] or (len(index_parameters) == 0):
             m = self._standard_fit(m, fit_strategy["minimizer_routine"])
             if not m.valid and fit_strategy["refit_invalid"]:
@@ -396,14 +395,14 @@ class StatisticalModel:
     def _get_fit_strategy(self, fit_strategy) -> dict:
         # override the default fit strategy
         if fit_strategy is None:
-            fit_strategy = self.fit_strategy
+            fit_strategy = self._fit_strategy
         else:
             # check if keys are valid
             for key in fit_strategy.keys():
                 if key not in _DEFAULT_FIT_STRATEGY:
                     raise ValueError(f"Unknown key {key} in fit_strategy")
             # fill the gaps of fit_strategy with self.fit_strategy
-            for key, value in self.fit_strategy.items():
+            for key, value in self._fit_strategy.items():
                 fit_strategy.setdefault(key, value)
         return fit_strategy
 

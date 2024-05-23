@@ -496,9 +496,12 @@ class SubmitterHTCondor(Submitter):
                 job.add_inputs(self.f_limit_threshold)
 
             job.add_outputs(File(args_dict["output_filename"]), stage_out=False)
-            job.add_outputs(File(args_dict["toydata_filename"]), stage_out=False)
             combine_job.add_inputs(File(args_dict["output_filename"]))
-            combine_job.add_inputs(File(args_dict["toydata_filename"]))
+
+            # Only add the toydata file if instructed to do so
+            if args_dict["toydata_mode"] == "generate_and_store":
+                job.add_outputs(File(args_dict["toydata_filename"]), stage_out=False)
+                combine_job.add_inputs(File(args_dict["toydata_filename"]))
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error

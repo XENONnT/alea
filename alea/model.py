@@ -14,6 +14,14 @@ from inference_interface import toydata_to_file
 from alea.parameters import Parameters
 from alea.utils import within_limits, clip_limits, asymptotic_critical_value, ReadOnlyDict
 
+_DEFAULT_FIT_STRATEGY = {
+    "disable_index_fitting": False,
+    "max_index_fitting_iter": 10,
+    "minimizer_routine": "migrad",
+    "minuit_strategy": 1,
+    "refit_invalid": True,
+}
+
 
 class StatisticalModel:
     """Class that defines a statistical model.
@@ -60,6 +68,8 @@ class StatisticalModel:
         confidence_interval_threshold (Callable[[float], float], optional (default=None)):
             threshold for confidence interval
         data (dict or list, optional (default=None)): pre-set data of the model
+        fit_strategy (dict, optional (default=None)): strategy for the fit,
+            see _DEFAULT_FIT_STRATEGY for possible settings
 
     Raise:
         RuntimeError: if you try to instantiate the StatisticalModel class directly
@@ -75,6 +85,7 @@ class StatisticalModel:
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
         asymptotic_dof: Optional[int] = 1,
         data: Optional[Union[dict, list]] = None,
+        fit_strategy: Optional[dict] = None,
         **kwargs,
     ):
         """Initialize a statistical model."""
@@ -96,6 +107,9 @@ class StatisticalModel:
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
         self.asymptotic_dof = asymptotic_dof
+        self.fit_strategy = _DEFAULT_FIT_STRATEGY
+        if fit_strategy is not None:
+            self.fit_strategy.update(fit_strategy)
         nominal_values = kwargs.get("nominal_values", None)
         self._define_parameters(parameter_definition, nominal_values)
 
@@ -308,14 +322,7 @@ class StatisticalModel:
 
     @_needs_data
     def fit(
-        self,
-        verbose=False,
-        disable_index_fitting=False,
-        max_index_fitting_iter=10,
-        minimizer_routine="migrad",
-        strategy=1,
-        refit_invalid=True,
-        **kwargs,
+        self, verbose: Optional[bool] = False, fit_strategy: Optional[dict] = None, **kwargs
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
         values of each parameter, and the value of the likelihood evaluated there. While the
@@ -324,21 +331,24 @@ class StatisticalModel:
 
         Args:
             verbose (bool): if True, print the Minuit object
-            disable_index_fitting (bool): if True, disable the index fitting
-                even if the model has index parameters.
-            max_index_fitting_iter (int): maximum number of iterations for index fitting
-            minimizer_routine (str): the minimizer routine to use, either
-                "migrad", "simplex", or "simplex_migrad" (first run simplex, then migrad).
-            strategy (int): strategy for Minuit, can be 0, 1 (default), or 2. The higher the
-                number, the more precise the fit but also the slower it is.
-            refit_invalid (bool): if True, refit with the simplex_migrad routine
-                and strategy 2 if the optimization does not converge the first time.
+            fit_strategy (dict): override the default fit strategy defined
+                in the model (model.fit_strategy). Possible settings are:
+                - minimizer_routine (str): the minimizer routine to use, either
+                    "migrad", "simplex", or "simplex_migrad" (first run simplex, then migrad).
+                - minuit_strategy (int): strategy for Minuit, can be 0, 1, or 2. The higher the
+                    number, the more precise the fit but also the slower.
+                - refit_invalid (bool): if True, refit with the simplex_migrad routine
+                    and strategy 2 if the optimization does not converge the first time.
+                - disable_index_fitting (bool): if True, disable the index fitting
+                    even if the model has index parameters.
+                - max_index_fitting_iter (int): maximum number of iterations for index fitting
 
         Returns:
             dict, float: best-fit values of each parameter,
             and the value of the likelihood evaluated there
 
         """
+        fit_strategy = self._get_fit_strategy(fit_strategy)
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
         guesses.update(kwargs)
@@ -351,7 +361,7 @@ class StatisticalModel:
         # Make the Minuit object
         m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
         m.errordef = Minuit.LIKELIHOOD
-        m.strategy = strategy
+        m.strategy = fit_strategy["minuit_strategy"]
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:
@@ -362,15 +372,19 @@ class StatisticalModel:
             p for p in self.parameters if p.ptype == "index" and p.name not in fixed_params
         ]
 
-        if disable_index_fitting or (len(index_parameters) == 0):
-            m = self._standard_fit(m, minimizer_routine)
-            if not m.valid and refit_invalid:
+        if fit_strategy["disable_index_fitting"] or (len(index_parameters) == 0):
+            m = self._standard_fit(m, fit_strategy["minimizer_routine"])
+            if not m.valid and fit_strategy["refit_invalid"]:
                 # try to refit with more precision
                 m.strategy = 2
                 m = self._standard_fit(m, "simplex_migrad")
         else:
             m = self._index_mixing_fit(
-                m, index_parameters, max_index_fitting_iter, verbose, minimizer_routine
+                m,
+                index_parameters,
+                fit_strategy["max_index_fitting_iter"],
+                verbose,
+                fit_strategy["minimizer_routine"],
             )
 
         self.minuit_object = m
@@ -378,6 +392,20 @@ class StatisticalModel:
             print(m)
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
+
+    def _get_fit_strategy(self, fit_strategy) -> dict:
+        # override the default fit strategy
+        if fit_strategy is None:
+            fit_strategy = self.fit_strategy
+        else:
+            # check if keys are valid
+            for key in fit_strategy.keys():
+                if key not in _DEFAULT_FIT_STRATEGY:
+                    raise ValueError(f"Unknown key {key} in fit_strategy")
+            # fill the gaps of fit_strategy with self.fit_strategy
+            for key, value in self.fit_strategy.items():
+                fit_strategy.setdefault(key, value)
+        return fit_strategy
 
     def _standard_fit(self, m, minimizer_routine):
         m = self._run_minimizer_routine(m, minimizer_routine)
@@ -536,7 +564,7 @@ class StatisticalModel:
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
         asymptotic_dof: Optional[int] = None,
-        fit_kwargs: Optional[dict] = None,
+        fit_strategy: Optional[dict] = None,
     ) -> Tuple[float, float]:
         """Uses self.fit to compute confidence intervals for a certain named parameter. If the
         parameter is a rate parameter, and the model has expectation values implemented, the bounds
@@ -565,16 +593,14 @@ class StatisticalModel:
                 volumes, where the global best-fit may not be along the profile.
                 If None, will be set to confidence_interval_args.
             asymptotic_dof (int, optional (default=None)): Degrees of freedom for asymptotic
-            fit_kwargs (dict, optional (default=None)): Additional keyword arguments
-                for the fit method
+            fit_strategy (dict, optional (default=None)): strategy for the fit,
+                see _DEFAULT_FIT_STRATEGY for possible settings.
 
         """
         if confidence_interval_args is None:
             confidence_interval_args = {}
         if best_fit_args is None:
             best_fit_args = confidence_interval_args
-        if fit_kwargs is None:
-            fit_kwargs = {}
         ci_objects = self._confidence_interval_checks(
             poi_name,
             parameter_interval_bounds,
@@ -591,10 +617,10 @@ class StatisticalModel:
         ) = ci_objects
 
         # best_fit_args only provides the best-fit likelihood
-        _, best_ll = self.fit(**best_fit_args, **fit_kwargs)
+        _, best_ll = self.fit(**best_fit_args, fit_strategy=fit_strategy)
         # the optimization of profile-likelihood under
         # confidence_interval_args provides the best_parameter
-        best_result, _ = self.fit(**confidence_interval_args, **fit_kwargs)
+        best_result, _ = self.fit(**confidence_interval_args, fit_strategy=fit_strategy)
         best_parameter = best_result[poi_name]
         mask = within_limits(best_parameter, parameter_interval_bounds)
         if not mask:
@@ -610,7 +636,7 @@ class StatisticalModel:
             _confidence_interval_args = deepcopy(confidence_interval_args)
             _confidence_interval_args[poi_name] = hypothesis_value
             _, ll = self.fit(
-                **_confidence_interval_args, **fit_kwargs
+                **_confidence_interval_args, fit_strategy=fit_strategy
             )  # ll is + log-likelihood here
             ret = 2.0 * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded

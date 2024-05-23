@@ -329,6 +329,10 @@ class StatisticalModel:
             max_index_fitting_iter (int): maximum number of iterations for index fitting
             minimizer_routine (str): the minimizer routine to use, either
                 "migrad", "simplex", or "simplex_migrad" (first run simplex, then migrad).
+            strategy (int): strategy for Minuit, can be 0, 1 (default), or 2. The higher the
+                number, the more precise the fit but also the slower it is.
+            refit_invalid (bool): if True, refit with the simplex_migrad routine
+                and strategy 2 if the optimization does not converge the first time.
 
         Returns:
             dict, float: best-fit values of each parameter,
@@ -561,6 +565,8 @@ class StatisticalModel:
                 volumes, where the global best-fit may not be along the profile.
                 If None, will be set to confidence_interval_args.
             asymptotic_dof (int, optional (default=None)): Degrees of freedom for asymptotic
+            fit_kwargs (dict, optional (default=None)): Additional keyword arguments
+                for the fit method
 
         """
         if confidence_interval_args is None:

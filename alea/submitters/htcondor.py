@@ -369,8 +369,6 @@ class SubmitterHTCondor(Submitter):
         tc = TransformationCatalog()
         tc.add_transformations(run_toymc_wrapper, combine)
 
-        # Write TransformationCatalog to ./transformations.yml
-        tc.write()
         return tc
 
     def _generate_rc(self):

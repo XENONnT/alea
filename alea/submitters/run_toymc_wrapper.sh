@@ -151,9 +151,8 @@ time python3 ./alea-run_toymc \
     --metadata $METADATA
 
 # Check the output
-echo "Checking the output"
-ls -lh $output_filename
-ls -lh $toydata_filename
+echo "Checking the files after processing:"
+ls -lh
 
 # Goodbye
 echo "Done. Exiting."

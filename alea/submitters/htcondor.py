@@ -60,9 +60,6 @@ class SubmitterHTCondor(Submitter):
         # A flag to check if limit_threshold is added to the rc
         self.added_limit_threshold = False
 
-        # Job input configurations
-        self.statistical_model_config_filename = kwargs.get("statistical_model_config")
-
         # Cluster size for toymc jobs
         self.cluster_size = self.htcondor_configurations.pop("cluster_size", 1)
 
@@ -81,12 +78,24 @@ class SubmitterHTCondor(Submitter):
         self._make_pegasus_config()
 
         super().__init__(*args, **kwargs)
+        
+        # Job input configurations
         self.config_file_path = os.path.abspath(self.config_file_path)
+        self._get_statistical_model_config_filename(kwargs)
 
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_wf_id()
         # Pegasus workflow directory
         self.wf_dir = os.path.join(self.runs_dir, self.wf_id)
+
+    def _get_statistical_model_config_filename(self, kwargs):
+        """Get the statistical model config file name from the kwargs."""
+        _statistical_model_config_filename = kwargs.get("statistical_model_config")
+        if os.path.isabs(_statistical_model_config_filename):
+            self.statistical_model_config_filename = _statistical_model_config_filename
+        else:
+            _directory = os.path.dirname(self.config_file_path)
+            self.statistical_model_config_filename = os.path.join(_directory, _statistical_model_config_filename)
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.

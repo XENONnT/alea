@@ -699,6 +699,15 @@ class SubmitterHTCondor(Submitter):
 
         print(f"Worfklow written to \n\n\t{self.wf_dir}\n\n")
 
+    def _warn_outputfolder(self):
+        """Warn users about the outputfolder in running config won't be really used."""
+        logger.warning(
+            "The outputfolder in the running configuration %s won't be used in this submission."%(self.outputfolder)
+        )
+        logger.warning(
+            "Instead, you should find your outputs at %s"%(self.work_dir+"/outputs/"+self.wf_id)
+        )
+
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
         self._check_workflow_exists()
@@ -723,6 +732,7 @@ class SubmitterHTCondor(Submitter):
 
         # Return to initial dir, as we are done.
         logger.info("We are done. Returning to initial directory.")
+        self._warn_outputfolder()
         os.chdir(self._initial_dir)
 
 

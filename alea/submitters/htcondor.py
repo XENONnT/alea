@@ -55,6 +55,7 @@ class SubmitterHTCondor(Submitter):
         self.runs_dir = os.path.join(self.work_dir, "runs")
         self.top_dir = TOP_DIR
         self.template_path = self.htcondor_configurations.pop("template_path", None)
+        self.max_jobs_to_combine = self.htcondor_configurations.pop("max_jobs_to_combine", 100)
 
         # A flag to check if limit_threshold is added to the rc
         self.added_limit_threshold = False
@@ -69,6 +70,7 @@ class SubmitterHTCondor(Submitter):
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
         self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
         self.request_disk = self.htcondor_configurations.pop("request_disk", 2000000)
+        self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20000000)
 
         # Dagman configurations
         self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100000)
@@ -429,6 +431,25 @@ class SubmitterHTCondor(Submitter):
 
         return rc
 
+    def _add_combine_job(self, combine_i):
+        """Add a combine job to the workflow."""
+        logger.info(f"Adding combine job {combine_i} to the workflow")
+        combine_name = "combine"
+        combine_job = self._initialize_job(
+            name=combine_name,
+            cores=self.request_cpus,
+            memory=self.request_memory * 2,
+            disk=self.combine_disk,
+        )
+        combine_job.add_profiles(Namespace.CONDOR, "requirements", self.requirements)
+
+        # Combine job configuration: all toymc results and files will be combined into one tarball
+        combine_job.add_outputs(File("%s-%s-combined_output.tar.gz" % (self.wf_id, combine_i)), stage_out=True)
+        combine_job.add_args(self.wf_id+"-"+str(combine_i))
+        self.wf.add_jobs(combine_job)
+
+        return combine_job
+
     def _generate_workflow(self, name="run_toymc_wrapper"):
         """Generate the workflow.
 
@@ -444,28 +465,21 @@ class SubmitterHTCondor(Submitter):
         self.rc = self._generate_rc()
 
         # Job requirements
-        requirements = self._make_requirements()
+        self.requirements = self._make_requirements()
 
-        # Define summary job
-        combine_job = self._initialize_job(
-            name="combine",
-            cores=self.request_cpus,
-            memory=self.request_memory,
-            disk=self.request_disk,
-        )
-        combine_job.add_profiles(Namespace.CONDOR, "requirements", requirements)
-
-        # Combine job configuration: all toymc results and files will be combined into one tarball
-        combine_job.add_outputs(File("%s-combined_output.tar.gz" % (self.wf_id)), stage_out=True)
-        combine_job.add_args(self.wf_id)
-        self.wf.add_jobs(combine_job)
-
+        # Iterate over the tickets and generate jobs 
+        combine_i = 0
+        new_to_combine = True
         # Generate jobstring and output names from tickets generator
         # _script for example:
         # alea-submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
         # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5
         # _script for example: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None
         for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
+            # If the number of jobs to combine is reached, add a new combine job
+            if new_to_combine:
+                combine_job = self._add_combine_job(combine_i)
+
             # Reorganize the script to get the executable and arguments, in which the paths are corrected
             executable, args_dict = self._reorganize_script(_script)
             if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
@@ -485,7 +499,7 @@ class SubmitterHTCondor(Submitter):
                 memory=self.request_memory,
                 disk=self.request_disk,
             )
-            job.add_profiles(Namespace.CONDOR, "requirements", requirements)
+            job.add_profiles(Namespace.CONDOR, "requirements", self.requirements)
 
             # Add the inputs and outputs
             job.add_inputs(
@@ -517,6 +531,13 @@ class SubmitterHTCondor(Submitter):
 
             # Add the job to the workflow
             self.wf.add_jobs(job)
+
+            # If the number of jobs to combine is reached, add a new combine job
+            if (jobid + 1) % self.max_jobs_to_combine == 0:
+                new_to_combine = True
+                combine_i += 1
+            else:
+                new_to_combine = False
 
         # Finalize the workflow
         os.chdir(self._generated_dir())

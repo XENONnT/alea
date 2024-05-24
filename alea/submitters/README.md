@@ -9,6 +9,24 @@ Please make sure you run this setup before submitting jobs, otherwise you will r
 ```
 . setup_pegasus.sh
 ```
+A typical setup script looks like this:
+```
+#!/bin/bash
+# setup_pegasus.sh
+# This script only works for XENONnT on ap23
+
+. /cvmfs/xenon.opensciencegrid.org/releases/nT/development/setup.sh
+
+# Copy the shared X509 proxy (same as the one used in midway)
+cp /ospool/uc-shared/project/xenon/grid_proxy/xenon_service_proxy $HOME/.xenon_service_proxy
+chmod 600 $HOME/.xenon_service_proxy
+
+export X509_USER_PROXY=$HOME/.xenon_service_proxy
+export PATH=/opt/pegasus/current/bin:$PATH
+export PYTHONPATH=`pegasus-config --python`:$PYTHONPATH
+export PYTHONPATH="$HOME/.local/lib/python3.9/site-packages${PYTHONPATH:+:$PYTHONPATH}"
+```
+
 ### Configuration
 Following this as an example
 ```
@@ -23,6 +41,7 @@ htcondor_configurations:
   dagman_retry: 2
   dagman_maxjobs: 100000
   pegasus_transfer_threads: 4
+  max_jobs_to_combine: 100
   singularity_image: "/cvmfs/singularity.opensciencegrid.org/xenonnt/montecarlo:2024.04.1"
   wf_id: "lq_b8_cevns_30"
 ```
@@ -36,7 +55,7 @@ htcondor_configurations:
 - `dagman_retry`: number of automatic retry for each job when failure happen for whatever reason. Note that everytime it retries, we will have new resources requirement `n_retry * request_memory` and `n_retry * request_disk` to get rid of failure due to resource shortage.
 - `dagman_maxjobs`: maximum of jobs allowed to be running. The default 100000 is good for most cases.
 - `pegasus_transfer_threads`: number of threads for transfering handled by `Pegasus`. The default 4 is good so in most cases you want to keep it.
-- `max_jobs_to_combine`: number of toymc job to combine when concluding,
+- `max_jobs_to_combine`: number of toymc job to combine when concluding. Be cautious to put a number larger than 200 here, since it might be too risky...
 - `singularity_image`: the jobs will be running in this singularity image.
 - `wf_id`: name of user's choice for this workflow. If not specified it will put the datetime as `wf_id`.
 

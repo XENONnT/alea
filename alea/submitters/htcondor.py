@@ -741,7 +741,6 @@ class SubmitterHTCondor(Submitter):
 
     def _check_filename_unique(self):
         """Check if all the files in the template path are unique."""
-        # Check if all the files in the template path are unique
         all_files = []
         for _, _, filenames in os.walk(self.template_path):
             for filename in filenames:

@@ -81,6 +81,7 @@ class SubmitterHTCondor(Submitter):
         self._make_pegasus_config()
 
         super().__init__(*args, **kwargs)
+        self.config_file_path = os.path.abspath(self.config_file_path)
 
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_wf_id()

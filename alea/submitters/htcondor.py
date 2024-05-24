@@ -739,6 +739,16 @@ class SubmitterHTCondor(Submitter):
             "Instead, you should find your outputs at %s"%(self.work_dir+"/outputs/"+self.wf_id)
         )
 
+    def _check_filename_unique(self):
+        """Check if all the files in the template path are unique."""
+        # Check if all the files in the template path are unique
+        all_files = []
+        for _, _, filenames in os.walk(self.template_path):
+            for filename in filenames:
+                all_files.append(filename)
+        if len(all_files) != len(set(all_files)):
+            raise RuntimeError("All files in the template path must have unique names.")
+
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
         self._check_workflow_exists()
@@ -756,6 +766,7 @@ class SubmitterHTCondor(Submitter):
 
         # Handling templates as part of the inputs
         self._validate_template_path()
+        self._check_filename_unique()
         self._make_template_tarball()
 
         self._generate_workflow()

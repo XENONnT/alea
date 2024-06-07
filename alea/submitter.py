@@ -62,6 +62,7 @@ class Submitter:
     config_file_path: str
     template_path: str
     combine_n_jobs: int = 1
+    first_i_batch: int = 0
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -336,7 +337,7 @@ class Submitter:
         _, _, annotations = Runner.runner_arguments()
 
         for runner_args in self.merged_arguments_generator():
-            for i_batch in range(runner_args.get("n_batch", 1)):
+            for i_batch in range(self.first_i_batch, runner_args.get("n_batch", 1)):
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 

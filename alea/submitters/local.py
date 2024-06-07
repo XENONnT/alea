@@ -33,6 +33,7 @@ class SubmitterLocal(Submitter):
         self.local_configurations = kwargs.get("local_configurations", {})
         self.template_path = self.local_configurations.pop("template_path", None)
         self.combine_n_jobs = self.local_configurations.pop("combine_n_jobs", 1)
+        self.first_i_batch = kwargs.pop("i_batch", 1)
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -395,11 +396,17 @@ class NeymanConstructor(SubmitterLocal):
         values = np.empty((*[len(p) for p in points], len(poi_values)), dtype=float)
         for p in itertools.product(*points):
             indices = [pi.index(pii) for pii, pi in zip(p, points)]
-            values[indices] = [
+            _threshold = [
                 i["threshold"]
                 for i in inputs
                 if i["hashed_keys"]["generate_values"] == dict(zip(names, p))
             ]
+            if len(_threshold) > 1:
+                raise ValueError(
+                    f"More than one threshold for nominal_values {nominal_values} "
+                    f"confidence_level {confidence_level}, and generate_values keys {names}!"
+                )
+            values[tuple(indices)] = _threshold[0]
 
         interpolator = RegularGridInterpolator(
             points + [poi_values], values, method="linear", bounds_error=True
@@ -471,7 +478,6 @@ class NeymanConstructor(SubmitterLocal):
                 )
 
             # get the poi_values and threshold_values for interp1d
-            interpolator = None
             if threshold_key in threshold:
                 # if threshold_key in threshold, get the poi_values and threshold_values directly
                 poi_values = threshold[threshold_key][poi]
@@ -488,16 +494,15 @@ class NeymanConstructor(SubmitterLocal):
                     func_list.append(None)
                     continue
 
-                if interpolator is None:
-                    names = list(hashed_keys["generate_values"].keys())
-                    interpolator = NeymanConstructor.build_interpolator(
-                        poi,
-                        threshold,
-                        hashed_keys["generate_values"],
-                        hashed_keys["nominal_values"],
-                        confidence_level,
-                    )
-                    poi_values = interpolator.grid[-1]
+                names = list(hashed_keys["generate_values"].keys())
+                interpolator = NeymanConstructor.build_interpolator(
+                    poi,
+                    threshold,
+                    hashed_keys["generate_values"],
+                    hashed_keys["nominal_values"],
+                    confidence_level,
+                )
+                poi_values = interpolator.grid[-1]
 
                 if set(hashed_keys["generate_values"].keys()) != set(names):
                     raise ValueError(

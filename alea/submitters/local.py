@@ -33,7 +33,7 @@ class SubmitterLocal(Submitter):
         self.local_configurations = kwargs.get("local_configurations", {})
         self.template_path = self.local_configurations.pop("template_path", None)
         self.combine_n_jobs = self.local_configurations.pop("combine_n_jobs", 1)
-        self.first_i_batch = kwargs.pop("i_batch", 1)
+        self.first_i_batch = kwargs.pop("i_batch", 0)
         super().__init__(*args, **kwargs)
 
     @staticmethod

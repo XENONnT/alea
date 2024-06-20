@@ -117,6 +117,22 @@ def get_analysis_space(analysis_space: list) -> list:
     return eval_analysis_space
 
 
+def _prefix_file_path(config: dict, template_folder_list: list):
+    """Prefix file path with template_folder_list whenever possible.
+
+    Args:
+        config (dict): dictionary contains file path
+        template_folder_list (list): list of possible base folders. Ordered by priority.
+
+    """
+    for key in config.keys():
+        if isinstance(config[key], str):
+            try:
+                config[key] = get_file_path(config[key], template_folder_list)
+            except RuntimeError:
+                pass
+
+
 def adapt_likelihood_config_for_blueice(
     likelihood_config: dict, template_folder_list: list
 ) -> dict:
@@ -136,6 +152,8 @@ def adapt_likelihood_config_for_blueice(
     likelihood_config_copy["analysis_space"] = get_analysis_space(
         likelihood_config_copy["analysis_space"]
     )
+
+    _prefix_file_path(likelihood_config_copy, template_folder_list)
 
     if "default_source_class" in likelihood_config_copy:
         default_source_class = locate(likelihood_config_copy["default_source_class"])
@@ -158,6 +176,7 @@ def adapt_likelihood_config_for_blueice(
                 get_file_path(template_filename, template_folder_list)
                 for template_filename in source["template_filenames"]
             ]
+        _prefix_file_path(source, template_folder_list)
     return likelihood_config_copy
 
 
@@ -299,7 +318,7 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
     # Add extra_template_path to the end of template_folder_list
     if extra_template_path is not None:
         template_folder_list.append(extra_template_path)
-    return template_folder_list
+    return list(set(template_folder_list))
 
 
 def asymptotic_critical_value(

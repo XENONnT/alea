@@ -215,7 +215,7 @@ class TemplateSource(HistogramPdfSource):
         if self.events_per_day > 0:
             h.histogram /= self.events_per_day
         else:
-            raise ValueError("Sum of histogram is zero.")
+            logging.warn("Sum of histogram is zero.")
 
         if self.config.get("convert_to_uniform", False):
             h.histogram = 1.0 / self._bin_volumes

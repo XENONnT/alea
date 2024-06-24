@@ -97,6 +97,15 @@ class Submitter:
                 "and appended alea/bin or .local/bin(pip install direction) to your $PATH."
             )
 
+        try:
+            if type(eval(statistical_model)) == list:
+                self.model_type = "combined"
+                statistical_model = eval(statistical_model)
+            else:
+                self.model_type = "single"
+        except NameError:
+            self.model_type = "single"
+
         self.statistical_model = statistical_model
         self.statistical_model_config = statistical_model_config
         self.poi = poi
@@ -245,7 +254,7 @@ class Submitter:
 
     def merged_arguments_generator(self):
         """Generate the merged arguments for Runner from to_zip, to_vary and in_common."""
-        _, default_args, _ = Runner.runner_arguments()
+        _, default_args, _ = Runner.runner_arguments(self.model_type)
 
         to_zip = self.computation_dict.get("to_zip", {})
         to_vary = self.computation_dict.get("to_vary", {})
@@ -297,7 +306,7 @@ class Submitter:
             # update template_path and limit_threshold in statistical_model_args if needed
             self.update_statistical_model_args(runner_args, self.template_path)
             # check if all arguments are supported
-            self.check_redunant_arguments(runner_args, self.allowed_special_args)
+            self.check_redunant_arguments(runner_args, self.model_type, self.allowed_special_args)
 
             yield runner_args
 
@@ -334,7 +343,7 @@ class Submitter:
 
         """
 
-        _, _, annotations = Runner.runner_arguments()
+        _, _, annotations = Runner.runner_arguments(self.model_type)
 
         for runner_args in self.merged_arguments_generator():
             for i_batch in range(self.first_i_batch, runner_args.get("n_batch", 1)):
@@ -530,8 +539,18 @@ class Submitter:
             )
 
     @staticmethod
-    def check_redunant_arguments(runner_args, allowed_special_args: List[str] = []):
-        signatures = inspect.signature(Runner.__init__)
+    def check_redunant_arguments(runner_args, model_type, allowed_special_args: List[str] = []):
+        """
+        args:
+            runner_args
+            model_type:  str either single or combined decides which runner init to check-- the initialiser changes
+        """
+        if model_type == "single":
+            signatures = inspect.signature(Runner.single_init)
+        elif model_type == "combined":
+            signatures = inspect.signature(Runner.multiple_init)
+        else:
+            raise ValueError("model_type must be one of 'single' and 'multiple'")
         args = list(signatures.parameters.keys())[1:] + ["n_batch"] + allowed_special_args
         intended_args = set(runner_args.keys())
         allowed_args = set(args)
@@ -565,7 +584,17 @@ class Submitter:
                 the arguments of Runner.__init__.
 
         """
-        signatures = inspect.signature(Runner.__init__)
+        if sys_argv is None:
+            signatures = inspect.signature(Runner.single_init)
+        elif ("--statistical_model" in sys_argv) and ("--statistical_models" in sys_argv):
+            raise ValueError("you must provide either statistical_model or statistical_models")
+        elif "--statistical_model" in sys_argv:
+            signatures = inspect.signature(Runner.single_init)
+        elif "--statistical_models" in sys_argv:
+            signatures = inspect.signature(Runner.multiple_init)
+        else:
+            raise ValueError("you must provide either statistical_model or statistical_models")
+
         args = list(signatures.parameters.keys())[1:]
         parser = ArgumentParser(description="Command line running of alea-run_toymc")
 

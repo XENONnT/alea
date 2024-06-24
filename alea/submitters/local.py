@@ -37,7 +37,7 @@ class SubmitterLocal(Submitter):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def initialized_runner(script: str, pop_limit_threshold: bool = False):
+    def initialize_runner(script: str, pop_limit_threshold: bool = False):
         """Initialize a Runner from a script.
 
         Args:
@@ -50,7 +50,13 @@ class SubmitterLocal(Submitter):
         kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
         if pop_limit_threshold:
             kwargs["statistical_model_args"].pop("limit_threshold", None)
-        runner = Runner(**kwargs)
+        if "statistical_model" in kwargs and "statistical_models" in kwargs:
+            raise ValueError(
+                "you must provide either statistical_model or statistical_models not both"
+            )
+        statistical_model = kwargs.pop("statistical_model", None)
+        statistical_model = kwargs.pop("statistical_models", statistical_model)
+        runner = Runner(statistical_model, **kwargs)
         return runner
 
     def submit(self):
@@ -62,7 +68,7 @@ class SubmitterLocal(Submitter):
         for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
                 print(script)
-                runner = self.initialized_runner(script)
+                runner = self.initialize_runner(script)
                 # print all parameters
                 print("\n\n" + f"{' PARAMETERS ':#^80}")
                 print(runner.model.parameters)

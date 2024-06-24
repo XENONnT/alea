@@ -30,7 +30,7 @@ class TestRunner(TestCase):
     def set_gaussian_runner(self, toydata_mode="generate_and_store"):
         """Set a new runner instance with GaussianModel."""
         self.runner = Runner(
-            statistical_model="alea.examples.gaussian_model.GaussianModel",
+            "alea.examples.gaussian_model.GaussianModel",
             poi="mu",
             hypotheses=["free", "zero", "true"],
             n_mc=self.n_mc,
@@ -47,7 +47,7 @@ class TestRunner(TestCase):
         """Set a new runner instance with BlueiceExtendedModel."""
         parameter_zvc = self.running_config["computation_options"]["discovery_power"]
         self.runner = Runner(
-            statistical_model=self.running_config["statistical_model"],
+            self.running_config["statistical_model"],
             poi=self.running_config["poi"],
             hypotheses=parameter_zvc["in_common"]["hypotheses"],
             n_mc=self.n_mc,
@@ -92,7 +92,7 @@ class TestRunner(TestCase):
             kwonlyargs,
             kwonlydefaults,
             annotations,
-        ) = inspect.getfullargspec(Runner.__init__)
+        ) = inspect.getfullargspec(Runner.single_init)
         if (len(annotations) != len(args[1:])) or (len(defaults) != len(args[1:])):
             raise ValueError(
                 "The number of annotations and defaults of Runner.__init__ must be the same!"

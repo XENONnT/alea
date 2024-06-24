@@ -1,15 +1,16 @@
 import time
 import inspect
 from copy import deepcopy
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 from datetime import datetime
 import warnings
+from functools import singledispatchmethod
 
 from tqdm import tqdm
 import numpy as np
 from inference_interface import toydata_from_file, numpy_to_toyfile
 
-from alea.model import StatisticalModel
+from alea.model import StatisticalModel, CompoundStatisticalModel
 from alea.utils import load_yaml
 
 
@@ -71,7 +72,49 @@ class Runner:
 
     """
 
-    def __init__(
+    def _assign_inference_choices(
+        self,
+        poi: str = "mu",
+        hypotheses: list = ["free"],
+        n_mc: int = 1,
+        common_hypothesis: Optional[dict] = None,
+        generate_values: Optional[Dict[str, float]] = None,
+        nominal_values: Optional[dict] = None,
+        compute_confidence_interval: bool = False,
+        confidence_level: float = 0.9,
+        confidence_interval_kind: str = "central",
+        toydata_mode: str = "generate_and_store",
+        toydata_filename: str = "test_toydata_filename.ii.h5",
+        only_toydata: bool = False,
+        output_filename: str = "test_output_filename.ii.h5",
+        seed: Optional[int] = None,
+        metadata: Optional[dict] = None,
+    ):
+        """Set many hypothesis properties (common for initialisers)"""
+        self.poi = poi
+        self.hypotheses = hypotheses if hypotheses else []
+        self.common_hypothesis = common_hypothesis if common_hypothesis else {}
+        self.generate_values = generate_values if generate_values else {}
+        self._compute_confidence_interval = compute_confidence_interval
+        self._n_mc = n_mc
+        self._toydata_filename = toydata_filename
+        self._toydata_mode = toydata_mode
+        self._output_filename = output_filename
+        self.only_toydata = only_toydata
+        self.seed = seed
+        self._metadata = metadata if metadata else {}
+
+        self._result_names, self._result_dtype = self._get_parameter_list()
+
+        self._hypotheses_values = self._get_hypotheses()
+
+    @singledispatchmethod  # type: ignore
+    # (mypy complains about unsupported decorator)
+    def __init__(self, statistical_model):
+        raise NotImplementedError("statistical_model must be string or list of strings")
+
+    @__init__.register
+    def single_init(
         self,
         statistical_model: str = "alea.examples.gaussian_model.GaussianModel",
         poi: str = "mu",
@@ -87,7 +130,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
-        toydata_mode: str = "generate_and_store",
+        toydata_mode: str = "generate",
         toydata_filename: str = "test_toydata_filename.ii.h5",
         only_toydata: bool = False,
         output_filename: str = "test_output_filename.ii.h5",
@@ -95,7 +138,8 @@ class Runner:
         metadata: Optional[dict] = None,
     ):
         """Initialize statistical model, parameters list, and generate values list."""
-        self.poi = poi
+
+        self.initialiser = self.single_init
 
         statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
@@ -113,6 +157,7 @@ class Runner:
                     "likelihood_config is duplicated, "
                     "because statistical_model_config is provided!"
                 )
+
             parameter_definition = model_config["parameter_definition"]
             likelihood_config = model_config["likelihood_config"]
 
@@ -134,21 +179,24 @@ class Runner:
             **statistical_model_args,
         )
 
-        self.hypotheses = hypotheses if hypotheses else []
-        self.common_hypothesis = common_hypothesis if common_hypothesis else {}
-        self.generate_values = generate_values if generate_values else {}
-        self._compute_confidence_interval = compute_confidence_interval
-        self._n_mc = n_mc
-        self._toydata_filename = toydata_filename
-        self._toydata_mode = toydata_mode
-        self._output_filename = output_filename
-        self.only_toydata = only_toydata
-        self.seed = seed
-        self._metadata = metadata if metadata else {}
-
-        self._result_names, self._result_dtype = self._get_parameter_list()
-
-        self._hypotheses_values = self._get_hypotheses()
+        # assign a range of inference and running parameters:
+        self._assign_inference_choices(
+            poi=poi,
+            hypotheses=hypotheses,
+            n_mc=n_mc,
+            common_hypothesis=common_hypothesis,
+            generate_values=generate_values,
+            nominal_values=nominal_values,
+            compute_confidence_interval=compute_confidence_interval,
+            confidence_level=confidence_level,
+            confidence_interval_kind=confidence_interval_kind,
+            toydata_mode=toydata_mode,
+            toydata_filename=toydata_filename,
+            only_toydata=only_toydata,
+            output_filename=output_filename,
+            seed=seed,
+            metadata=metadata,
+        )
 
         # find confidence_interval_thresholds function for the hypotheses
         from alea.submitters.local import NeymanConstructor
@@ -162,6 +210,153 @@ class Runner:
             confidence_level,
             statistical_model_args.get("limit_threshold_interpolation", False),
             statistical_model_args.get("asymptotic_dof", 1),
+        )
+
+    @__init__.register
+    def multiple_init(
+        self,
+        statistical_models: list,
+        poi: str = "mu",
+        statistical_model_configs: Optional[list] = None,
+        likelihood_configs: Optional[list] = None,
+        statistical_models_args: Optional[list] = None,
+        compound_model_args: Optional[dict] = None,
+        parameter_definitions: Optional[list] = None,
+        hypotheses: list = ["free"],
+        n_mc: int = 1,
+        common_hypothesis: Optional[dict] = None,
+        generate_values: Optional[Dict[str, float]] = None,
+        nominal_values: Optional[dict] = None,
+        compute_confidence_interval: bool = False,
+        confidence_level: float = 0.9,
+        confidence_interval_kind: str = "central",
+        toydata_mode: str = "generate_and_store",
+        toydata_filename: str = "test_toydata_filename.ii.h5",
+        only_toydata: bool = False,
+        output_filename: str = "test_output_filename.ii.h5",
+        seed: Optional[int] = None,
+        metadata: Optional[dict] = None,
+    ):
+        """
+        Initialise a runner with several models
+        Args:
+            statistical_models (list of strings): a list of statistical model class names
+            statistical_model_configs (list of strings): a list of names of the configs
+                for each stat. model
+            likelihood_configs (list of dicts): a list of configs for each model
+                (if statistical model configs not specified)
+            statistical_models_args (list of dicts): a list of configs for each model
+                (if statistical model configs not specified)
+            compound_model_args (dict): arguments that will be passed to the compound model--
+                in particular, any neyman threshold
+        """
+        print("hello! we are overriding the runner!", statistical_models)
+        self.initialiser = self.multiple_init
+
+        statistical_model_classes = [
+            StatisticalModel.get_model_from_name(sm) for sm in statistical_models
+        ]
+        N_models = len(statistical_model_classes)
+
+        # load a range of statistical_model_configs:
+
+        if statistical_model_configs is not None:
+            model_configs = [load_yaml(c) for c in statistical_model_configs]
+            if parameter_definitions is not None:
+                raise ValueError(
+                    "parameter_definitions is duplicated, "
+                    "because statistical_model_configs is provided!"
+                )
+            if likelihood_configs is not None:
+                raise ValueError(
+                    "likelihood_configs is duplicated, "
+                    "because statistical_model_configs is provided!"
+                )
+            parameter_definitions = [mc["parameter_definition"] for mc in model_configs]
+            likelihood_configs = [mc["likelihood_config"] for mc in model_configs]
+
+        # update nominal_values into statistical_model_args
+        if statistical_models_args is None:
+            statistical_models_args = [{} for _ in range(N_models)]
+        if compound_model_args is None:
+            compound_model_args = {}
+        if likelihood_configs is None:
+            likelihood_configs = [{} for _ in range(N_models)]
+        if parameter_definitions is None:
+            parameter_definitions = [{} for _ in range(N_models)]
+        # nominal_values is keyword argument
+        self.nominal_values = nominal_values if nominal_values else {}
+        # initialize nominal_values only once
+        compound_model_args["nominal_values"] = self.nominal_values
+        # likelihood_config is keyword argument, because not all statistical model needs it
+        for sma, lc in zip(statistical_models_args, likelihood_configs):
+            sma["likelihood_config"] = lc
+
+        if (
+            (N_models != len(statistical_model_classes))
+            or (N_models != len(parameter_definitions))
+            or (N_models != len(statistical_models_args))
+        ):
+            raise ValueError(
+                "The list of model classes, model configs, "
+                "parameter definitions and likelihood configs must be the same length"
+                "({:d}, {:d}, {:d}, {:d}, respectively)".format(
+                    N_models,
+                    len(statistical_model_classes),
+                    len(parameter_definitions),
+                    len(statistical_models_args),
+                )
+            )
+        models: List[StatisticalModel] = []
+        print(confidence_level, confidence_interval_kind)
+        print(models.append)
+        print(statistical_model_classes)
+        for statistical_model_class, parameter_definition, statistical_model_args in zip(
+            statistical_model_classes, parameter_definitions, statistical_models_args
+        ):
+            # initialize statistical models
+            print("smc", statistical_model_class)
+            models.append(
+                statistical_model_class(
+                    parameter_definition=parameter_definition,
+                    confidence_level=confidence_level,
+                    confidence_interval_kind=confidence_interval_kind,
+                    **statistical_model_args,
+                )
+            )
+        self.model = CompoundStatisticalModel(models)
+
+        # assign a range of inference and running parameters:
+        self._assign_inference_choices(
+            poi=poi,
+            hypotheses=hypotheses,
+            n_mc=n_mc,
+            common_hypothesis=common_hypothesis,
+            generate_values=generate_values,
+            nominal_values=nominal_values,
+            compute_confidence_interval=compute_confidence_interval,
+            confidence_level=confidence_level,
+            confidence_interval_kind=confidence_interval_kind,
+            toydata_mode=toydata_mode,
+            toydata_filename=toydata_filename,
+            only_toydata=only_toydata,
+            output_filename=output_filename,
+            seed=seed,
+            metadata=metadata,
+        )
+        # find confidence_interval_thresholds function for the hypotheses
+
+        from alea.submitters.local import NeymanConstructor
+
+        self.confidence_interval_thresholds = NeymanConstructor.get_confidence_interval_thresholds(
+            self.poi,
+            self._hypotheses_values,
+            compound_model_args.get("limit_threshold", None),
+            nominal_values,
+            confidence_interval_kind,
+            confidence_level,
+            compound_model_args.get("limit_threshold_interpolation", False),
+            compound_model_args.get("asymptotic_dof", 1),
         )
 
     def pre_process_poi(self, value, attribute_name):
@@ -210,10 +405,21 @@ class Runner:
         self._hypotheses = values
 
     @staticmethod
-    def runner_arguments():
-        """Get runner arguments and annotations."""
+    def runner_arguments(model_type: str):
+        """Get runner arguments and annotations.
+
+        args:
+            model_type (str): either single or combined
+
+        """
         # find run toyMC default args and annotations:
         # reference: https://docs.python.org/3/library/inspect.html#inspect.getfullargspec
+        if model_type == "single":
+            initialiser = Runner.single_init
+        elif model_type == "combined":
+            initialiser = Runner.multiple_init
+        else:
+            raise ValueError("argument must be one of single, combined")
         (
             args,
             varargs,
@@ -222,7 +428,7 @@ class Runner:
             kwonlyargs,
             kwonlydefaults,
             annotations,
-        ) = inspect.getfullargspec(Runner.__init__)
+        ) = inspect.getfullargspec(initialiser)
         # skip the first one because it is self(Runner itself)
         default_args = dict(zip(args[1:], defaults))
         return args, default_args, annotations

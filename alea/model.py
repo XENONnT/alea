@@ -611,6 +611,87 @@ class StatisticalModel:
         return statistical_model_class
 
 
+class CompoundStatisticalModel(StatisticalModel):
+    """Wrapper for creating a statistical model from a list of StatisticalModels
+    TODO: parameter overlap
+    TODO: likelihood name overlap
+
+
+    """
+
+    def __init__(
+        self,
+        model_list=[],
+        confidence_level: float = 0.9,
+        confidence_interval_kind: str = "central",  # one of central, upper, lower
+        confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        asymptotic_dof: Optional[int] = 1,
+    ):
+        """Store stat model list
+        TODO: should we offer init service here?
+        """
+        self.model_list = model_list
+        self._confidence_level = confidence_level
+        if confidence_interval_kind not in {"central", "upper", "lower"}:
+            raise ValueError("confidence_interval_kind must be one of central, upper, lower")
+        self._confidence_interval_kind = confidence_interval_kind
+        self.confidence_interval_threshold = confidence_interval_threshold
+        self.asymptotic_dof = asymptotic_dof
+
+        self.parameters = Parameters()
+        for m in self.model_list:
+            for k, par in m.parameters.parameters.items():
+                if k not in self.parameters.parameters:
+                    self.parameters.add_parameter(par)
+                else:
+                    assert self.parameters[k] == par
+
+    def _define_parameters(self, parameter_definition, nominal_values=None):
+        raise NotImplementedError("Is this needed for the compound?")
+
+    def generate_data(self, **kwargs):
+        ret = []
+        for m in self.model_list:
+            ret.append(m.generate_data(**kwargs))
+        return ret
+
+    def ll(self, **kwargs):
+        if not set(kwargs.keys()) <= set(self.parameters.names):
+            raise ValueError(
+                set(kwargs.keys()) - set(self.parameters.names), "are not parameters of the model!"
+            )
+        ret = 0
+        for m in self.model_list:
+            mkwargs = {k: i for k, i in kwargs.items() if k in m.parameters.parameters.keys()}
+            ret += m.ll(**mkwargs)
+        return ret
+
+    @property
+    def is_data_set(self):
+        return all([m.is_data_set for m in self.model_list])
+
+    @is_data_set.setter
+    def is_data_set(self, override):
+        raise NotImplementedError("You must set the data for this boolean to be true")
+
+    @property
+    def data(self):
+        ret = []
+        for m in self.model_list:
+            ret.append(m.data)
+        return ret
+
+    @data.setter
+    def data(self, datas):
+        """Need to determine _how many_ of the datasets go to each?
+
+        Perhaps just skip for now and let each likelihood term write its own data-set?
+
+        """
+        for m, data in zip(self.model_list, datas):
+            m.data = data
+
+
 class MinuitWrap:
     """Wrapper for functions to be called by Minuit. Initialized with a function f and a Parameters
     instance.

@@ -125,7 +125,7 @@ def _prefix_file_path(
     Args:
         config (dict): dictionary contains file path
         template_folder_list (list): list of possible base folders. Ordered by priority.
-        ignore_keys (list, optional (default=["name", "histname"])): 
+        ignore_keys (list, optional (default=["name", "histname"])):
         keys to be ignored when prefixing
 
     """

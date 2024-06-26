@@ -118,7 +118,7 @@ def get_analysis_space(analysis_space: list) -> list:
 
 
 def _prefix_file_path(
-    config: dict, template_folder_list: list, ignore_keys: Optional[str] = ["name", "histname"]
+    config: dict, template_folder_list: list, ignore_keys: Optional[List[str]] = ["name", "histname"]
 ):
     """Prefix file path with template_folder_list whenever possible.
 

@@ -117,9 +117,7 @@ def get_analysis_space(analysis_space: list) -> list:
     return eval_analysis_space
 
 
-def _prefix_file_path(
-        config: dict, template_folder_list: list, ignore_keys: Optional[str] = ["name", "histname"]
-):
+def _prefix_file_path(config: dict, template_folder_list: list):
     """Prefix file path with template_folder_list whenever possible.
 
     Args:
@@ -128,7 +126,7 @@ def _prefix_file_path(
 
     """
     for key in config.keys():
-        if isinstance(config[key], str) and key not in ignore_keys:
+        if isinstance(config[key], str):
             try:
                 config[key] = get_file_path(config[key], template_folder_list)
             except RuntimeError:

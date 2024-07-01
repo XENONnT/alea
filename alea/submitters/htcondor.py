@@ -78,7 +78,7 @@ class SubmitterHTCondor(Submitter):
         self._make_pegasus_config()
 
         super().__init__(*args, **kwargs)
-        
+
         # Job input configurations
         self.config_file_path = os.path.abspath(self.config_file_path)
         self._get_statistical_model_config_filename(kwargs)
@@ -95,7 +95,9 @@ class SubmitterHTCondor(Submitter):
             self.statistical_model_config_filename = _statistical_model_config_filename
         else:
             _directory = os.path.dirname(self.config_file_path)
-            self.statistical_model_config_filename = os.path.join(_directory, _statistical_model_config_filename)
+            self.statistical_model_config_filename = os.path.join(
+                _directory, _statistical_model_config_filename
+            )
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.
@@ -226,7 +228,9 @@ class SubmitterHTCondor(Submitter):
         # If you have named the workflow, use that name. Otherwise, use the current time as name.
         self._wf_id = self.htcondor_configurations.pop("wf_id")
         if self._wf_id:
-            self.wf_id = self._wf_id + "-" + self.computation + "-" + datetime.now().strftime("%Y%m%d%H%M")
+            self.wf_id = (
+                self._wf_id + "-" + self.computation + "-" + datetime.now().strftime("%Y%m%d%H%M")
+            )
         else:
             self.wf_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -454,8 +458,10 @@ class SubmitterHTCondor(Submitter):
         combine_job.add_profiles(Namespace.CONDOR, "requirements", self.requirements)
 
         # Combine job configuration: all toymc results and files will be combined into one tarball
-        combine_job.add_outputs(File("%s-%s-combined_output.tar.gz" % (self.wf_id, combine_i)), stage_out=True)
-        combine_job.add_args(self.wf_id+"-"+str(combine_i))
+        combine_job.add_outputs(
+            File("%s-%s-combined_output.tar.gz" % (self.wf_id, combine_i)), stage_out=True
+        )
+        combine_job.add_args(self.wf_id + "-" + str(combine_i))
         self.wf.add_jobs(combine_job)
 
         return combine_job
@@ -477,7 +483,7 @@ class SubmitterHTCondor(Submitter):
         # Job requirements
         self.requirements = self._make_requirements()
 
-        # Iterate over the tickets and generate jobs 
+        # Iterate over the tickets and generate jobs
         combine_i = 0
         new_to_combine = True
         # Generate jobstring and output names from tickets generator
@@ -493,7 +499,9 @@ class SubmitterHTCondor(Submitter):
             # Reorganize the script to get the executable and arguments, in which the paths are corrected
             executable, args_dict = self._reorganize_script(_script)
             if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
-                raise NotImplementedError("Only generate_and_store toydata mode is supported on OSG.")
+                raise NotImplementedError(
+                    "Only generate_and_store toydata mode is supported on OSG."
+                )
 
             logger.info(f"Adding job {jobid} to the workflow")
             logger.debug(f"Naked Script: {_script}")
@@ -616,7 +624,10 @@ class SubmitterHTCondor(Submitter):
         args_dict = self._parse_command_args(_script)
 
         # Add the limit_threshold to the replica catalog if not added
-        if not self.added_limit_threshold and "limit_threshold" in args_dict["statistical_model_args"].keys():
+        if (
+            not self.added_limit_threshold
+            and "limit_threshold" in args_dict["statistical_model_args"].keys()
+        ):
             self.limit_threshold_filename = args_dict["statistical_model_args"]["limit_threshold"]
             self._add_limit_threshold()
 
@@ -624,7 +635,7 @@ class SubmitterHTCondor(Submitter):
         args_dict = self._correct_paths_args_dict(args_dict)
 
         return executable, args_dict
-    
+
     def _add_limit_threshold(self):
         """Add the Neyman thresholds limit_threshold to the replica catalog."""
         self.f_limit_threshold = File(str(self._get_file_name(self.limit_threshold_filename)))
@@ -638,9 +649,11 @@ class SubmitterHTCondor(Submitter):
     def _correct_paths_args_dict(self, args_dict):
         """Correct the paths in the arguments dictionary in a hardcoding way."""
         args_dict["statistical_model_args"]["template_path"] = "templates/"
-        
+
         if "limit_threshold" in args_dict["statistical_model_args"].keys():
-            limit_threshold_filename = self._get_file_name(args_dict["statistical_model_args"]["limit_threshold"])
+            limit_threshold_filename = self._get_file_name(
+                args_dict["statistical_model_args"]["limit_threshold"]
+            )
             args_dict["statistical_model_args"]["limit_threshold"] = limit_threshold_filename
 
         toydata_filename = self._get_file_name(args_dict["toydata_filename"])
@@ -733,10 +746,12 @@ class SubmitterHTCondor(Submitter):
     def _warn_outputfolder(self):
         """Warn users about the outputfolder in running config won't be really used."""
         logger.warning(
-            "The outputfolder in the running configuration %s won't be used in this submission."%(self.outputfolder)
+            "The outputfolder in the running configuration %s won't be used in this submission."
+            % (self.outputfolder)
         )
         logger.warning(
-            "Instead, you should find your outputs at %s"%(self.work_dir+"/outputs/"+self.wf_id)
+            "Instead, you should find your outputs at %s"
+            % (self.work_dir + "/outputs/" + self.wf_id)
         )
 
     def _check_filename_unique(self):

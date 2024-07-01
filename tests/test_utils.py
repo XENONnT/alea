@@ -1,6 +1,8 @@
 from unittest import TestCase
 
 import numpy as np
+import inference_interface as ii
+import multihist as mh
 from scipy.stats import chi2
 
 from alea.utils import (
@@ -14,6 +16,8 @@ from alea.utils import (
     expand_grid_dict,
     convert_to_vary,
     deterministic_hash,
+    get_file_path,
+    signal_multiplier_estimator,
 )
 
 
@@ -98,3 +102,14 @@ class TestUtils(TestCase):
         self.assertEqual(
             deterministic_hash({"a": np.array([0, 1]), "b": np.array([0, 1])}), "anxefavaju"
         )
+
+    def test_signal_multiplier_estimator(self):
+        bkg = ii.template_to_multihist(
+            get_file_path("er_template_0.ii.h5"), hist_name="er_template"
+        )
+        sig = ii.template_to_multihist(
+            get_file_path("wimp50gev_template.ii.h5"), hist_name="wimp_template"
+        )
+        data = (bkg + sig * 1e-1).get_random(size=np.random.poisson(bkg.n))
+        data = mh.Histdd(*data.T, bins=bkg.bin_edges)
+        signal_multiplier_estimator(sig.histogram, bkg.histogram, data.histogram, diagnostic=True)

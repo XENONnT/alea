@@ -62,6 +62,7 @@ class Submitter:
     config_file_path: str
     template_path: str
     combine_n_jobs: int = 1
+    first_i_batch: int = 0
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -273,6 +274,10 @@ class Submitter:
                 f"{set(merged_args_list[0].keys()) & set(common_runner_args.keys())}."
             )
 
+        if self.debug:
+            print("\n\n" + f"Will submit {len(merged_args_list)} argument combinations:")
+            for merged_args in merged_args_list:
+                print(merged_args)
         for merged_args in tqdm(merged_args_list):
             runner_args = deepcopy(default_args)
             # update defaults with merged_args and common_runner_args
@@ -332,7 +337,7 @@ class Submitter:
         _, _, annotations = Runner.runner_arguments()
 
         for runner_args in self.merged_arguments_generator():
-            for i_batch in range(runner_args.get("n_batch", 1)):
+            for i_batch in range(self.first_i_batch, runner_args.get("n_batch", 1)):
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
@@ -405,6 +410,7 @@ class Submitter:
 
         _script = ""
         n_combined = 0
+        n_submitted = 0
         for script, last_output_filename in self.computation_tickets_generator():
             if n_combined == 0:
                 _script += script
@@ -413,11 +419,14 @@ class Submitter:
             n_combined += 1
             if n_combined == self.combine_n_jobs:
                 yield _script, last_output_filename
+                n_submitted += 1
                 n_combined = 0
                 _script = ""
         else:
             if n_combined > 0:
                 yield _script, last_output_filename
+                n_submitted += 1
+        print(f"Total {n_submitted} jobs submitted.")
 
     @staticmethod
     def update_n_batch(runner_args):

@@ -2,6 +2,7 @@ from os import remove
 import pytest
 from unittest import TestCase
 from copy import deepcopy
+import numpy as np
 
 from inference_interface import toydata_from_file
 
@@ -20,6 +21,7 @@ class TestBlueiceExtendedModel(TestCase):
         cls.configs = [
             load_yaml("unbinned_wimp_statistical_model.yaml"),
             load_yaml("unbinned_wimp_statistical_model_simple.yaml"),
+            load_yaml("unbinned_wimp_statistical_model_index_fitting.yaml"),
         ]
         ns = [len(c["likelihood_config"]["likelihood_terms"]) for c in cls.configs]
         cls.n_likelihood_terms = ns
@@ -77,7 +79,7 @@ class TestBlueiceExtendedModel(TestCase):
             for ll_t in config["likelihood_config"]["likelihood_terms"]:
                 _source_names.update([s["name"] for s in ll_t["sources"]])
             source_names = model.all_source_names
-            self.assertEqual(source_names, _source_names)
+            self.assertEqual(source_names, sorted(_source_names))
 
     def test_expectation_values(self):
         """Test of the expectation_values method."""
@@ -123,12 +125,22 @@ class TestBlueiceExtendedModel(TestCase):
             for key, summed_val in summed_vals.items():
                 self.assertEqual(summed_val, vals_total[key])
 
+    def test_store_data(self):
+        """Test of the generate_data method."""
+        for model, n in zip(self.models, self.n_likelihood_terms):
+            data = model.generate_data()
+            model.data = data
+            data_list_of_dict = [data]
+            data_list_of_ordereddict = [model.data]
+            data_list_of_list = [[data[k] for k in data.keys()]]
+            for d in [data_list_of_dict, data_list_of_ordereddict, data_list_of_list]:
+                model.store_data(self.toydata_filename, d)
+                remove(self.toydata_filename)
+
     def test_generate_data(self):
         """Test of the generate_data method."""
         for model, n in zip(self.models, self.n_likelihood_terms):
             data = model.generate_data()
-            model.store_data(self.toydata_filename, [data])
-            remove(self.toydata_filename)
             self.assertEqual(len(data), n + 2)
             if not (("ancillary" in data) and ("generate_values" in data)):
                 raise ValueError("Data does not contain ancillary and generate_values.")
@@ -208,3 +220,49 @@ class TestBlueiceExtendedModel(TestCase):
             model.data = model.generate_data()
             with self.assertRaises(ValueError):
                 model.fit(wimp_mass=1)
+
+    def test_get_source_histograms(self):
+        """Test of the get_source_histograms method."""
+        for model in self.models:
+            mus = model.get_expectation_values(per_likelihood_term=True)
+            for ll_name, ll_term in zip(model.likelihood_names[:-1], model.likelihood_list[:-1]):
+                source_histograms = model.get_source_histograms(ll_name)
+                self.assertEqual(sorted(source_histograms.keys()), sorted(ll_term.source_name_list))
+
+                # check whether the correct source histograms are returned
+                for s_name, histogram in source_histograms.items():
+                    source_index = ll_term.source_name_list.index(s_name)
+                    blueice_source = ll_term.base_model.sources[source_index]
+                    blueice_hist = blueice_source._pdf_histogram.histogram
+                    np.testing.assert_almost_equal(blueice_hist, histogram, decimal=10)
+
+                # check that expected_events boolean works
+                source_histograms = model.get_source_histograms(ll_name, expected_events=True)
+                for s_name, histogram in source_histograms.items():
+                    mu = mus[ll_name][s_name]
+                    sum_hist = histogram.n
+                    np.testing.assert_almost_equal(mu, sum_hist, decimal=4)
+
+            # check that model.likelihood_names[-1] fails
+            with self.assertRaises(ValueError):
+                model.get_source_histograms(model.likelihood_names[-1])
+
+            # check that invalid likelihood names fail
+            with self.assertRaises(ValueError):
+                model.get_source_histograms("alea_iacta_est")
+
+    def test_sorted_returns(self):
+        """Test if sources are sorted in the same way for all return dicts."""
+        for model in self.models:
+            mus_per_ll = model.get_expectation_values(per_likelihood_term=True)
+            mus = model.get_expectation_values()
+            hist_per_ll = {}
+            for ll_name in model.likelihood_names[:-1]:
+                hist_per_ll[ll_name] = model.get_source_histograms(ll_name)
+            # check that keys are the same for each SR
+            for ll_name in model.likelihood_names[:-1]:
+                self.assertEqual(mus_per_ll[ll_name].keys(), hist_per_ll[ll_name].keys())
+            # check that global keys are the same
+            all_keys = {v for d in mus_per_ll.values() for v in d.keys()}
+            all_keys = sorted(all_keys)
+            self.assertEqual(all_keys, sorted(mus.keys()))

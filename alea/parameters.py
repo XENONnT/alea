@@ -204,6 +204,60 @@ class Parameter:
             )
 
 
+class ConditionalParameter():
+    """
+    This class is used to define a parameter that depends on another parameter.
+    It has the same attributes as the Parameter class but each of them can
+    be a dictionary with keys being the values of the conditioning parameter
+    and values being the corresponding values of the conditional parameter.
+    Calling the object with the conditioning parameter value as an argument
+    will return a corresponding Parameter object with the correct values.
+
+    Attributes:
+        name (str): The name of the parameter.
+        conditioning_parameter_name (str): The name of the conditioning parameter.
+    """
+
+    def __init__(self, name: str, conditioning_parameter_name: str, **kwargs):
+        self.name = name
+        self.cond_name = conditioning_parameter_name
+        self.conditions_dict = self._unpack_conditions(kwargs)
+
+    @staticmethod
+    def _unpack_conditions(kwargs):
+        # 1) collect all condition keys and check for consistency
+        all_keys = set()
+        for value in kwargs.values():
+            if isinstance(value, dict):
+                if not all_keys:
+                    all_keys = set(value.keys())
+                elif all_keys != set(value.keys()):
+                    raise ValueError("Inconsistent condition keys across dictionaries.")
+
+        # 2) create the conditions dictionary
+        conditions_dict = {key: {} for key in all_keys}
+        for key, value in kwargs.items():
+            if isinstance(value, dict):
+                for condition_key, condition_value in value.items():
+                    conditions_dict[condition_key][key] = condition_value
+            else:
+                for condition_key in all_keys:
+                    conditions_dict[condition_key][key] = value
+
+        return conditions_dict
+
+    def __call__(self, **kwargs) -> Parameter:
+        if self.cond_name not in kwargs:
+            err_msg = (
+                f"Conditioning parameter '{self.cond_name}' is missing."
+            )
+            raise ValueError(err_msg)
+        return Parameter(name=self.name, **self.conditions_dict[kwargs[self.cond_name]])
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.name}, {self.conditions_dict})"
+
+
 class Parameters:
     """Represents a collection of parameters.
 

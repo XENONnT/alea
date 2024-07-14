@@ -22,6 +22,7 @@ cp /ospool/uc-shared/project/xenon/grid_proxy/xenon_service_proxy $HOME/.xenon_s
 chmod 600 $HOME/.xenon_service_proxy
 
 export X509_USER_PROXY=$HOME/.xenon_service_proxy
+export PYTHONPATH=`pegasus-config --python`:$PYTHONPATH
 export PYTHONPATH="$HOME/.local/lib/python3.9/site-packages${PYTHONPATH:+:$PYTHONPATH}"
 ```
 

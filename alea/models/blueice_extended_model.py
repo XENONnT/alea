@@ -337,7 +337,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            for source in blueice_config["sources"]:
+            for source in blueice_config["pdf_base_config"]["sources"]:
                 filenames_with_wildcards = formatted_to_asterisked(source["templatename"])
                 all_filenames = glob.glob(filenames_with_wildcards)
                 input_files.extend(all_filenames)

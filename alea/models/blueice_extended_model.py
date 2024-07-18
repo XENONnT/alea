@@ -32,7 +32,6 @@ class BlueiceExtendedModel(StatisticalModel):
         livetime_parameter_names (list): List of the name of the livetime of each term,
             None if not specified
         data_generators (list): List of data generators for each likelihood term.
-        input_files (set): Set of input file paths.
 
     Args:
         parameter_definition (dict): A dictionary defining the model parameters.
@@ -53,7 +52,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
         """
         super().__init__(parameter_definition=parameter_definition, **kwargs)
-        self._likelihood, self.input_files = self._build_ll_from_config(
+        self._likelihood = self._build_ll_from_config(
             likelihood_config, template_path=kwargs.get("template_path", None)
         )
         self.likelihood_names = [t["name"] for t in likelihood_config["likelihood_terms"]]
@@ -324,11 +323,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
         Returns:
             LogLikelihoodSum: A blueice LogLikelihoodSum instance.
-            input_files (set): Set of input file paths.
 
         """
         lls = []
-        input_files = []
 
         template_folder_list = get_template_folder_list(
             likelihood_config, extra_template_path=template_path
@@ -337,10 +334,6 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            for source in blueice_config["pdf_base_config"]["sources"]:
-                filenames_with_wildcards = formatted_to_asterisked(source["templatename"])
-                all_filenames = glob(filenames_with_wildcards)
-                input_files.extend(all_filenames)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
@@ -392,7 +385,7 @@ class BlueiceExtendedModel(StatisticalModel):
         lls.append(ll)
 
         likelihood_weights = likelihood_config.get("likelihood_weights", None)
-        return LogLikelihoodSum(lls, likelihood_weights=likelihood_weights), set(input_files)
+        return LogLikelihoodSum(lls, likelihood_weights=likelihood_weights)
 
     def _build_data_generators(self) -> list:
         """Build data generators for all likelihood terms.

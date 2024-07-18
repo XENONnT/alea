@@ -2,7 +2,6 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from pydoc import locate
 import itertools
-from glob import glob
 from copy import deepcopy
 
 import numpy as np
@@ -13,7 +12,7 @@ from inference_interface import dict_to_structured_array, structured_array_to_di
 from alea.model import StatisticalModel
 from alea.parameters import Parameters
 from alea.simulators import BlueiceDataGenerator
-from alea.utils import ReadOnlyDict, formatted_to_asterisked
+from alea.utils import ReadOnlyDict
 from alea.utils import adapt_likelihood_config_for_blueice, get_template_folder_list, load_yaml
 
 

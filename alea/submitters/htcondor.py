@@ -125,7 +125,7 @@ class SubmitterHTCondor(Submitter):
         assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
 
         # Printout the template path file structure
-        logger.info(f"Template path file structure:")
+        logger.info("Template path file structure:")
         for dirpath, dirnames, filenames in os.walk(self.template_path):
             for filename in filenames:
                 logger.info(f"File: {filename} in {dirpath}")
@@ -144,7 +144,8 @@ class SubmitterHTCondor(Submitter):
                     if filename.endswith(".h5"):
                         # Get the full path to the file
                         filepath = os.path.join(dirpath, filename)
-                        # Add the file to the tar, specifying the arcname to store relative path within the tar
+                        # Add the file to the tar
+                        # Specify the arcname to store relative path within the tar
                         tar.add(filepath, arcname=os.path.basename(filename))
 
     def _make_template_tarball(self):
@@ -311,11 +312,17 @@ class SubmitterHTCondor(Submitter):
         local.add_profiles(Namespace.ENV, GLOBUS_LOCATION="")
         local.add_profiles(
             Namespace.ENV,
-            PATH="/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/bin:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/condabin:/usr/bin:/bin",
+            PATH=(
+                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/bin:"  # noqa
+                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/condabin:/usr/bin:/bin"  # noqa
+            ),
         )
         local.add_profiles(
             Namespace.ENV,
-            LD_LIBRARY_PATH="/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib",
+            LD_LIBRARY_PATH=(
+                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:"  # noqa
+                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib"  # noqa
+            ),
         )
         local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])
         local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["X509_USER_PROXY"])
@@ -392,7 +399,8 @@ class SubmitterHTCondor(Submitter):
     def _generate_rc(self):
         """Generate the ReplicaCatalog for the workflow.
 
-        1. The input files for the job, which are the templates in tarball, the yaml files and alea-run_toymc.
+        1. The input files for the job, which are the templates in tarball,
+            the yaml files and alea-run_toymc.
         2. The output files for the job, which are the toydata and the output files.
         Since the outputs are not known in advance, we will add them in the job definition.
 
@@ -489,14 +497,15 @@ class SubmitterHTCondor(Submitter):
         # Generate jobstring and output names from tickets generator
         # _script for example:
         # alea-submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
-        # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5
-        # _script for example: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None
+        # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5  # noqa
+        # _script for example: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
         for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
             # If the number of jobs to combine is reached, add a new combine job
             if new_to_combine:
                 combine_job = self._add_combine_job(combine_i)
 
-            # Reorganize the script to get the executable and arguments, in which the paths are corrected
+            # Reorganize the script to get the executable and arguments,
+            # in which the paths are corrected
             executable, args_dict = self._reorganize_script(_script)
             if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
                 raise NotImplementedError(
@@ -540,10 +549,12 @@ class SubmitterHTCondor(Submitter):
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
-            _extract_all_to_tuple = lambda d: tuple(
-                f"{json.dumps(str(d[key])).replace(' ', '')}".replace("'", '\\"')
-                for key in d.keys()
-            )
+            def _extract_all_to_tuple(d):
+                return tuple(
+                    f"{json.dumps(str(d[key])).replace(' ', '')}".replace("'", '\\"')
+                    for key in d.keys()
+                )
+
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)
 
@@ -587,8 +598,14 @@ class SubmitterHTCondor(Submitter):
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk
-        memory_str = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
-        disk_str = f"ifthenelse(isundefined(DAGNodeRetry) || DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
+        memory_str = (
+            "ifthenelse(isundefined(DAGNodeRetry) || "
+            f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
+        )
+        disk_str = (
+            "ifthenelse(isundefined(DAGNodeRetry) || "
+            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
+        )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
 
@@ -672,7 +689,7 @@ class SubmitterHTCondor(Submitter):
     def _parse_command_args(self, command):
         """Parse the command line arguments and return a dictionary with the flags and their values.
 
-        Example command: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None
+        Example command: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
 
         """
         # Use shlex to handle spaces within quotes correctly
@@ -836,7 +853,7 @@ class Shell(object):
                 kp = subprocess.Popen(kill_cmd, shell=True)
                 kp.communicate()
                 self._process.terminate()
-            except:
+            except Exception:
                 pass
             thread.join()
             # log the output

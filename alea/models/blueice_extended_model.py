@@ -2,7 +2,7 @@ import warnings
 from typing import List, Dict, Callable, Optional, Union, cast
 from pydoc import locate
 import itertools
-import glob
+from glob import glob
 from copy import deepcopy
 
 import numpy as np
@@ -339,7 +339,7 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config = self._process_blueice_config(config, template_folder_list)
             for source in blueice_config["pdf_base_config"]["sources"]:
                 filenames_with_wildcards = formatted_to_asterisked(source["templatename"])
-                all_filenames = glob.glob(filenames_with_wildcards)
+                all_filenames = glob(filenames_with_wildcards)
                 input_files.extend(all_filenames)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))

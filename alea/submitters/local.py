@@ -53,7 +53,7 @@ class SubmitterLocal(Submitter):
         runner = Runner(**kwargs)
         return runner
 
-    def submit(self):
+    def submit(self, *args, **kwargs):
         """Run job in subprocess locally.
 
         If debug is True, only return the first instance of Runner.
@@ -61,7 +61,21 @@ class SubmitterLocal(Submitter):
         """
         for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
-                print(script)
+                if kwargs:
+                    print(f"{' KWARGS ':#^80}")
+                    print(kwargs)
+                    _, _, annotations = Runner.runner_arguments()
+                    runner_kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
+                    runner_kwargs.update(kwargs)
+                    script = Submitter.script_from_runner_kwargs(annotations, runner_kwargs)
+                    script = f"python3 {self.run_toymc} " + " ".join(
+                        map(shlex.quote, script.split(" "))
+                    )
+                    print("\n\n" + f"{' SCRIPT ':#^80}")
+                    print(script)
+                else:
+                    print(f"{' SCRIPT ':#^80}")
+                    print(script)
                 runner = self.initialized_runner(script)
                 # print all parameters
                 print("\n\n" + f"{' PARAMETERS ':#^80}")
@@ -487,7 +501,7 @@ class NeymanConstructor(SubmitterLocal):
                 # interpolate the threshold from the existing threshold
                 if len(hashed_keys["generate_values"]) == 0:
                     warnings.warn(
-                        f"If hypothesis {hypothesis} does not container any values except "
+                        f"If hypothesis {hypothesis} does not contain any values except "
                         f"poi, the nominal values should be in limit_threshold, so that "
                         f"the threshold can be interpolated from the existing threshold."
                     )

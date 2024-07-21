@@ -53,7 +53,7 @@ class SubmitterLocal(Submitter):
         runner = Runner(**kwargs)
         return runner
 
-    def submit(self, **kwargs):
+    def submit(self, *args, **kwargs):
         """Run job in subprocess locally.
 
         If debug is True, only return the first instance of Runner.

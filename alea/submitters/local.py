@@ -68,9 +68,8 @@ class SubmitterLocal(Submitter):
                     runner_kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
                     runner_kwargs.update(kwargs)
                     script = Submitter.script_from_runner_kwargs(annotations, runner_kwargs)
-                    script = (
-                        f"python3 {self.run_toymc} "
-                        + " ".join(map(shlex.quote, script.split(" ")))
+                    script = f"python3 {self.run_toymc} " + " ".join(
+                        map(shlex.quote, script.split(" "))
                     )
                     print("\n\n" + f"{' SCRIPT ':#^80}")
                     print(script)

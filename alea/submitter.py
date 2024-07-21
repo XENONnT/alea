@@ -355,9 +355,8 @@ class Submitter:
                             )
 
                 script = Submitter.script_from_runner_kwargs(annotations, i_args)
-                script = (
-                    f"python3 {self.run_toymc} "
-                    + " ".join(map(shlex.quote, script.split(" ")))
+                script = f"python3 {self.run_toymc} " + " ".join(
+                    map(shlex.quote, script.split(" "))
                 )
 
                 if not self.already_done(i_args):

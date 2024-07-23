@@ -313,6 +313,7 @@ class Submitter:
         """
         needed_kwargs = {
             "i_batch": runner_args["i_batch"],
+            "confidence_level": runner_args["confidence_level"],
             **runner_args["nominal_values"],
             **runner_args["generate_values"],
         }

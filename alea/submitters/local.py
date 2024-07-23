@@ -106,7 +106,7 @@ class NeymanConstructor(SubmitterLocal):
         self,
         free_name: str = "free",
         true_name: str = "true",
-        confidence_levels: List[float] = [0.8, 0.9, 0.95],
+        confidence_levels: List[float] = [0.6827, 0.8, 0.9, 0.95],
     ):
         """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
         threshold will be saved into a json file. The threshold will be sorted based on the elements
@@ -116,6 +116,7 @@ class NeymanConstructor(SubmitterLocal):
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
+                0.6827 = stats.norm.cdf(1) - stats.norm.cdf(-1)
 
         Example:
             >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))

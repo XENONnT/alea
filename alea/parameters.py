@@ -220,8 +220,9 @@ class ConditionalParameter():
 
     def __init__(self, name: str, conditioning_parameter_name: str, **kwargs):
         self.name = name
-        self.cond_name = conditioning_parameter_name
+        self.conditioning_name = conditioning_parameter_name
         self.conditions_dict = self._unpack_conditions(kwargs)
+        self.conditioning_param = None
 
     @staticmethod
     def _unpack_conditions(kwargs):
@@ -247,12 +248,23 @@ class ConditionalParameter():
         return conditions_dict
 
     def __call__(self, **kwargs) -> Parameter:
-        if self.cond_name not in kwargs:
+        if self.conditioning_name in kwargs:
+            cond_val = kwargs[self.conditioning_name]
+        elif self.conditioning_param is not None:
+            cond_val = self.conditioning_param.nominal_value
+        else:
             err_msg = (
-                f"Conditioning parameter '{self.cond_name}' is missing."
+                f"Conditioning parameter '{self.conditioning_name}' is missing. Can't fall back to "
+                "nominal value because conditioning parameter it is not set. "
             )
             raise ValueError(err_msg)
-        return Parameter(name=self.name, **self.conditions_dict[kwargs[self.cond_name]])
+        # check if the conditioning value is in the conditions dictionary
+        if cond_val not in self.conditions_dict:
+            raise ValueError(
+                f"Conditioning value '{cond_val}' not found in the conditions dictionary."
+                + f"Available values are: {sorted(list(self.conditions_dict.keys()))}"
+            )
+        return Parameter(name=self.name, **self.conditions_dict[cond_val])
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.name}, {self.conditions_dict})"
@@ -301,8 +313,15 @@ class Parameters:
         """
         parameters = cls()
         for name, param_config in config.items():
-            parameter = Parameter(name=name, **param_config)
+            if "conditioning_parameter_name" in param_config:
+                parameter = ConditionalParameter(name, **param_config)
+            else:
+                parameter = Parameter(name=name, **param_config)
             parameters.add_parameter(parameter)
+        # set conditioning parameters
+        for param in parameters:
+            if isinstance(param, ConditionalParameter):
+                param.conditioning_param = parameters[param.conditioning_name]
         return parameters
 
     @classmethod
@@ -371,11 +390,16 @@ class Parameters:
     @property
     def fit_guesses(self) -> Dict[str, float]:
         """A dictionary of fit guesses."""
-        return {
-            name: param.fit_guess
-            for name, param in self.parameters.items()
-            if param.fit_guess is not None
-        }
+        ret = {}
+        for name, param in self.parameters.items():
+            if isinstance(param, ConditionalParameter):
+                call_args = {
+                    param.conditioning_name: self.parameters[param.conditioning_name].nominal_value
+                }
+                param = param(**call_args)
+            if param.fit_guess is not None:
+                ret[name] = param.fit_guess
+        return ret
 
     @property
     def fit_limits(self) -> Dict[str, float]:
@@ -473,6 +497,12 @@ class Parameters:
                 raise ValueError(f"Parameter '{name}' not found.")
 
         for name, param in self.parameters.items():
+            if isinstance(param, ConditionalParameter):
+                new_cond_val = kwargs.get(param.conditioning_name, None)
+                if new_cond_val is None:
+                    new_cond_val = self.parameters[param.conditioning_name].nominal_value
+                call_args = {param.conditioning_name: new_cond_val}
+                param = param(**call_args)
             new_val = kwargs.get(name, None)
             if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
                 raise ValueError(

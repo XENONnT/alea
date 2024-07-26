@@ -392,11 +392,7 @@ class Parameters:
         """A dictionary of fit guesses."""
         ret = {}
         for name, param in self.parameters.items():
-            if isinstance(param, ConditionalParameter):
-                call_args = {
-                    param.conditioning_name: self.parameters[param.conditioning_name].nominal_value
-                }
-                param = param(**call_args)
+            param = self._evaluate_conditional_parameters(param)
             if param.fit_guess is not None:
                 ret[name] = param.fit_guess
         return ret
@@ -404,21 +400,32 @@ class Parameters:
     @property
     def fit_limits(self) -> Dict[str, float]:
         """A dictionary of fit limits."""
-        return {
-            name: param.fit_limits
-            for name, param in self.parameters.items()
-            if param.fit_limits is not None
-        }
+        ret = {}
+        for name, param in self.parameters.items():
+            param = self._evaluate_conditional_parameters(param)
+            if param.fit_limits is not None:
+                ret[name] = param.fit_limits
+        return ret
 
     @property
     def fittable(self) -> List[str]:
         """A list of parameter names which are fittable."""
-        return [name for name, param in self.parameters.items() if param.fittable]
+        ret = []
+        for name, param in self.parameters.items():
+            param = self._evaluate_conditional_parameters(param)
+            if param.fittable:
+                ret.append(name)
+        return ret
 
     @property
     def not_fittable(self) -> List[str]:
         """A list of parameter names which are not fittable."""
-        return [name for name, param in self.parameters.items() if not param.fittable]
+        ret = []
+        for name, param in self.parameters.items():
+            param = self._evaluate_conditional_parameters(param)
+            if not param.fittable:
+                ret.append(name)
+        return ret
 
     @property
     def uncertainties(self) -> dict:
@@ -427,16 +434,28 @@ class Parameters:
         Caution: this is not the same as the parameter.uncertainty property.
 
         """
-        return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
+        ret = {}
+        for name, param in self.parameters.items():
+            param = self._evaluate_conditional_parameters(param)
+            if param.uncertainty is not None:
+                ret[name] = param.uncertainty
+        return ret
 
     @property
     def with_uncertainty(self) -> "Parameters":
         """Return parameters with a not-NaN uncertainty.
 
         The parameters are the same objects as in the original Parameters object, not a copy.
+        For conditional parameters, the uncertainty is evaluated with the nominal value of the
+        conditioning parameter and the conditional parameter is added to the returned Parameters
+        in case the uncertainty of the nominal value is not None.
 
         """
-        param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
+        param_dict = {}
+        for k, i in self.parameters.items():
+            evaluated_param = self._evaluate_conditional_parameters(i)
+            if evaluated_param.uncertainty is not None:
+                param_dict[k] = i
         params = Parameters()
         for param in param_dict.values():
             params.add_parameter(param)
@@ -445,9 +464,12 @@ class Parameters:
     @property
     def nominal_values(self) -> dict:
         """A dict of nominal values for all parameters with a nominal value."""
-        return {
-            k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
-        }
+        ret = {}
+        for name, param in self.parameters.items():
+            param = self._evaluate_conditional_parameters(param)
+            if param.nominal_value is not None:
+                ret[name] = param.nominal_value
+        return ret
 
     def set_nominal_values(self, **nominal_values):
         """Set the nominal values for parameters.
@@ -468,6 +490,15 @@ class Parameters:
         """
         for name, value in fit_guesses.items():
             self.parameters[name].fit_guess = value
+
+    def _evaluate_conditional_parameters(self, parameter: Parameter, **kwargs):
+        if isinstance(parameter, ConditionalParameter):
+            new_cond_val = kwargs.get(parameter.conditioning_name, None)
+            if new_cond_val is None:
+                new_cond_val = self.parameters[parameter.conditioning_name].nominal_value
+            call_args = {parameter.conditioning_name: new_cond_val}
+            return parameter(**call_args)
+        return parameter
 
     def __call__(
         self, return_fittable: Optional[bool] = False, **kwargs: Optional[Dict]
@@ -497,12 +528,7 @@ class Parameters:
                 raise ValueError(f"Parameter '{name}' not found.")
 
         for name, param in self.parameters.items():
-            if isinstance(param, ConditionalParameter):
-                new_cond_val = kwargs.get(param.conditioning_name, None)
-                if new_cond_val is None:
-                    new_cond_val = self.parameters[param.conditioning_name].nominal_value
-                call_args = {param.conditioning_name: new_cond_val}
-                param = param(**call_args)
+            param = self._evaluate_conditional_parameters(param, **kwargs)
             new_val = kwargs.get(name, None)
             if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
                 raise ValueError(
@@ -575,6 +601,8 @@ class Parameters:
             bool: True if all values are within the fit limits.
 
         """
-        return all(
-            self.parameters[name].value_in_fit_limits(value) for name, value in kwargs.items()
-        )
+        for name, value in kwargs.items():
+            param = self._evaluate_conditional_parameters(self.parameters[name], **kwargs)
+            if not param.value_in_fit_limits(value):
+                return False
+        return True

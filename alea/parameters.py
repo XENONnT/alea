@@ -440,42 +440,30 @@ class Parameters:
     @property
     def fit_guesses(self) -> Dict[str, float]:
         """A dictionary of fit guesses."""
-        ret = {}
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if param.fit_guess is not None:
-                ret[name] = param.fit_guess
-        return ret
+        return {
+            name: param.fit_guess
+            for name, param in self.parameters.items()
+            if param.fit_guess is not None
+        }
 
     @property
     def fit_limits(self) -> Dict[str, float]:
         """A dictionary of fit limits."""
-        ret = {}
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if param.fit_limits is not None:
-                ret[name] = param.fit_limits
-        return ret
+        return {
+            name: param.fit_limits
+            for name, param in self.parameters.items()
+            if param.fit_limits is not None
+        }
 
     @property
     def fittable(self) -> List[str]:
         """A list of parameter names which are fittable."""
-        ret = []
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if param.fittable:
-                ret.append(name)
-        return ret
+        return [name for name, param in self.parameters.items() if param.fittable]
 
     @property
     def not_fittable(self) -> List[str]:
         """A list of parameter names which are not fittable."""
-        ret = []
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if not param.fittable:
-                ret.append(name)
-        return ret
+        return [name for name, param in self.parameters.items() if not param.fittable]
 
     @property
     def uncertainties(self) -> dict:
@@ -484,12 +472,7 @@ class Parameters:
         Caution: this is not the same as the parameter.uncertainty property.
 
         """
-        ret = {}
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if param.uncertainty is not None:
-                ret[name] = param.uncertainty
-        return ret
+        return {k: i.uncertainty for k, i in self.parameters.items() if i.uncertainty is not None}
 
     @property
     def with_uncertainty(self) -> "Parameters":
@@ -499,11 +482,7 @@ class Parameters:
         For conditional parameters, the parameters under the nominal condition are returned.
 
         """
-        param_dict = {}
-        for k, i in self.parameters.items():
-            param = self._evaluate_conditional_parameters(i)
-            if param.uncertainty is not None:
-                param_dict[k] = param
+        param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}
         params = Parameters()
         for param in param_dict.values():
             params.add_parameter(param)
@@ -512,12 +491,9 @@ class Parameters:
     @property
     def nominal_values(self) -> dict:
         """A dict of nominal values for all parameters with a nominal value."""
-        ret = {}
-        for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param)
-            if param.nominal_value is not None:
-                ret[name] = param.nominal_value
-        return ret
+        return {
+            k: i.nominal_value for k, i in self.parameters.items() if i.nominal_value is not None
+        }
 
     def set_nominal_values(self, **nominal_values):
         """Set the nominal values for parameters.

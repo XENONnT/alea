@@ -204,18 +204,17 @@ class Parameter:
             )
 
 
-class ConditionalParameter():
-    """
-    This class is used to define a parameter that depends on another parameter.
-    It has the same attributes as the Parameter class but each of them can
-    be a dictionary with keys being the values of the conditioning parameter
-    and values being the corresponding values of the conditional parameter.
-    Calling the object with the conditioning parameter value as an argument
+class ConditionalParameter:
+    """This class is used to define a parameter that depends on another parameter. It has the same
+    attributes as the Parameter class but each of them can be a dictionary with keys being the
+    values of the conditioning parameter and values being the corresponding values of the
+    conditional parameter. Calling the object with the conditioning parameter value as an argument
     will return a corresponding Parameter object with the correct values.
 
     Attributes:
         name (str): The name of the parameter.
         conditioning_parameter_name (str): The name of the conditioning parameter.
+
     """
 
     def __init__(self, name: str, conditioning_parameter_name: str, **kwargs):
@@ -223,6 +222,12 @@ class ConditionalParameter():
         self.conditioning_name = conditioning_parameter_name
         self.conditions_dict = self._unpack_conditions(kwargs)
         self.conditioning_param = None
+
+    def __repr__(self) -> str:
+        parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
+        _repr = f"{self.__class__.__module__}.{self.__class__.__qualname__}"
+        _repr += f"({parameter_str})"
+        return _repr
 
     @staticmethod
     def _unpack_conditions(kwargs):
@@ -249,27 +254,27 @@ class ConditionalParameter():
 
     @property
     def uncertainty(self) -> Any:
-        """Return the uncertainty of the parameter (nom. condition)"""
+        """Return the uncertainty of the parameter (cominal condition)"""
         return self().uncertainty
 
     @property
     def blueice_anchors(self) -> Any:
-        """Return the blueice_anchors of the parameter (nom. condition)"""
+        """Return the blueice_anchors of the parameter (cominal condition)"""
         return self().blueice_anchors
 
     @property
     def fit_guess(self) -> Optional[float]:
-        """Return the initial guess for fitting the parameter (nom. condition)"""
+        """Return the initial guess for fitting the parameter (cominal condition)"""
         return self().fit_guess
 
     @property
     def parameter_interval_bounds(self) -> Optional[Tuple[float, float]]:
-        """Return the parameter_interval_bounds of the parameter (nom. condition)"""
+        """Return the parameter_interval_bounds of the parameter (cominal condition)"""
         return self().parameter_interval_bounds
 
     @property
     def nominal_value(self) -> Optional[float]:
-        """Return the nominal value of the parameter (nom. condition)"""
+        """Return the nominal value of the parameter (cominal condition)"""
         return self().nominal_value
 
     @property
@@ -279,23 +284,34 @@ class ConditionalParameter():
 
     @property
     def fittable(self) -> bool:
-        """Return the fittable attribute of the parameter (nom. condition)"""
+        """Return the fittable attribute of the parameter (cominal condition)"""
         return self().fittable
 
     @property
     def ptype(self) -> Optional[str]:
-        """Return the ptype of the parameter (nom. condition)"""
+        """Return the ptype of the parameter (cominal condition)"""
         return self().ptype
 
     @property
     def relative_uncertainty(self) -> Optional[bool]:
-        """Return the relative_uncertainty of the parameter (nom. condition)"""
+        """Return the relative_uncertainty of the parameter (cominal condition)"""
         return self().relative_uncertainty
 
     @property
     def fit_limits(self) -> Optional[Tuple[float, float]]:
-        """Return the fit_limits of the parameter (nom. condition)"""
+        """Return the fit_limits of the parameter (cominal condition)"""
         return self().fit_limits
+
+    def __eq__(self, other: object) -> bool:
+        """Return True if all attributes are equal."""
+        if isinstance(other, ConditionalParameter):
+            return all(getattr(self, k) == getattr(other, k) for k in self.__dict__)
+        else:
+            return False
+
+    def value_in_fit_limits(self, value: float) -> bool:
+        """Returns True if value under cominal condition is within fit_limits."""
+        return self().value_in_fit_limits(value)
 
     def __call__(self, **kwargs) -> Parameter:
         if self.conditioning_name in kwargs:
@@ -315,9 +331,6 @@ class ConditionalParameter():
                 + f"Available values are: {sorted(list(self.conditions_dict.keys()))}"
             )
         return Parameter(name=self.name, **self.conditions_dict[cond_val])
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.name}, {self.conditions_dict})"
 
 
 class Parameters:
@@ -362,6 +375,7 @@ class Parameters:
 
         """
         parameters = cls()
+        parameter: Union[Parameter, ConditionalParameter]
         for name, param_config in config.items():
             if "conditioning_parameter_name" in param_config:
                 parameter = ConditionalParameter(name, **param_config)
@@ -418,7 +432,7 @@ class Parameters:
 
         return df.to_string()
 
-    def add_parameter(self, parameter: Parameter) -> None:
+    def add_parameter(self, parameter: Union[Parameter, ConditionalParameter]) -> None:
         """Adds a Parameter object to the Parameters collection.
 
         Args:
@@ -478,8 +492,8 @@ class Parameters:
     def with_uncertainty(self) -> "Parameters":
         """Return parameters with a not-NaN uncertainty.
 
-        The parameters are the same objects as in the original Parameters object, not a copy.
-        For conditional parameters, the parameters under the nominal condition are returned.
+        The parameters are the same objects as in the original Parameters object, not a copy. For
+        conditional parameters, the parameters under the nominal condition are returned.
 
         """
         param_dict = {k: i for k, i in self.parameters.items() if i.uncertainty is not None}

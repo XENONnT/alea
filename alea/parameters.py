@@ -515,14 +515,9 @@ class Parameters:
         for name, value in fit_guesses.items():
             self.parameters[name].fit_guess = value
 
-    def _evaluate_conditional_parameters(self, parameter: Parameter, **kwargs):
+    def _evaluate_parameter(self, parameter: Parameter, **kwargs):
         if isinstance(parameter, ConditionalParameter):
-            new_cond_val = kwargs.get(parameter.conditioning_name, None)
-            if new_cond_val is None:
-                print(self.parameters.keys())
-                new_cond_val = self.parameters[parameter.conditioning_name].nominal_value
-            call_args = {parameter.conditioning_name: new_cond_val}
-            return parameter(**call_args)
+            return parameter(**kwargs)
         return parameter
 
     def __call__(
@@ -553,7 +548,7 @@ class Parameters:
                 raise ValueError(f"Parameter '{name}' not found.")
 
         for name, param in self.parameters.items():
-            param = self._evaluate_conditional_parameters(param, **kwargs)
+            param = self._evaluate_parameter(param, **kwargs)
             new_val = kwargs.get(name, None)
             if param.needs_reinit and new_val != param.nominal_value and new_val is not None:
                 raise ValueError(
@@ -627,7 +622,7 @@ class Parameters:
 
         """
         for name, value in kwargs.items():
-            param = self._evaluate_conditional_parameters(self.parameters[name], **kwargs)
+            param = self._evaluate_parameter(self.parameters[name], **kwargs)
             if not param.value_in_fit_limits(value):
                 return False
         return True

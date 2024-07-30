@@ -32,7 +32,7 @@ Following this as an example
 htcondor_configurations:
   template_path: "/ospool/uc-shared/project/xenon/binference_common/binference_common/nt_cevns_templates/v7"
   cluster_size: 1
-  request_cpus: 1
+  request_cpus: 4
   request_memory: 2000
   request_disk: 2000000
   combine_disk: 20000000
@@ -46,7 +46,7 @@ htcondor_configurations:
 ```
 - `template_path`: where you put your input templates. Note that **all files have to have unique names**. All templates inside will be tarred and the tarball will be uploaded to the grid when computing.
 - `cluster_size`: clustering multiple `alea-run_toymc` jobs into a single job. For example, now you expect to run 100 individual `alea-run_toymc` jobs, and you specified `cluster_size: 10`, there will be only 10 `alea-run_toymc` in the end, each containing 10 jobs to run in sequence. Unless you got crazy amount of jobs like >200, I don't recommend changing it from 1.
-- `request_cpus`: number of CPUs for each job. The default 1 should be good.
+- `request_cpus`: number of CPUs for each job. It should be larger than alea max multi-threading number, otherwise OSG will complains.
 - `request_memory`: requested memory for each job in unit of MB. Please don't put a number larger than what you need, because it will significantly reduce our available slots.
 - `request_disk`: requested disk for each job in unit of KB. Please don't put a number larger than what you need, because it will significantly reduce our available slots.
 - `combine_disk`: requested disk for combine job in unit of KB. In most cases 20GB is enough.

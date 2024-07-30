@@ -27,7 +27,7 @@ class TestParameters(TestCase):
     def test_from_list(self):
         """Test of the from_list method."""
         for config, parameters in zip(self.configs, self.parameters_list):
-            only_name_parameters = Parameters.from_list(config["parameter_definition"].keys())
+            only_name_parameters = Parameters.from_list(config.keys())
             # it is false because only names are assigned
             self.assertFalse(only_name_parameters == parameters)
 

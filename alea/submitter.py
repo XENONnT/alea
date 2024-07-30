@@ -73,6 +73,7 @@ class Submitter:
         computation_options: dict,
         computation: str = "discovery_power",
         outputfolder: Optional[str] = None,
+        fit_strategy: Optional[dict] = None,
         debug: bool = False,
         resubmit: bool = False,
         loglevel: str = "INFO",
@@ -100,6 +101,7 @@ class Submitter:
         self.statistical_model_config = statistical_model_config
         self.poi = poi
         self.outputfolder = outputfolder
+        self.fit_strategy = fit_strategy
 
         self.computation = computation
         self.computation_dict = computation_options[self.computation]
@@ -264,6 +266,7 @@ class Submitter:
             "statistical_model": self.statistical_model,
             "statistical_model_config": self.statistical_model_config,
             "poi": self.poi,
+            "fit_strategy": self.fit_strategy,
         }
 
         if set(merged_args_list[0].keys()) & set(common_runner_args.keys()):

@@ -61,6 +61,8 @@ class Runner:
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
+        fit_strategy (dict, optional (default=None)): fit strategy dictionary.
+            If None, the default fit strategy of the model will be used.
         toydata_mode (str, optional (default='generate_and_store')):
             toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
         toydata_filename (str, optional (default=None)): toydata filename
@@ -87,6 +89,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
+        fit_strategy: Optional[dict] = None,
         toydata_mode: str = "generate_and_store",
         toydata_filename: str = "test_toydata_filename.ii.h5",
         only_toydata: bool = False,
@@ -131,6 +134,7 @@ class Runner:
             parameter_definition=parameter_definition,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
+            fit_strategy=fit_strategy,
             **statistical_model_args,
         )
 

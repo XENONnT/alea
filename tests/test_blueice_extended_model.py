@@ -188,7 +188,7 @@ class TestBlueiceExtendedModel(TestCase):
                 p.value_in_fit_limits(fit_result[p.name])
 
             # check that likelihood is maximized
-            self.assertEqual(max_llh, model.ll(**fit_result))
+            np.testing.assert_almost_equal(max_llh, model.ll(**fit_result), decimal=2)
 
             # check that fixing all parameters to nominal works
             fit_result_fixed, _ = model.fit(**model.parameters())

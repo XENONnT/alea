@@ -62,6 +62,7 @@ class Submitter:
     config_file_path: str
     template_path: str
     combine_n_jobs: int = 1
+    first_i_batch: int = 0
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -315,6 +316,7 @@ class Submitter:
         """
         needed_kwargs = {
             "i_batch": runner_args["i_batch"],
+            "confidence_level": runner_args["confidence_level"],
             **runner_args["nominal_values"],
             **runner_args["generate_values"],
         }
@@ -339,7 +341,7 @@ class Submitter:
         _, _, annotations = Runner.runner_arguments()
 
         for runner_args in self.merged_arguments_generator():
-            for i_batch in range(runner_args.get("n_batch", 1)):
+            for i_batch in range(self.first_i_batch, runner_args.get("n_batch", 1)):
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
@@ -356,17 +358,9 @@ class Submitter:
                                 f"{needed_kwargs}, please check the {name}."
                             )
 
-                script_array = []
-                for arg, annotation in annotations.items():
-                    script_array.append(f"--{arg}")
-                    script_array.append(self.arg_to_str(i_args[arg], annotation))
-                script = " ".join(script_array)
-
-                script = (
-                    "python3 "
-                    + self.run_toymc
-                    + " "
-                    + " ".join(map(shlex.quote, script.split(" ")))
+                script = Submitter.script_from_runner_kwargs(annotations, i_args)
+                script = f"python3 {self.run_toymc} " + " ".join(
+                    map(shlex.quote, script.split(" "))
                 )
 
                 if not self.already_done(i_args):
@@ -580,3 +574,13 @@ class Submitter:
         for arg, value in parsed_args.__dict__.items():
             kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
         return kwargs
+
+    @staticmethod
+    def script_from_runner_kwargs(annotations, kwargs) -> str:
+        """Generate the submission script from the runner arguments."""
+        script_array = []
+        for arg, annotation in annotations.items():
+            script_array.append(f"--{arg}")
+            script_array.append(Submitter.arg_to_str(kwargs[arg], annotation))
+        script = " ".join(script_array)
+        return script

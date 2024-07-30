@@ -306,8 +306,7 @@ class ConditionalParameter:
         """Return True if all attributes are equal."""
         if isinstance(other, ConditionalParameter):
             return all(getattr(self, k) == getattr(other, k) for k in self.__dict__)
-        else:
-            return False
+        return False
 
     def value_in_fit_limits(self, value: float) -> bool:
         """Returns True if value under cominal condition is within fit_limits."""

@@ -8,8 +8,7 @@ from alea.parameters import Parameters
 class TestParameters(TestCase):
     """Test of the Parameters class."""
 
-    @classmethod
-    def setUp(cls):
+    def setUp(self):
         """Initialise the Parameters instance."""
         filenames = [
             "unbinned_wimp_statistical_model.yaml",
@@ -18,12 +17,12 @@ class TestParameters(TestCase):
         configs = []
         for fn in filenames:
             configs.append(load_yaml(fn)["parameter_definition"])
-        cls.configs = configs
+        self.configs = configs
 
         parameters_list = []
-        for config in cls.configs:
+        for config in self.configs:
             parameters_list.append(Parameters.from_config(config))
-        cls.parameters_list = parameters_list
+        self.parameters_list = parameters_list
 
     def test_from_list(self):
         """Test of the from_list method."""
@@ -47,7 +46,7 @@ class TestParameters(TestCase):
             if deepcopy(parameters) != parameters:
                 raise ValueError("Parameters instance cannot be correctly deepcopied.")
 
-    def test_ConditionalParameter(self):
+    def test_conditional_parameter(self):
         """Test of the ConditionalParameter class."""
         config = self.configs[1]
         parameters = self.parameters_list[1]

@@ -313,6 +313,7 @@ class Submitter:
         """
         needed_kwargs = {
             "i_batch": runner_args["i_batch"],
+            "confidence_level": runner_args["confidence_level"],
             **runner_args["nominal_values"],
             **runner_args["generate_values"],
         }
@@ -354,17 +355,9 @@ class Submitter:
                                 f"{needed_kwargs}, please check the {name}."
                             )
 
-                script_array = []
-                for arg, annotation in annotations.items():
-                    script_array.append(f"--{arg}")
-                    script_array.append(self.arg_to_str(i_args[arg], annotation))
-                script = " ".join(script_array)
-
-                script = (
-                    "python3 "
-                    + self.run_toymc
-                    + " "
-                    + " ".join(map(shlex.quote, script.split(" ")))
+                script = Submitter.script_from_runner_kwargs(annotations, i_args)
+                script = f"python3 {self.run_toymc} " + " ".join(
+                    map(shlex.quote, script.split(" "))
                 )
 
                 if not self.already_done(i_args):
@@ -578,3 +571,13 @@ class Submitter:
         for arg, value in parsed_args.__dict__.items():
             kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
         return kwargs
+
+    @staticmethod
+    def script_from_runner_kwargs(annotations, kwargs) -> str:
+        """Generate the submission script from the runner arguments."""
+        script_array = []
+        for arg, annotation in annotations.items():
+            script_array.append(f"--{arg}")
+            script_array.append(Submitter.arg_to_str(kwargs[arg], annotation))
+        script = " ".join(script_array)
+        return script

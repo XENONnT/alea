@@ -1,4 +1,4 @@
-0.3.0 / 2024-07-31
+0.2.6 / 2024-07-31
 ------------------
 * Defunctionalize `apply_efficiency`, apply efficiency when `efficiency_name` is specified by @dachengx in https://github.com/XENONnT/alea/pull/183
 

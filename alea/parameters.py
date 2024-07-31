@@ -415,7 +415,15 @@ class Parameters:
         """Return an overview table of all parameters."""
         par_list = []
         for p in self:
-            par_dict = {}
+            if isinstance(p, ConditionalParameter):
+                par_dict = {
+                    "conditioning_name": p.conditioning_name,
+                    "conditions": sorted(p.conditions_dict.keys()),
+                }
+                # get nominal-condition parameter
+                p = p()
+            else:
+                par_dict = {}
             for k, v in p.__dict__.items():
                 # replace hidden attributes with non-hidden properties
                 if k.startswith("_"):

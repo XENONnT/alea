@@ -360,7 +360,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     )
 
                 # set efficiency parameters
-                if not source.get("efficiency_name", None):
+                if source.get("efficiency_name", None):
                     self._set_efficiency(source, ll)
 
                 # set shape parameters

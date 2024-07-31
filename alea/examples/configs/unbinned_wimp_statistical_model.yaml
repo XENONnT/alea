@@ -101,7 +101,6 @@ likelihood_config:
         named_parameters:
           - wimp_mass
         template_filename: wimp{wimp_mass:d}gev_template.ii.h5
-        apply_efficiency: True
         efficiency_name: signal_efficiency
 
     # SR1
@@ -134,5 +133,4 @@ likelihood_config:
         named_parameters:
           - wimp_mass
         template_filename: wimp{wimp_mass:d}gev_template.ii.h5
-        apply_efficiency: True
         efficiency_name: signal_efficiency

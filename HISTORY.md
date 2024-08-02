@@ -1,3 +1,36 @@
+0.2.6 / 2024-07-31
+------------------
+* Defunctionalize `apply_efficiency`, apply efficiency when `efficiency_name` is specified by @dachengx in https://github.com/XENONnT/alea/pull/183
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.5...v0.3.0
+
+
+0.2.5 / 2024-07-30
+------------------
+* Consistent sorting for BlueiceExtendedModel by @hammannr in https://github.com/XENONnT/alea/pull/149
+* Fixed data storing by @hammannr in https://github.com/XENONnT/alea/pull/152
+* Add lxml_html_clean to fix readthedocs building error by @zihaoxu98 in https://github.com/XENONnT/alea/pull/157
+* Fitting index variables by @zihaoxu98 in https://github.com/XENONnT/alea/pull/156
+* Print Argument combinations to be submitted by @hammannr in https://github.com/XENONnT/alea/pull/151
+* Minor changes to fitting index variables (PR #156) by @hammannr in https://github.com/XENONnT/alea/pull/159
+* Set `i_batch` for `SubmitterLocal` when submitting by @dachengx in https://github.com/XENONnT/alea/pull/164
+* Debug for interpolator deduction of `NeymanConstructor` by @dachengx in https://github.com/XENONnT/alea/pull/165
+* The first i batch should be 0 by @dachengx in https://github.com/XENONnT/alea/pull/166
+* Try prefix every file path in likelihood configuration with template folder by @dachengx in https://github.com/XENONnT/alea/pull/169
+* Forbid prexing every key when adapt_likelihood_config_for_blueice by @FaroutYLq in https://github.com/XENONnT/alea/pull/170
+* Refactored Pegasus-based OSG submitter by @FaroutYLq in https://github.com/XENONnT/alea/pull/163
+* Try fixing https://github.com/XENONnT/alea/issues/173 by @dachengx in https://github.com/XENONnT/alea/pull/176
+* Allow assigning kwargs in debug mode by @dachengx in https://github.com/XENONnT/alea/pull/174
+* Allow `confidence_level` in filename by @dachengx in https://github.com/XENONnT/alea/pull/179
+* Add 68% coverage as one of the defaults of `confidence_levels` by @dachengx in https://github.com/XENONnT/alea/pull/180
+* Document to increase CPUs by @FaroutYLq in https://github.com/XENONnT/alea/pull/178
+
+New Contributors
+* @FaroutYLq made their first contribution in https://github.com/XENONnT/alea/pull/170
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.4...v0.2.5
+
+
 0.2.4 / 2024-03-18
 ------------------
 * Point away from alea for physics models by @kdund in https://github.com/XENONnT/alea/pull/143

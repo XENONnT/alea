@@ -93,7 +93,6 @@ likelihood_config:
           - wimp_mass
           - signal_efficiency
         template_filename: wimp50gev_template.ii.h5
-        apply_efficiency: True
         efficiency_name: signal_efficiency
 
     # SR3, 1D inference on cS2 space
@@ -127,5 +126,4 @@ likelihood_config:
           - signal_efficiency
         template_filename: wimp50gev_template.ii.h5
         spectrum_name: test_cs1_spectrum.json
-        apply_efficiency: True
         efficiency_name: signal_efficiency

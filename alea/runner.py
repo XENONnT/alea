@@ -61,6 +61,8 @@ class Runner:
         confidence_level (float, optional (default=0.9)): confidence level
         confidence_interval_kind (str, optional (default='central')):
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
+        fit_strategy (dict, optional (default=None)): fit strategy dictionary.
+            If None, the default fit strategy of the model will be used.
         toydata_mode (str, optional (default='generate_and_store')):
             toydata mode, choice from 'read', 'generate', 'generate_and_store', 'no_toydata'
         toydata_filename (str, optional (default=None)): toydata filename
@@ -87,6 +89,7 @@ class Runner:
         compute_confidence_interval: bool = False,
         confidence_level: float = 0.9,
         confidence_interval_kind: str = "central",
+        fit_strategy: Optional[dict] = None,
         toydata_mode: str = "generate_and_store",
         toydata_filename: str = "test_toydata_filename.ii.h5",
         only_toydata: bool = False,
@@ -115,6 +118,10 @@ class Runner:
                 )
             parameter_definition = model_config["parameter_definition"]
             likelihood_config = model_config["likelihood_config"]
+            # in case of fit_strategy is provided in both
+            # statistical_model_config and arguments fit_strategy in
+            # arguments will overwrite fit_strategy in statistical_model_config
+            fit_strategy = {**model_config.get("fit_strategy", {}), **(fit_strategy or {})}
 
         # update nominal_values into statistical_model_args
         if statistical_model_args is None:
@@ -131,6 +138,7 @@ class Runner:
             parameter_definition=parameter_definition,
             confidence_level=confidence_level,
             confidence_interval_kind=confidence_interval_kind,
+            fit_strategy=fit_strategy,
             **statistical_model_args,
         )
 
@@ -517,3 +525,4 @@ class Runner:
                 time.time() - global_start, time.process_time() - cpu_global_start
             )
         )
+        print("Alea iacta est.")

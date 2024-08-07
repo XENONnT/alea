@@ -118,6 +118,10 @@ class Runner:
                 )
             parameter_definition = model_config["parameter_definition"]
             likelihood_config = model_config["likelihood_config"]
+            # in case of fit_strategy is provided in both
+            # statistical_model_config and arguments fit_strategy in
+            # arguments will overwrite fit_strategy in statistical_model_config
+            fit_strategy = {**model_config.get("fit_strategy", {}), **(fit_strategy or {})}
 
         # update nominal_values into statistical_model_args
         if statistical_model_args is None:

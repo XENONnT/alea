@@ -1,3 +1,13 @@
+0.2.7 / 2024-08-07
+------------------
+* Trigger PyPI workflow on "published" by @hammannr in https://github.com/XENONnT/alea/pull/185
+* Fix apply efficiency by @hammannr in https://github.com/XENONnT/alea/pull/187
+* Conditional Parameters by @hammannr in https://github.com/XENONnT/alea/pull/186
+* Enable choosing the fit strategy by @hammannr in https://github.com/XENONnT/alea/pull/182
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.6...v0.2.7
+
 0.2.6 / 2024-07-31
 ------------------
 * Defunctionalize `apply_efficiency`, apply efficiency when `efficiency_name` is specified by @dachengx in https://github.com/XENONnT/alea/pull/183

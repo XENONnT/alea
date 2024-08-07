@@ -66,13 +66,3 @@ htcondor_configurations:
   singularity_container: null
 
 outputfolder: null
-
-# just for illusrative purposes, the default values are shown here.
-# they are not needed in the configuration file but you could
-# overwrite them here.
-fit_strategy:
-  disable_index_fitting: False
-  max_index_fitting_iter: 10
-  minimizer_routine: "migrad"
-  minuit_strategy: 1
-  refit_invalid: True

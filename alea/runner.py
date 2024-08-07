@@ -521,3 +521,4 @@ class Runner:
                 time.time() - global_start, time.process_time() - cpu_global_start
             )
         )
+        print("Alea iacta est.")

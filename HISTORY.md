@@ -1,4 +1,12 @@
-## What's Changed
+0.2.6 / 2024-07-31
+------------------
+* Defunctionalize `apply_efficiency`, apply efficiency when `efficiency_name` is specified by @dachengx in https://github.com/XENONnT/alea/pull/183
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.5...v0.3.0
+
+
+0.2.5 / 2024-07-30
+------------------
 * Consistent sorting for BlueiceExtendedModel by @hammannr in https://github.com/XENONnT/alea/pull/149
 * Fixed data storing by @hammannr in https://github.com/XENONnT/alea/pull/152
 * Add lxml_html_clean to fix readthedocs building error by @zihaoxu98 in https://github.com/XENONnT/alea/pull/157
@@ -17,7 +25,7 @@
 * Add 68% coverage as one of the defaults of `confidence_levels` by @dachengx in https://github.com/XENONnT/alea/pull/180
 * Document to increase CPUs by @FaroutYLq in https://github.com/XENONnT/alea/pull/178
 
-## New Contributors
+New Contributors
 * @FaroutYLq made their first contribution in https://github.com/XENONnT/alea/pull/170
 
 **Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.4...v0.2.5

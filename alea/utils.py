@@ -180,6 +180,8 @@ def adapt_likelihood_config_for_blueice(
                 get_file_path(template_filename, template_folder_list)
                 for template_filename in source["template_filenames"]
             ]
+        if source.get("efficiency_name", None):
+            source["apply_efficiency"] = True
         _prefix_file_path(source, template_folder_list)
     return likelihood_config_copy
 

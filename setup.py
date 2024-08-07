@@ -22,7 +22,7 @@ with open("HISTORY.md") as file:
 
 setuptools.setup(
     name="alea-inference",
-    version="0.2.5",
+    version="0.2.6",
     description="A tool to perform toyMC-based inference constructions",
     author="Alea contributors, the XENON collaboration",
     long_description=readme + "\n\n" + history,

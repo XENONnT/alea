@@ -1,3 +1,10 @@
+0.2.8 / 2024-08-26
+------------------
+* Fix OSG submission by @hammannr in https://github.com/XENONnT/alea/pull/189
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.7...v0.2.8
+
 0.2.7 / 2024-08-07
 ------------------
 * Trigger PyPI workflow on "published" by @hammannr in https://github.com/XENONnT/alea/pull/185

@@ -17,12 +17,13 @@ likelihood_config=${11}
 compute_confidence_interval=${12}
 confidence_level=${13}
 confidence_interval_kind=${14}
-toydata_mode=${15}
-toydata_filename=${16}
-only_toydata=${17}
-output_filename=${18}
-seed=${19}
-metadata=${20}
+fit_strategy=${15}
+toydata_mode=${16}
+toydata_filename=${17}
+only_toydata=${18}
+output_filename=${19}
+seed=${20}
+metadata=${21}
 echo "statistical_model: $statistical_model"
 echo "poi: $poi"
 echo "hypotheses: $hypotheses"
@@ -37,6 +38,7 @@ echo "likelihood_config: $likelihood_config"
 echo "compute_confidence_interval: $compute_confidence_interval"
 echo "confidence_level: $confidence_level"
 echo "confidence_interval_kind: $confidence_interval_kind"
+echo "fit_strategy: $fit_strategy"
 echo "toydata_mode: $toydata_mode"
 echo "toydata_filename: $toydata_filename"
 echo "only_toydata: $only_toydata"
@@ -75,6 +77,7 @@ LIKELIHOOD_CONFIG=$(echo "$likelihood_config" | sed "s/'/\"/g")
 COMPUTE_CONFIDENCE_INTERVAL=$(echo "$compute_confidence_interval" | sed "s/'/\"/g")
 CONFIDENCE_LEVEL=$(echo "$confidence_level" | sed "s/'/\"/g")
 CONFIDENCE_INTERVAL_KIND=$(echo "$confidence_interval_kind" | sed "s/'/\"/g")
+FIT_STRATEGY=$(echo "$fit_strategy" | sed "s/'/\"/g")
 TOYDATA_MODE=$(echo "$toydata_mode" | sed "s/'/\"/g")
 TOYDATA_FILENAME=$(echo "$toydata_filename" | sed "s/'/\"/g")
 ONLY_TOYDATA=$(echo "$only_toydata" | sed "s/'/\"/g")
@@ -120,6 +123,7 @@ echo "Running command: python3 ./alea-run_toymc \\
     --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \\
     --confidence_level $CONFIDENCE_LEVEL \\
     --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \\
+    --fit_strategy $FIT_STRATEGY \\
     --toydata_mode $TOYDATA_MODE \\
     --toydata_filename $TOYDATA_FILENAME \\
     --only_toydata $ONLY_TOYDATA \\
@@ -143,6 +147,7 @@ time python3 ./alea-run_toymc \
     --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \
     --confidence_level $CONFIDENCE_LEVEL \
     --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \
+    --fit_strategy $FIT_STRATEGY \
     --toydata_mode $TOYDATA_MODE \
     --toydata_filename $TOYDATA_FILENAME \
     --only_toydata $ONLY_TOYDATA \

@@ -90,10 +90,10 @@ class Submitter:
         self.logging.setLevel(loglevel)
 
         # find the path of template, requires users install alea-inference properly
-        self.run_toymc = shutil.which("alea-run_toymc")
+        self.run_toymc = shutil.which("alea_run_toymc")
         if self.run_toymc is None:
             raise RuntimeError(
-                "Excecutable alea-run_toymc is not found, "
+                "Excecutable alea_run_toymc is not found, "
                 "please make sure you have installed alea-inference correctly, "
                 "and appended alea/bin or .local/bin(pip install direction) to your $PATH."
             )
@@ -563,7 +563,7 @@ class Submitter:
         """
         signatures = inspect.signature(Runner.__init__)
         args = list(signatures.parameters.keys())[1:]
-        parser = ArgumentParser(description="Command line running of alea-run_toymc")
+        parser = ArgumentParser(description="Command line running of alea_run_toymc")
 
         # skip the first one because it is self(Runner itself)
         for arg in args:

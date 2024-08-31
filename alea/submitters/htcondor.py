@@ -373,7 +373,7 @@ class SubmitterHTCondor(Submitter):
         Every executable that is used in the workflow should be here.
 
         """
-        # Wrappers that runs alea-run_toymc
+        # Wrappers that runs alea_run_toymc
         run_toymc_wrapper = Transformation(
             name="run_toymc_wrapper",
             site="local",
@@ -400,7 +400,7 @@ class SubmitterHTCondor(Submitter):
         """Generate the ReplicaCatalog for the workflow.
 
         1. The input files for the job, which are the templates in tarball,
-            the yaml files and alea-run_toymc.
+            the yaml files and alea_run_toymc.
         2. The output files for the job, which are the toydata and the output files.
         Since the outputs are not known in advance, we will add them in the job definition.
 
@@ -436,12 +436,12 @@ class SubmitterHTCondor(Submitter):
             "run_toymc_wrapper.sh",
             "file://{}".format(self.top_dir / "alea/submitters/run_toymc_wrapper.sh"),
         )
-        # Add alea-run_toymc
-        self.f_alea_run_toymc = File("alea-run_toymc")
+        # Add alea_run_toymc
+        self.f_alea_run_toymc = File("alea_run_toymc")
         rc.add_replica(
             "local",
-            "alea-run_toymc",
-            "file://{}".format(self.top_dir / "bin/alea-run_toymc"),
+            "alea_run_toymc",
+            "file://{}".format(self.top_dir / "bin/alea_run_toymc"),
         )
         #  Add combine executable
         self.f_combine = File("combine.sh")
@@ -496,9 +496,9 @@ class SubmitterHTCondor(Submitter):
         new_to_combine = True
         # Generate jobstring and output names from tickets generator
         # _script for example:
-        # alea-submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
+        # alea_submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
         # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5  # noqa
-        # _script for example: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
+        # _script for example: python3 /home/yuanlq/.local/bin/alea_run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
         for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
             # If the number of jobs to combine is reached, add a new combine job
             if new_to_combine:
@@ -689,7 +689,7 @@ class SubmitterHTCondor(Submitter):
     def _parse_command_args(self, command):
         """Parse the command line arguments and return a dictionary with the flags and their values.
 
-        Example command: python3 /home/yuanlq/.local/bin/alea-run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
+        Example command: python3 /home/yuanlq/.local/bin/alea_run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
 
         """
         # Use shlex to handle spaces within quotes correctly

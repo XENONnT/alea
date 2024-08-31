@@ -101,14 +101,14 @@ mv *.h5 templates/
 
 # Source the environment
 . /opt/XENONnT/setup.sh
-chmod +x alea-run_toymc
+chmod +x alea_run_toymc
 echo "Before running the toy MC, the work directory contains:"
 ls -lh
 echo "These are the contents of templates/:"
 ls -lh templates/
 
 # Print the command
-echo "Running command: python3 ./alea-run_toymc \\
+echo "Running command: python3 ./alea_run_toymc \\
     --statistical_model $STATISTICAL_MODEL \\
     --poi $POI \\
     --hypotheses $HYPOTHESES \\
@@ -132,7 +132,7 @@ echo "Running command: python3 ./alea-run_toymc \\
     --metadata $METADATA"
 
 # Run the toy MC
-time python3 ./alea-run_toymc \
+time python3 ./alea_run_toymc \
     --statistical_model $STATISTICAL_MODEL \
     --poi $POI \
     --hypotheses $HYPOTHESES \

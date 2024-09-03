@@ -6,32 +6,32 @@ import json
 import tempfile
 import time
 import threading
-import yaml
 import subprocess
-from alea.submitter import Submitter
+from datetime import datetime
 import logging
 from pathlib import Path
 from Pegasus.api import (
-    Workflow,
-    Job,
-    File,
-    Site,
-    Directory,
-    FileServer,
+    Arch,
     Operation,
     Namespace,
-    Arch,
+    Workflow,
+    File,
+    Directory,
+    FileServer,
+    Job,
+    Site,
     SiteCatalog,
     Transformation,
     TransformationCatalog,
     ReplicaCatalog,
 )
+from alea.submitter import Submitter
+from alea.utils import load_yaml, dump_yaml
 
-from datetime import datetime
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = f"/scratch/{getpass.getuser()}/workflows"
-TOP_DIR = Path(__file__).resolve().parent.parent.parent
+TOP_DIR = Path(__file__).resolve().parents[2]
 
 
 # Set up logging
@@ -44,17 +44,14 @@ class SubmitterHTCondor(Submitter):
 
     def __init__(self, *args, **kwargs):
         # General start
-        self.name = self.__class__.__name__
         self.htcondor_configurations = kwargs.get("htcondor_configurations", {})
         self.singularity_image = self.htcondor_configurations.pop(
             "singularity_image", DEFAULT_IMAGE
         )
-        self._initial_dir = os.getcwd()
-        self.work_dir = WORK_DIR
-        self.runs_dir = os.path.join(self.work_dir, "runs")
         self.top_dir = TOP_DIR
+        self.work_dir = WORK_DIR
         self.template_path = self.htcondor_configurations.pop("template_path", None)
-        self.max_jobs_to_combine = self.htcondor_configurations.pop("max_jobs_to_combine", 100)
+        self.combine_n_outputs = self.htcondor_configurations.pop("combine_n_outputs", 100)
 
         # A flag to check if limit_threshold is added to the rc
         self.added_limit_threshold = False
@@ -73,30 +70,63 @@ class SubmitterHTCondor(Submitter):
         self.dagman_retry = self.htcondor_configurations.pop("dagman_retry", 2)
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100000)
 
-        # Pegasus configurations
-        self._make_pegasus_config()
-
         super().__init__(*args, **kwargs)
 
         # Job input configurations
         self.config_file_path = os.path.abspath(self.config_file_path)
-        self._get_statistical_model_config_filename(kwargs)
 
         # User can provide a name for the workflow, otherwise it will be the current time
-        self._setup_wf_id()
+        self._setup_workflow_id()
         # Pegasus workflow directory
-        self.wf_dir = os.path.join(self.runs_dir, self.wf_id)
+        self.generated_dir = os.path.join(self.work_dir, "generated", self.workflow_id)
+        self.runs_dir = os.path.join(self.work_dir, "runs", self.workflow_id)
+        self.outputs_dir = os.path.join(self.work_dir, "outputs", self.workflow_id)
 
-    def _get_statistical_model_config_filename(self, kwargs):
-        """Get the statistical model config file name from the kwargs."""
-        _statistical_model_config_filename = kwargs.get("statistical_model_config")
-        if os.path.isabs(_statistical_model_config_filename):
-            self.statistical_model_config_filename = _statistical_model_config_filename
-        else:
-            _directory = os.path.dirname(self.config_file_path)
-            self.statistical_model_config_filename = os.path.join(
-                _directory, _statistical_model_config_filename
-            )
+    @property
+    def template_tarball(self):
+        return os.path.join(self.generated_dir, "templates.tar.gz")
+
+    @property
+    def workflow(self):
+        return os.path.join(self.generated_dir, "workflow.yml")
+
+    @property
+    def pegasus_config(self):
+        """Pegasus configurations."""
+        pconfig = {}
+        pconfig["pegasus.metrics.app"] = "XENON"
+        pconfig["pegasus.data.configuration"] = "nonsharedfs"
+        pconfig["dagman.retry"] = self.dagman_retry
+        pconfig["dagman.maxidle"] = self.dagman_maxidle
+        pconfig["dagman.maxjobs"] = self.dagman_maxjobs
+        pconfig["pegasus.transfer.threads"] = 4
+
+        # Help Pegasus developers by sharing performance data (optional)
+        pconfig["pegasus.monitord.encoding"] = "json"
+        pconfig["pegasus.catalog.workflow.amqp.url"] = (
+            "amqp://friend:donatedata@msgs.pegasus.isi.edu:5672/prod/workflows"
+        )
+        return pconfig
+
+    @property
+    def requirements(self):
+        """Make the requirements for the job."""
+        # Minimal requirements on singularity/cvmfs/ports/microarchitecture
+        _requirements = (
+            "HAS_SINGULARITY && HAS_CVMFS_xenon_opensciencegrid_org"
+            + " && PORT_2880 && PORT_8000 && PORT_27017"
+            + ' && (Microarch >= "x86_64-v3")'
+        )
+
+        # If in debug mode, use the MWT2 site because we own it
+        if self.debug:
+            _requirements += ' && GLIDEIN_ResourceName == "MWT2" '
+
+        return _requirements
+
+    def _get_file_name(self, file_path):
+        """Get the filename from the file path."""
+        return os.path.basename(file_path)
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.
@@ -119,9 +149,11 @@ class SubmitterHTCondor(Submitter):
 
     def _validate_template_path(self):
         """Validate the template path."""
-        assert self.template_path, "Please provide a template path."
+        if self.template_path is None:
+            raise ValueError("Please provide a template path.")
         # This path must exists locally, and it will be used to stage the input files
-        assert os.path.exists(self.template_path), f"Path {self.template_path} does not exist."
+        if not os.path.exists(self.template_path):
+            raise ValueError(f"Path {self.template_path} does not exist.")
 
         # Printout the template path file structure
         logger.info("Template path file structure:")
@@ -130,7 +162,7 @@ class SubmitterHTCondor(Submitter):
                 logger.info(f"File: {filename} in {dirpath}")
         if self._contains_subdirectories(self.template_path):
             logger.warning(
-                "The template path contains subdirectories. All .h5 files will be tarred."
+                "The template path contains subdirectories. All templates files will be tarred."
             )
 
     def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
@@ -149,8 +181,7 @@ class SubmitterHTCondor(Submitter):
 
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""
-        self.template_tarball_filename = os.path.join(self._generated_dir(), "templates.tar.gz")
-        self._tar_h5_files(self.template_path, self.template_tarball_filename)
+        self._tar_h5_files(self.template_path, self.template_tarball)
 
     def _modify_yaml(self):
         """Modify the statistical model config file to correct the 'template_filename' fields.
@@ -160,16 +191,14 @@ class SubmitterHTCondor(Submitter):
         statistical model config file must reflect that.
 
         """
-        input_file = self.statistical_model_config_filename
         # Output file will have the same name as input file but with '_modified' appended
-        _output_file = self._get_file_name(input_file)
-        _output_file = _output_file.replace(".yaml", "_modified.yaml")
-        output_file = os.path.join(self._generated_dir(), _output_file)
-        self.modified_statistical_model_config_filename = output_file
+        _output_file = self._get_file_name(self.statistical_model_config).replace(
+            ".yaml", "_modified.yaml"
+        )
+        self.modified_statistical_model_config = os.path.join(self.generated_dir, _output_file)
 
         # Load the YAML data from the original file
-        with open(input_file, "r") as file:
-            data = yaml.safe_load(file)
+        data = load_yaml(self.statistical_model_config)
 
         # Recursive function to update 'template_filename' fields
         def update_template_filenames(node):
@@ -189,13 +218,11 @@ class SubmitterHTCondor(Submitter):
 
         # Write the updated YAML data to the new file
         # Overwrite if the file already exists
-        with open(output_file, "w") as file:
-            yaml.safe_dump(data, file)
-        logger.info(f"Modified statistical model config file written to {output_file}")
-
-    def _generated_dir(self, work_dir=WORK_DIR):
-        """Directory for generated files."""
-        return os.path.join(work_dir, "generated", self.wf_id)
+        dump_yaml(self.modified_statistical_model_config, data)
+        logger.info(
+            "Modified statistical model config file "
+            f"written to {self.modified_statistical_model_config}"
+        )
 
     def _contains_subdirectories(self, directory):
         """Check if the specified directory contains any subdirectories.
@@ -223,35 +250,16 @@ class SubmitterHTCondor(Submitter):
         # If no subdirectories are found
         return False
 
-    def _setup_wf_id(self):
+    def _setup_workflow_id(self):
         """Set up the workflow ID."""
         # If you have named the workflow, use that name. Otherwise, use the current time as name.
-        self._wf_id = self.htcondor_configurations.pop("wf_id")
-        if self._wf_id:
-            self.wf_id = (
-                self._wf_id + "-" + self.computation + "-" + datetime.now().strftime("%Y%m%d%H%M")
+        _workflow_id = self.htcondor_configurations.pop("workflow_id", None)
+        if _workflow_id:
+            self.workflow_id = "-".join(
+                (_workflow_id, self.computation, datetime.now().strftime("%Y%m%d%H%M"))
             )
         else:
-            self.wf_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-    def _make_pegasus_config(self):
-        """Make the Pegasus configuration into a dict to pass as keywords argument later."""
-        pconfig = {}
-
-        pconfig["pegasus.metrics.app"] = "XENON"
-        pconfig["pegasus.data.configuration"] = "nonsharedfs"
-        pconfig["dagman.retry"] = self.dagman_retry
-        pconfig["dagman.maxidle"] = self.dagman_maxidle
-        pconfig["dagman.maxjobs"] = self.dagman_maxjobs
-        pconfig["pegasus.transfer.threads"] = 4
-
-        # Help Pegasus developers by sharing performance data (optional)
-        pconfig["pegasus.monitord.encoding"] = "json"
-        pconfig["pegasus.catalog.workflow.amqp.url"] = (
-            "amqp://friend:donatedata@msgs.pegasus.isi.edu:5672/prod/workflows"
-        )
-
-        self.pegasus_config = pconfig
+            self.workflow_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
     def _generate_sc(self):
         """Generates the SiteCatalog for the workflow."""
@@ -262,18 +270,22 @@ class SubmitterHTCondor(Submitter):
         local = Site("local")
         # Logs and pegasus output goes here. This place is called stash in OSG jargon.
         scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path="{}/scratch/{}".format(self.work_dir, self.wf_id)
+            Directory.SHARED_SCRATCH, path="{}/scratch/{}".format(self.work_dir, self.workflow_id)
         )
         scratch_dir.add_file_servers(
-            FileServer("file:///{}/scratch/{}".format(self.work_dir, self.wf_id), Operation.ALL)
+            FileServer(
+                "file:///{}/scratch/{}".format(self.work_dir, self.workflow_id), Operation.ALL
+            )
         )
         # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
         # This place is called stash in OSG jargon.
         storage_dir = Directory(
-            Directory.LOCAL_STORAGE, path="{}/outputs/{}".format(self.work_dir, self.wf_id)
+            Directory.LOCAL_STORAGE, path="{}/outputs/{}".format(self.work_dir, self.workflow_id)
         )
         storage_dir.add_file_servers(
-            FileServer("file:///{}/outputs/{}".format(self.work_dir, self.wf_id), Operation.ALL)
+            FileServer(
+                "file:///{}/outputs/{}".format(self.work_dir, self.workflow_id), Operation.ALL
+            )
         )
         # Add scratch and storage directories to the local site
         local.add_directories(scratch_dir, storage_dir)
@@ -337,7 +349,7 @@ class SubmitterHTCondor(Submitter):
         sc.add_sites(local, staging_davs, condorpool)
         return sc
 
-    def _generate_tc(self, cluster_size=1):
+    def _generate_tc(self):
         """Generates the TransformationCatalog for the workflow.
 
         Every executable that is used in the workflow should be here.
@@ -350,7 +362,7 @@ class SubmitterHTCondor(Submitter):
             pfn=self.top_dir / "alea/submitters/run_toymc_wrapper.sh",
             is_stageable=True,
             arch=Arch.X86_64,
-        ).add_pegasus_profile(clusters_size=cluster_size)
+        ).add_pegasus_profile(clusters_size=self.cluster_size)
 
         # Wrappers that collect outputs
         combine = Transformation(
@@ -378,26 +390,26 @@ class SubmitterHTCondor(Submitter):
         rc = ReplicaCatalog()
 
         # Add the templates
-        self.f_template_tarball = File(str(self._get_file_name(self.template_tarball_filename)))
+        self.f_template_tarball = File(self._get_file_name(self.template_tarball))
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.template_tarball_filename)),
-            "file://{}".format(self.template_tarball_filename),
+            self._get_file_name(self.template_tarball),
+            "file://{}".format(self.template_tarball),
         )
         # Add the yaml files
-        self.f_running_configuration = File(str(self._get_file_name(self.config_file_path)))
+        self.f_running_configuration = File(self._get_file_name(self.config_file_path))
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.config_file_path)),
+            self._get_file_name(self.config_file_path),
             "file://{}".format(self.config_file_path),
         )
         self.f_statistical_model_config = File(
-            str(self._get_file_name(self.modified_statistical_model_config_filename))
+            self._get_file_name(self.modified_statistical_model_config)
         )
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.modified_statistical_model_config_filename)),
-            "file://{}".format(self.modified_statistical_model_config_filename),
+            self._get_file_name(self.modified_statistical_model_config),
+            "file://{}".format(self.modified_statistical_model_config),
         )
         # Add run_toymc_wrapper
         self.f_run_toymc_wrapper = File("run_toymc_wrapper.sh")
@@ -413,7 +425,7 @@ class SubmitterHTCondor(Submitter):
             "alea_run_toymc",
             "file://{}".format(self.top_dir / "bin/alea_run_toymc"),
         )
-        #  Add combine executable
+        # Add combine executable
         self.f_combine = File("combine.sh")
         rc.add_replica(
             "local",
@@ -422,6 +434,42 @@ class SubmitterHTCondor(Submitter):
         )
 
         return rc
+
+    def _initialize_job(
+        self,
+        name="run_toymc_wrapper",
+        run_on_submit_node=False,
+        cores=1,
+        memory=1_700,
+        disk=1_000_000,
+    ):
+        """Initilize a Pegasus job, also sets resource profiles.
+
+        Memory in unit of MB, and disk in unit of MB.
+
+        """
+        job = Job(name)
+        job.add_profiles(Namespace.CONDOR, "request_cpus", f"{cores}")
+
+        if run_on_submit_node:
+            job.add_selector_profile(execution_site="local")
+            # no other attributes on a local job
+            return job
+
+        # Set memory and disk requirements
+        # If the job fails, retry with more memory and disk
+        memory_str = (
+            "ifthenelse(isundefined(DAGNodeRetry) || "
+            f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1) * {memory})"
+        )
+        disk_str = (
+            "ifthenelse(isundefined(DAGNodeRetry) || "
+            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1) * {disk})"
+        )
+        job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
+        job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
+
+        return job
 
     def _add_combine_job(self, combine_i):
         """Add a combine job to the workflow."""
@@ -437,12 +485,62 @@ class SubmitterHTCondor(Submitter):
 
         # Combine job configuration: all toymc results and files will be combined into one tarball
         combine_job.add_outputs(
-            File("%s-%s-combined_output.tar.gz" % (self.wf_id, combine_i)), stage_out=True
+            File("%s-%s-combined_output.tar.gz" % (self.workflow_id, combine_i)), stage_out=True
         )
-        combine_job.add_args(self.wf_id + "-" + str(combine_i))
+        combine_job.add_args(self.workflow_id + f"-{combine_i}")
         self.wf.add_jobs(combine_job)
 
         return combine_job
+
+    def _add_limit_threshold(self):
+        """Add the Neyman thresholds limit_threshold to the replica catalog."""
+        self.f_limit_threshold = File(self._get_file_name(self.limit_threshold))
+        self.rc.add_replica(
+            "local",
+            self._get_file_name(self.limit_threshold),
+            "file://{}".format(self.limit_threshold),
+        )
+        self.added_limit_threshold = True
+
+    def _correct_paths_args_dict(self, args_dict):
+        """Correct the paths in the arguments dictionary in a hardcoding way."""
+        args_dict["statistical_model_args"]["template_path"] = "templates/"
+
+        if "limit_threshold" in args_dict["statistical_model_args"].keys():
+            limit_threshold = self._get_file_name(
+                args_dict["statistical_model_args"]["limit_threshold"]
+            )
+            args_dict["statistical_model_args"]["limit_threshold"] = limit_threshold
+
+        args_dict["toydata_filename"] = self._get_file_name(args_dict["toydata_filename"])
+        args_dict["output_filename"] = self._get_file_name(args_dict["output_filename"])
+        args_dict["statistical_model_config"] = self._get_file_name(
+            self.modified_statistical_model_config
+        )
+
+        return args_dict
+
+    def _reorganize_script(self, script):
+        """Extract executable and arguments from the naked scripts.
+
+        Correct the paths on the fly.
+
+        """
+        executable = self._get_file_name(script.split()[1])
+        args_dict = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
+
+        # Add the limit_threshold to the replica catalog if not added
+        if (
+            not self.added_limit_threshold
+            and "limit_threshold" in args_dict["statistical_model_args"].keys()
+        ):
+            self.limit_threshold = args_dict["statistical_model_args"]["limit_threshold"]
+            self._add_limit_threshold()
+
+        # Correct the paths in the arguments
+        args_dict = self._correct_paths_args_dict(args_dict)
+
+        return executable, args_dict
 
     def _generate_workflow(self, name="run_toymc_wrapper"):
         """Generate the workflow.
@@ -452,38 +550,38 @@ class SubmitterHTCondor(Submitter):
         3. Add jobs to the workflow
 
         """
-        # Initialize the workflow
-        self.wf = Workflow("alea-workflow")
-        self.sc = self._generate_sc()
-        self.tc = self._generate_tc(cluster_size=self.cluster_size)
-        self.rc = self._generate_rc()
+        if self.combine_n_jobs != 1:
+            raise ValueError(
+                f"{self.__class__.__name__} can not combine jobs "
+                f"but can only combine outputs so please set {self.combine_n_jobs} to 1."
+            )
 
-        # Job requirements
-        self.requirements = self._make_requirements()
+        # Initialize the workflow
+        self.wf = Workflow("alea_workflow")
+        self.sc = self._generate_sc()
+        self.tc = self._generate_tc()
+        self.rc = self._generate_rc()
 
         # Iterate over the tickets and generate jobs
         combine_i = 0
         new_to_combine = True
+
         # Generate jobstring and output names from tickets generator
-        # _script for example:
-        # alea_submission lq_b8_cevns_running.yaml --computation discovery_power --local --debug
-        # _last_output_filename for example: /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5  # noqa
-        # _script for example: python3 /home/yuanlq/.local/bin/alea_run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
-        for jobid, (_script, _) in enumerate(self.combined_tickets_generator()):
+        for job_id, (script, _) in enumerate(self.combined_tickets_generator()):
             # If the number of jobs to combine is reached, add a new combine job
             if new_to_combine:
                 combine_job = self._add_combine_job(combine_i)
 
             # Reorganize the script to get the executable and arguments,
             # in which the paths are corrected
-            executable, args_dict = self._reorganize_script(_script)
+            executable, args_dict = self._reorganize_script(script)
             if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
                 raise NotImplementedError(
                     "Only generate_and_store toydata mode is supported on OSG."
                 )
 
-            logger.info(f"Adding job {jobid} to the workflow")
-            logger.debug(f"Naked Script: {_script}")
+            logger.info(f"Adding job {job_id} to the workflow")
+            logger.debug(f"Naked Script: {script}")
             logger.debug(f"Output: {args_dict['output_filename']}")
             logger.debug(f"Executable: {executable}")
             logger.debug(f"Toydata: {args_dict['toydata_filename']}")
@@ -505,6 +603,7 @@ class SubmitterHTCondor(Submitter):
                 self.f_statistical_model_config,
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
+                self.f_combine,
             )
             if self.added_limit_threshold:
                 job.add_inputs(self.f_limit_threshold)
@@ -532,170 +631,17 @@ class SubmitterHTCondor(Submitter):
             self.wf.add_jobs(job)
 
             # If the number of jobs to combine is reached, add a new combine job
-            if (jobid + 1) % self.max_jobs_to_combine == 0:
+            if (job_id + 1) % self.combine_n_outputs == 0:
                 new_to_combine = True
                 combine_i += 1
             else:
                 new_to_combine = False
 
         # Finalize the workflow
-        os.chdir(self._generated_dir())
         self.wf.add_replica_catalog(self.rc)
         self.wf.add_transformation_catalog(self.tc)
         self.wf.add_site_catalog(self.sc)
-        self.wf.write()
-
-    def _initialize_job(
-        self,
-        name="run_toymc_wrapper",
-        run_on_submit_node=False,
-        cores=1,
-        memory=1_700,
-        disk=1_000_000,
-    ):
-        """Initilize a Pegasus job, also sets resource profiles.
-
-        Memory in unit of MB, and disk in unit of MB.
-
-        """
-        job = Job(name)
-        job.add_profiles(Namespace.CONDOR, "request_cpus", str(cores))
-
-        if run_on_submit_node:
-            job.add_selector_profile(execution_site="local")
-            # no other attributes on a local job
-            return job
-
-        # Set memory and disk requirements
-        # If the job fails, retry with more memory and disk
-        memory_str = (
-            "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
-        )
-        disk_str = (
-            "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
-        )
-        job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
-        job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
-
-        return job
-
-    def _make_requirements(self):
-        """Make the requirements for the job."""
-        # Minimal requirements on singularity/cvmfs/ports/microarchitecture
-        requirements_base = (
-            "HAS_SINGULARITY && HAS_CVMFS_xenon_opensciencegrid_org"
-            + " && PORT_2880 && PORT_8000 && PORT_27017"
-            + ' && (Microarch >= "x86_64-v3")'
-        )
-
-        # If in debug mode, use the MWT2 site because we own it
-        if self.debug:
-            requirements_base = requirements_base + ' && GLIDEIN_ResourceName == "MWT2" '
-
-        requirements = requirements_base
-        return requirements
-
-    def _reorganize_script(self, _script):
-        """Extract executable and arguments from the naked scripts.
-
-        Correct the paths on the fly.
-
-        """
-        script_fragments = _script.split(" ")
-        _executable = script_fragments[1]
-        # Remove the directory and only keep the file name
-        executable = self._get_file_name(_executable)
-
-        args_dict = self._parse_command_args(_script)
-
-        # Add the limit_threshold to the replica catalog if not added
-        if (
-            not self.added_limit_threshold
-            and "limit_threshold" in args_dict["statistical_model_args"].keys()
-        ):
-            self.limit_threshold_filename = args_dict["statistical_model_args"]["limit_threshold"]
-            self._add_limit_threshold()
-
-        # Correct the paths in the arguments
-        args_dict = self._correct_paths_args_dict(args_dict)
-
-        return executable, args_dict
-
-    def _add_limit_threshold(self):
-        """Add the Neyman thresholds limit_threshold to the replica catalog."""
-        self.f_limit_threshold = File(str(self._get_file_name(self.limit_threshold_filename)))
-        self.rc.add_replica(
-            "local",
-            str(self._get_file_name(self.limit_threshold_filename)),
-            "file://{}".format(self.limit_threshold_filename),
-        )
-        self.added_limit_threshold = True
-
-    def _correct_paths_args_dict(self, args_dict):
-        """Correct the paths in the arguments dictionary in a hardcoding way."""
-        args_dict["statistical_model_args"]["template_path"] = "templates/"
-
-        if "limit_threshold" in args_dict["statistical_model_args"].keys():
-            limit_threshold_filename = self._get_file_name(
-                args_dict["statistical_model_args"]["limit_threshold"]
-            )
-            args_dict["statistical_model_args"]["limit_threshold"] = limit_threshold_filename
-
-        toydata_filename = self._get_file_name(args_dict["toydata_filename"])
-        args_dict["toydata_filename"] = toydata_filename
-
-        output_filename = self._get_file_name(args_dict["output_filename"])
-        args_dict["output_filename"] = output_filename
-
-        statistical_model_config = self._get_file_name(
-            self.modified_statistical_model_config_filename
-        )
-        args_dict["statistical_model_config"] = statistical_model_config
-
-        return args_dict
-
-    def _parse_command_args(self, command):
-        """Parse the command line arguments and return a dictionary with the flags and their values.
-
-        Example command: python3 /home/yuanlq/.local/bin/alea_run_toymc --statistical_model alea.models.BlueiceExtendedModel --poi b8_rate_multiplier --hypotheses '["free","zero","true"]' --n_mc 50 --common_hypothesis None --generate_values '{"b8_rate_multiplier":1.0}' --nominal_values '{"livetime_sr0":1.221,"livetime_sr1":0.5}' --statistical_model_config lq_b8_cevns_statistical_model.yaml --parameter_definition None --statistical_model_args '{"template_path":"/project2/lgrandi/binference_common/nt_cevns_templates"}' --likelihood_config None --compute_confidence_interval False --confidence_level 0.9000 --confidence_interval_kind central --toydata_mode generate_and_store --toydata_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toyfile_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --only_toydata False --output_filename /project/lgrandi/yuanlq/alea_outputs/b8mini/toymc_power_cevns_livetime_1.22_0.50_b8_rate_1.00_0.h5 --seed None --metadata None  # noqa
-
-        """
-        # Use shlex to handle spaces within quotes correctly
-        parts = shlex.split(command)
-
-        # Dictionary to store command flags and their values
-        args_dict = {}
-
-        # Iterator to go through all parts
-        it = iter(parts)
-        for part in it:
-            if part.startswith("--"):
-                flag = part[2:]  # Remove '--' from the flag name
-                next_part = next(it, None)
-                # Check if the next part is also a flag or end of the command
-                if next_part is None or next_part.startswith("--"):
-                    args_dict[flag] = True  # No value means boolean flag set to True
-                    continue
-                # Try to handle JSON values correctly
-                if next_part.startswith("{"):
-                    # Reconstruct the complete JSON by consuming parts until the closing '}'
-                    json_value = next_part
-                    while not json_value.strip().endswith("}"):
-                        json_value += " " + next(it, "")
-                    try:
-                        args_dict[flag] = json.loads(json_value)
-                    except json.JSONDecodeError:
-                        args_dict[flag] = json_value  # Store raw string if JSON parsing fails
-                else:
-                    args_dict[flag] = next_part
-
-        return args_dict
-
-    def _get_file_name(self, file_path):
-        """Get the filename from the file path."""
-        return os.path.basename(file_path)
+        self.wf.write(file=self.workflow)
 
     def _us_sites_only(self):
         raise NotImplementedError
@@ -706,15 +652,8 @@ class SubmitterHTCondor(Submitter):
     def _this_site_only(self):
         raise NotImplementedError
 
-    def _check_workflow_exists(self):
-        """Check if the workflow already exists."""
-        if os.path.exists(self.wf_dir):
-            logger.error(f"Workflow already exists at {self.wf_dir}. Exiting.")
-            return
-
     def _plan_and_submit(self):
         """Plan and submit the workflow."""
-        os.chdir(self._generated_dir())
         self.wf.plan(
             submit=not self.debug,
             cluster=["horizontal"],
@@ -723,12 +662,12 @@ class SubmitterHTCondor(Submitter):
             verbose=3 if self.debug else 0,
             staging_sites={"condorpool": "staging-davs"},
             output_sites=["local"],
-            dir=os.path.dirname(self.wf_dir),
-            relative_dir=self.wf_id,
+            dir=os.path.dirname(self.runs_dir),
+            relative_dir=self.workflow_id,
             **self.pegasus_config,
         )
 
-        print(f"Worfklow written to \n\n\t{self.wf_dir}\n\n")
+        print(f"Worfklow written to \n\n\t{self.runs_dir}\n\n")
 
     def _warn_outputfolder(self):
         """Warn users about the outputfolder in running config won't be really used."""
@@ -736,13 +675,14 @@ class SubmitterHTCondor(Submitter):
             "The outputfolder in the running configuration %s won't be used in this submission."
             % (self.outputfolder)
         )
-        logger.warning(
-            "Instead, you should find your outputs at %s"
-            % (self.work_dir + "/outputs/" + self.wf_id)
-        )
+        logger.warning("Instead, you should find your outputs at %s" % (self.outputs_dir))
 
     def _check_filename_unique(self):
-        """Check if all the files in the template path are unique."""
+        """Check if all the files in the template path are unique.
+
+        We assume two levels of the template folder.
+
+        """
         all_files = []
         for _, _, filenames in os.walk(self.template_path):
             for filename in filenames:
@@ -752,15 +692,14 @@ class SubmitterHTCondor(Submitter):
 
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
-        self._check_workflow_exists()
+        if os.path.exists(self.runs_dir):
+            raise RuntimeError(f"Workflow already exists at {self.runs_dir}. Exiting.")
         self._validate_x509_proxy()
 
-        #  0o755 means read/write/execute for owner, read/execute for everyone else
-        try:
-            os.makedirs(self._generated_dir(), 0o755)
-        except FileExistsError:
-            logger.error(f"Workflow directory {self._generated_dir()} already exists. Exiting.")
+        # 0o755 means read/write/execute for owner, read/execute for everyone else
+        os.makedirs(self.generated_dir, 0o755, exist_ok=True)
         os.makedirs(self.runs_dir, 0o755, exist_ok=True)
+        os.makedirs(self.outputs_dir, 0o755, exist_ok=True)
 
         # Modify the statistical model config file to correct the 'template_filename' fields
         self._modify_yaml()
@@ -772,11 +711,14 @@ class SubmitterHTCondor(Submitter):
 
         self._generate_workflow()
         self._plan_and_submit()
-
-        # Return to initial dir, as we are done.
-        logger.info("We are done. Returning to initial directory.")
+        if self.debug:
+            self.wf.graph(
+                output=os.path.join(self.outputs_dir, "workflow_graph.dot"), label="xform-id"
+            )
+            self.wf.graph(
+                output=os.path.join(self.outputs_dir, "workflow_graph.svg"), label="xform-id"
+            )
         self._warn_outputfolder()
-        os.chdir(self._initial_dir)
 
 
 class Shell(object):
@@ -794,7 +736,6 @@ class Shell(object):
 
     def run(self):
         def target():
-
             self._process = subprocess.Popen(
                 self._cmd,
                 shell=True,

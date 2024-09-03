@@ -200,6 +200,12 @@ def load_json(file_name: str):
     return data
 
 
+def dump_yaml(file_name: str, data: dict):
+    """Dump data from yaml file."""
+    with open(get_file_path(file_name), "w") as file:
+        yaml.safe_dump(data, file)
+
+
 def _get_abspath(file_name):
     """Get the abspath of the file.
 

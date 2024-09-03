@@ -21,7 +21,6 @@ from Pegasus.api import (
     Operation,
     Namespace,
     Arch,
-    Properties,
     SiteCatalog,
     Transformation,
     TransformationCatalog,
@@ -234,35 +233,6 @@ class SubmitterHTCondor(Submitter):
             )
         else:
             self.wf_id = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-    def _pegasus_properties(self):
-        """Writes the file pegasus.properties.
-
-        This file contains configuration settings used by Pegasus and HTCondor.
-
-        """
-        props = Properties()
-
-        # Don't ask why, but this is necessary for the Pegasus API to work
-        props["pegasus.metrics.app"] = "XENON"
-        props["pegasus.data.configuration"] = "nonsharedfs"
-
-        # Give jobs a total of 1+{retry} tries
-        props["dagman.retry"] = self.dagman_retry
-        # Make sure we do start too many jobs at the same time
-        props["dagman.maxidle"] = self.dagman_maxidle
-        # Total number of jobs cap
-        props["dagman.maxjobs"] = self.dagman_maxjobs
-
-        # Help Pegasus developers by sharing performance data
-        props["pegasus.monitord.encoding"] = "json"
-        props["pegasus.catalog.workflow.amqp.url"] = (
-            "amqp://friend:donatedata@msgs.pegasus.isi.edu:5672/prod/workflows"
-        )
-
-        # write properties file to ./pegasus.properties
-        props.write()
-        self.pegasus_properties = props
 
     def _make_pegasus_config(self):
         """Make the Pegasus configuration into a dict to pass as keywords argument later."""

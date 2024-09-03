@@ -11,15 +11,15 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from Pegasus.api import (
-    Workflow,
-    Job,
-    File,
-    Site,
-    Directory,
-    FileServer,
+    Arch,
     Operation,
     Namespace,
-    Arch,
+    Workflow,
+    File,
+    Directory,
+    FileServer,
+    Job,
+    Site,
     SiteCatalog,
     Transformation,
     TransformationCatalog,
@@ -31,7 +31,7 @@ from alea.utils import load_yaml, dump_yaml
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = f"/scratch/{getpass.getuser()}/workflows"
-TOP_DIR = Path(__file__).resolve().parent.parent.parent
+TOP_DIR = Path(__file__).resolve().parents[2]
 
 
 # Set up logging
@@ -48,10 +48,8 @@ class SubmitterHTCondor(Submitter):
         self.singularity_image = self.htcondor_configurations.pop(
             "singularity_image", DEFAULT_IMAGE
         )
-        self._initial_dir = os.getcwd()
-        self.work_dir = WORK_DIR
-        self.runs_dir = os.path.join(self.work_dir, "runs")
         self.top_dir = TOP_DIR
+        self.work_dir = WORK_DIR
         self.template_path = self.htcondor_configurations.pop("template_path", None)
         self.max_jobs_to_combine = self.htcondor_configurations.pop("max_jobs_to_combine", 100)
 
@@ -80,12 +78,17 @@ class SubmitterHTCondor(Submitter):
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_workflow_id()
         # Pegasus workflow directory
-        self.workflow_dir = os.path.join(self.runs_dir, self.workflow_id)
         self.generated_dir = os.path.join(self.work_dir, "generated", self.workflow_id)
+        self.runs_dir = os.path.join(self.work_dir, "runs", self.workflow_id)
+        self.outputs_dir = os.path.join(self.work_dir, "outputs", self.workflow_id)
 
     @property
     def template_tarball(self):
         return os.path.join(self.generated_dir, "templates.tar.gz")
+
+    @property
+    def workflow(self):
+        return os.path.join(self.generated_dir, "workflow.yml")
 
     @property
     def pegasus_config(self):
@@ -124,11 +127,6 @@ class SubmitterHTCondor(Submitter):
     def _get_file_name(self, file_path):
         """Get the filename from the file path."""
         return os.path.basename(file_path)
-
-    def _check_workflow_exists(self):
-        """Check if the workflow already exists."""
-        if os.path.exists(self.workflow_dir):
-            raise RuntimeError(f"Workflow already exists at {self.workflow_dir}. Exiting.")
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.
@@ -392,25 +390,25 @@ class SubmitterHTCondor(Submitter):
         rc = ReplicaCatalog()
 
         # Add the templates
-        self.f_template_tarball = File(str(self._get_file_name(self.template_tarball)))
+        self.f_template_tarball = File(self._get_file_name(self.template_tarball))
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.template_tarball)),
+            self._get_file_name(self.template_tarball),
             "file://{}".format(self.template_tarball),
         )
         # Add the yaml files
-        self.f_running_configuration = File(str(self._get_file_name(self.config_file_path)))
+        self.f_running_configuration = File(self._get_file_name(self.config_file_path))
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.config_file_path)),
+            self._get_file_name(self.config_file_path),
             "file://{}".format(self.config_file_path),
         )
         self.f_statistical_model_config = File(
-            str(self._get_file_name(self.modified_statistical_model_config))
+            self._get_file_name(self.modified_statistical_model_config)
         )
         rc.add_replica(
             "local",
-            str(self._get_file_name(self.modified_statistical_model_config)),
+            self._get_file_name(self.modified_statistical_model_config),
             "file://{}".format(self.modified_statistical_model_config),
         )
         # Add run_toymc_wrapper
@@ -427,7 +425,7 @@ class SubmitterHTCondor(Submitter):
             "alea_run_toymc",
             "file://{}".format(self.top_dir / "bin/alea_run_toymc"),
         )
-        #  Add combine executable
+        # Add combine executable
         self.f_combine = File("combine.sh")
         rc.add_replica(
             "local",
@@ -451,7 +449,7 @@ class SubmitterHTCondor(Submitter):
 
         """
         job = Job(name)
-        job.add_profiles(Namespace.CONDOR, "request_cpus", str(cores))
+        job.add_profiles(Namespace.CONDOR, "request_cpus", f"{cores}")
 
         if run_on_submit_node:
             job.add_selector_profile(execution_site="local")
@@ -462,11 +460,11 @@ class SubmitterHTCondor(Submitter):
         # If the job fails, retry with more memory and disk
         memory_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1)*{memory})"
+            f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1) * {memory})"
         )
         disk_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1)*{disk})"
+            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1) * {disk})"
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
@@ -489,17 +487,17 @@ class SubmitterHTCondor(Submitter):
         combine_job.add_outputs(
             File("%s-%s-combined_output.tar.gz" % (self.workflow_id, combine_i)), stage_out=True
         )
-        combine_job.add_args(self.workflow_id + "-" + str(combine_i))
+        combine_job.add_args(self.workflow_id + f"-{combine_i}")
         self.wf.add_jobs(combine_job)
 
         return combine_job
 
     def _add_limit_threshold(self):
         """Add the Neyman thresholds limit_threshold to the replica catalog."""
-        self.f_limit_threshold = File(str(self._get_file_name(self.limit_threshold)))
+        self.f_limit_threshold = File(self._get_file_name(self.limit_threshold))
         self.rc.add_replica(
             "local",
-            str(self._get_file_name(self.limit_threshold)),
+            self._get_file_name(self.limit_threshold),
             "file://{}".format(self.limit_threshold),
         )
         self.added_limit_threshold = True
@@ -553,7 +551,7 @@ class SubmitterHTCondor(Submitter):
 
         """
         # Initialize the workflow
-        self.wf = Workflow("alea-workflow")
+        self.wf = Workflow("alea_workflow")
         self.sc = self._generate_sc()
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
@@ -599,6 +597,7 @@ class SubmitterHTCondor(Submitter):
                 self.f_statistical_model_config,
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
+                self.f_combine,
             )
             if self.added_limit_threshold:
                 job.add_inputs(self.f_limit_threshold)
@@ -633,11 +632,10 @@ class SubmitterHTCondor(Submitter):
                 new_to_combine = False
 
         # Finalize the workflow
-        os.chdir(self.generated_dir)
         self.wf.add_replica_catalog(self.rc)
         self.wf.add_transformation_catalog(self.tc)
         self.wf.add_site_catalog(self.sc)
-        self.wf.write()
+        self.wf.write(file=self.workflow)
 
     def _us_sites_only(self):
         raise NotImplementedError
@@ -650,7 +648,6 @@ class SubmitterHTCondor(Submitter):
 
     def _plan_and_submit(self):
         """Plan and submit the workflow."""
-        os.chdir(self.generated_dir)
         self.wf.plan(
             submit=not self.debug,
             cluster=["horizontal"],
@@ -659,12 +656,12 @@ class SubmitterHTCondor(Submitter):
             verbose=3 if self.debug else 0,
             staging_sites={"condorpool": "staging-davs"},
             output_sites=["local"],
-            dir=os.path.dirname(self.workflow_dir),
+            dir=os.path.dirname(self.runs_dir),
             relative_dir=self.workflow_id,
             **self.pegasus_config,
         )
 
-        print(f"Worfklow written to \n\n\t{self.workflow_dir}\n\n")
+        print(f"Worfklow written to \n\n\t{self.runs_dir}\n\n")
 
     def _warn_outputfolder(self):
         """Warn users about the outputfolder in running config won't be really used."""
@@ -672,10 +669,7 @@ class SubmitterHTCondor(Submitter):
             "The outputfolder in the running configuration %s won't be used in this submission."
             % (self.outputfolder)
         )
-        logger.warning(
-            "Instead, you should find your outputs at %s"
-            % (self.work_dir + "/outputs/" + self.workflow_id)
-        )
+        logger.warning("Instead, you should find your outputs at %s" % (self.outputs_dir))
 
     def _check_filename_unique(self):
         """Check if all the files in the template path are unique.
@@ -692,15 +686,14 @@ class SubmitterHTCondor(Submitter):
 
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
-        self._check_workflow_exists()
+        if os.path.exists(self.runs_dir):
+            raise RuntimeError(f"Workflow already exists at {self.runs_dir}. Exiting.")
         self._validate_x509_proxy()
 
-        #  0o755 means read/write/execute for owner, read/execute for everyone else
-        try:
-            os.makedirs(self.generated_dir, 0o755)
-        except FileExistsError:
-            logger.error(f"Workflow directory {self.generated_dir} already exists. Exiting.")
+        # 0o755 means read/write/execute for owner, read/execute for everyone else
+        os.makedirs(self.generated_dir, 0o755, exist_ok=True)
         os.makedirs(self.runs_dir, 0o755, exist_ok=True)
+        os.makedirs(self.outputs_dir, 0o755, exist_ok=True)
 
         # Modify the statistical model config file to correct the 'template_filename' fields
         self._modify_yaml()
@@ -712,11 +705,14 @@ class SubmitterHTCondor(Submitter):
 
         self._generate_workflow()
         self._plan_and_submit()
-
-        # Return to initial dir, as we are done.
-        logger.info("We are done. Returning to initial directory.")
+        if self.debug:
+            self.wf.graph(
+                output=os.path.join(self.outputs_dir, "workflow_graph.dot"), label="xform-id"
+            )
+            self.wf.graph(
+                output=os.path.join(self.outputs_dir, "workflow_graph.svg"), label="xform-id"
+            )
         self._warn_outputfolder()
-        os.chdir(self._initial_dir)
 
 
 class Shell(object):

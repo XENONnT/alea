@@ -90,6 +90,11 @@ To cancel it, you want to do:
 condor_rm 12973662
 ```
 
+If you want to check the status of jobs.
+```
+pegasus-status -l /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
+```
+
 If you want to know more details, like checking why the job failed, just do this in your "run directory". This command should give you a summary of the workflow, including errors encountered if any.
 ```
 pegasus-analyzer /scratch/yuanlq/workflows/runs/lq_b8_cevns_30

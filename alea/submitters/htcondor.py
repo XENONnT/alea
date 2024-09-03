@@ -21,7 +21,6 @@ from Pegasus.api import (
     Operation,
     Namespace,
     Arch,
-    Properties,
     SiteCatalog,
     Transformation,
     TransformationCatalog,

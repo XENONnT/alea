@@ -51,7 +51,7 @@ class SubmitterHTCondor(Submitter):
         self.top_dir = TOP_DIR
         self.work_dir = WORK_DIR
         self.template_path = self.htcondor_configurations.pop("template_path", None)
-        self.max_jobs_to_combine = self.htcondor_configurations.pop("max_jobs_to_combine", 100)
+        self.combine_n_outputs = self.htcondor_configurations.pop("combine_n_outputs", 100)
 
         # A flag to check if limit_threshold is added to the rc
         self.added_limit_threshold = False
@@ -550,6 +550,12 @@ class SubmitterHTCondor(Submitter):
         3. Add jobs to the workflow
 
         """
+        if self.combine_n_jobs != 1:
+            raise ValueError(
+                f"{self.__class__.__name__} can not combine jobs "
+                f"but can only combine outputs so please set {self.combine_n_jobs} to 1."
+            )
+
         # Initialize the workflow
         self.wf = Workflow("alea_workflow")
         self.sc = self._generate_sc()
@@ -625,7 +631,7 @@ class SubmitterHTCondor(Submitter):
             self.wf.add_jobs(job)
 
             # If the number of jobs to combine is reached, add a new combine job
-            if (job_id + 1) % self.max_jobs_to_combine == 0:
+            if (job_id + 1) % self.combine_n_outputs == 0:
                 new_to_combine = True
                 combine_i += 1
             else:

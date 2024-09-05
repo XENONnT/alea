@@ -138,13 +138,13 @@ class SubmitterHTCondor(Submitter):
         assert self.x509_user_proxy, "Please provide a valid X509_USER_PROXY environment variable."
 
         logger.debug("Verifying that the X509_USER_PROXY proxy has enough lifetime")
-        shell = Shell("grid-proxy-info -timeleft -file %s" % (self.x509_user_proxy))
+        shell = Shell(f"grid-proxy-info -timeleft -file {self.x509_user_proxy}")
         shell.run()
         valid_hours = int(shell.get_outerr()) / 60 / 60
         if valid_hours < min_valid_hours:
             raise RuntimeError(
-                "User proxy is only valid for %d hours. Minimum required is %d hours."
-                % (valid_hours, min_valid_hours)
+                f"User proxy is only valid for {valid_hours} hours. "
+                f"Minimum required is {min_valid_hours} hours."
             )
 
     def _validate_template_path(self):
@@ -270,22 +270,18 @@ class SubmitterHTCondor(Submitter):
         local = Site("local")
         # Logs and pegasus output goes here. This place is called stash in OSG jargon.
         scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path="{}/scratch/{}".format(self.work_dir, self.workflow_id)
+            Directory.SHARED_SCRATCH, path=f"{self.work_dir}/scratch/{self.workflow_id}"
         )
         scratch_dir.add_file_servers(
-            FileServer(
-                "file:///{}/scratch/{}".format(self.work_dir, self.workflow_id), Operation.ALL
-            )
+            FileServer(f"file:///{self.work_dir}/scratch/{self.workflow_id}", Operation.ALL)
         )
         # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
         # This place is called stash in OSG jargon.
         storage_dir = Directory(
-            Directory.LOCAL_STORAGE, path="{}/outputs/{}".format(self.work_dir, self.workflow_id)
+            Directory.LOCAL_STORAGE, path=f"{self.work_dir}/outputs/{self.workflow_id}"
         )
         storage_dir.add_file_servers(
-            FileServer(
-                "file:///{}/outputs/{}".format(self.work_dir, self.workflow_id), Operation.ALL
-            )
+            FileServer(f"file:///{self.work_dir}/outputs/{self.workflow_id}", Operation.ALL)
         )
         # Add scratch and storage directories to the local site
         local.add_directories(scratch_dir, storage_dir)
@@ -314,13 +310,12 @@ class SubmitterHTCondor(Submitter):
         logger.debug("Defining stagging site")
         staging_davs = Site("staging-davs")
         scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path="/xenon/scratch/{}".format(getpass.getuser())
+            Directory.SHARED_SCRATCH, path=f"/xenon/scratch/{getpass.getuser()}"
         )
         scratch_dir.add_file_servers(
             FileServer(
-                "gsidavs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/{}".format(
-                    getpass.getuser()
-                ),
+                "gsidavs://xenon-gridftp.grid.uchicago.edu:2880"
+                f"/xenon/scratch/{getpass.getuser()}",
                 Operation.ALL,
             )
         )
@@ -394,14 +389,14 @@ class SubmitterHTCondor(Submitter):
         rc.add_replica(
             "local",
             self._get_file_name(self.template_tarball),
-            "file://{}".format(self.template_tarball),
+            f"file://{self.template_tarball}",
         )
         # Add the yaml files
         self.f_running_configuration = File(self._get_file_name(self.config_file_path))
         rc.add_replica(
             "local",
             self._get_file_name(self.config_file_path),
-            "file://{}".format(self.config_file_path),
+            f"file://{self.config_file_path}",
         )
         self.f_statistical_model_config = File(
             self._get_file_name(self.modified_statistical_model_config)
@@ -409,7 +404,7 @@ class SubmitterHTCondor(Submitter):
         rc.add_replica(
             "local",
             self._get_file_name(self.modified_statistical_model_config),
-            "file://{}".format(self.modified_statistical_model_config),
+            f"file://{self.modified_statistical_model_config}",
         )
         # Add run_toymc_wrapper
         self.f_run_toymc_wrapper = File("run_toymc_wrapper.sh")
@@ -438,10 +433,10 @@ class SubmitterHTCondor(Submitter):
     def _initialize_job(
         self,
         name="run_toymc_wrapper",
-        run_on_submit_node=False,
         cores=1,
         memory=1_700,
         disk=1_000_000,
+        run_on_submit_node=False,
     ):
         """Initilize a Pegasus job, also sets resource profiles.
 
@@ -485,9 +480,9 @@ class SubmitterHTCondor(Submitter):
 
         # Combine job configuration: all toymc results and files will be combined into one tarball
         combine_job.add_outputs(
-            File("%s-%s-combined_output.tar.gz" % (self.workflow_id, combine_i)), stage_out=True
+            File(f"{self.workflow_id}-{combine_i}-combined_output.tar.gz"), stage_out=True
         )
-        combine_job.add_args(self.workflow_id + f"-{combine_i}")
+        combine_job.add_args(f"{self.workflow_id}-{combine_i}")
         self.wf.add_jobs(combine_job)
 
         return combine_job
@@ -672,10 +667,10 @@ class SubmitterHTCondor(Submitter):
     def _warn_outputfolder(self):
         """Warn users about the outputfolder in running config won't be really used."""
         logger.warning(
-            "The outputfolder in the running configuration %s won't be used in this submission."
-            % (self.outputfolder)
+            "The outputfolder in the running configuration "
+            f"{self.outputfolder} won't be used in this submission."
         )
-        logger.warning("Instead, you should find your outputs at %s" % (self.outputs_dir))
+        logger.warning(f"Instead, you should find your outputs at {self.outputs_dir}")
 
     def _check_filename_unique(self):
         """Check if all the files in the template path are unique.
@@ -760,7 +755,7 @@ class Shell(object):
         if thread.is_alive():
             # do our best to kill the whole process group
             try:
-                kill_cmd = "kill -TERM -%d" % (os.getpgid(self._process.pid))
+                kill_cmd = f"kill -TERM -{os.getpgid(self._process.pid)}"
                 kp = subprocess.Popen(kill_cmd, shell=True)
                 kp.communicate()
                 self._process.terminate()
@@ -774,7 +769,7 @@ class Shell(object):
                 print(stdout)
             self._out_file.close()
             raise RuntimeError(
-                "Command timed out after %d seconds: %s" % (self._timeout_secs, self._cmd)
+                f"Command timed out after {int(self._timeout_secs):d} seconds: {self._cmd}."
             )
 
         self._duration = time.time() - ts_start
@@ -788,8 +783,8 @@ class Shell(object):
 
         if self._process.returncode != 0:
             raise RuntimeError(
-                "Command exited with non-zero exit code (%d): %s\n%s"
-                % (self._process.returncode, self._cmd, self._outerr)
+                f"Command exited with non-zero exit code ({int(self._process.returncode):d}): "
+                f"{self._cmd}\n{self._outerr}"
             )
 
     def get_outerr(self):

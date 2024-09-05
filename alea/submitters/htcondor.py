@@ -62,13 +62,13 @@ class SubmitterHTCondor(Submitter):
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
         self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
-        self.request_disk = self.htcondor_configurations.pop("request_disk", 2000000)
-        self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20000000)
+        self.request_disk = self.htcondor_configurations.pop("request_disk", 2_000)
+        self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20_000)
 
         # Dagman configurations
-        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100000)
+        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100_000)
         self.dagman_retry = self.htcondor_configurations.pop("dagman_retry", 2)
-        self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100000)
+        self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
         super().__init__(*args, **kwargs)
 
@@ -78,9 +78,10 @@ class SubmitterHTCondor(Submitter):
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_workflow_id()
         # Pegasus workflow directory
-        self.generated_dir = os.path.join(self.work_dir, "generated", self.workflow_id)
-        self.runs_dir = os.path.join(self.work_dir, "runs", self.workflow_id)
-        self.outputs_dir = os.path.join(self.work_dir, "outputs", self.workflow_id)
+        self.generated_dir = os.path.join(self.work_dir, self.workflow_id, "generated")
+        self.runs_dir = os.path.join(self.work_dir, self.workflow_id, "runs")
+        self.outputs_dir = os.path.join(self.work_dir, self.workflow_id, "outputs")
+        self.scratch_dir = os.path.join(self.work_dir, self.workflow_id, "scratch")
 
     @property
     def template_tarball(self):
@@ -123,10 +124,6 @@ class SubmitterHTCondor(Submitter):
             _requirements += ' && GLIDEIN_ResourceName == "MWT2" '
 
         return _requirements
-
-    def _get_file_name(self, file_path):
-        """Get the filename from the file path."""
-        return os.path.basename(file_path)
 
     def _validate_x509_proxy(self, min_valid_hours=20):
         """Ensure $X509_USER_PROXY exists and has enough time left.
@@ -192,7 +189,7 @@ class SubmitterHTCondor(Submitter):
 
         """
         # Output file will have the same name as input file but with '_modified' appended
-        _output_file = self._get_file_name(self.statistical_model_config).replace(
+        _output_file = os.path.basename(self.statistical_model_config).replace(
             ".yaml", "_modified.yaml"
         )
         self.modified_statistical_model_config = os.path.join(self.generated_dir, _output_file)
@@ -269,20 +266,12 @@ class SubmitterHTCondor(Submitter):
         logger.debug("Defining local site")
         local = Site("local")
         # Logs and pegasus output goes here. This place is called stash in OSG jargon.
-        scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path=f"{self.work_dir}/scratch/{self.workflow_id}"
-        )
-        scratch_dir.add_file_servers(
-            FileServer(f"file:///{self.work_dir}/scratch/{self.workflow_id}", Operation.ALL)
-        )
+        scratch_dir = Directory(Directory.SHARED_SCRATCH, path=self.scratch_dir)
+        scratch_dir.add_file_servers(FileServer(f"file:///{self.scratch_dir}", Operation.ALL))
         # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
         # This place is called stash in OSG jargon.
-        storage_dir = Directory(
-            Directory.LOCAL_STORAGE, path=f"{self.work_dir}/outputs/{self.workflow_id}"
-        )
-        storage_dir.add_file_servers(
-            FileServer(f"file:///{self.work_dir}/outputs/{self.workflow_id}", Operation.ALL)
-        )
+        storage_dir = Directory(Directory.LOCAL_STORAGE, path=self.outputs_dir)
+        storage_dir.add_file_servers(FileServer(f"file:///{self.outputs_dir}", Operation.ALL))
         # Add scratch and storage directories to the local site
         local.add_directories(scratch_dir, storage_dir)
         # Add profiles to the local site
@@ -394,25 +383,25 @@ class SubmitterHTCondor(Submitter):
         rc = ReplicaCatalog()
 
         # Add the templates
-        self.f_template_tarball = File(self._get_file_name(self.template_tarball))
+        self.f_template_tarball = File(os.path.basename(self.template_tarball))
         rc.add_replica(
             "local",
-            self._get_file_name(self.template_tarball),
+            os.path.basename(self.template_tarball),
             f"file://{self.template_tarball}",
         )
         # Add the yaml files
-        self.f_running_configuration = File(self._get_file_name(self.config_file_path))
+        self.f_running_configuration = File(os.path.basename(self.config_file_path))
         rc.add_replica(
             "local",
-            self._get_file_name(self.config_file_path),
+            os.path.basename(self.config_file_path),
             f"file://{self.config_file_path}",
         )
         self.f_statistical_model_config = File(
-            self._get_file_name(self.modified_statistical_model_config)
+            os.path.basename(self.modified_statistical_model_config)
         )
         rc.add_replica(
             "local",
-            self._get_file_name(self.modified_statistical_model_config),
+            os.path.basename(self.modified_statistical_model_config),
             f"file://{self.modified_statistical_model_config}",
         )
         # Add run_toymc_wrapper
@@ -451,12 +440,12 @@ class SubmitterHTCondor(Submitter):
         name="run_toymc_wrapper",
         cores=1,
         memory=1_700,
-        disk=1_000_000,
+        disk=1_000,
         run_on_submit_node=False,
     ):
         """Initilize a Pegasus job, also sets resource profiles.
 
-        Memory in unit of MB, and disk in unit of KB.
+        Memory and disk in unit of MB.
 
         """
         job = Job(name)
@@ -469,13 +458,14 @@ class SubmitterHTCondor(Submitter):
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk
+        # Somehow we need to write memory in MB and disk in kB
         memory_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
             f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1) * {memory})"
         )
         disk_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1) * {disk})"
+            f"DAGNodeRetry == 0, {disk * 1_000}, (DAGNodeRetry + 1) * {disk * 1_000})"
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
@@ -525,10 +515,10 @@ class SubmitterHTCondor(Submitter):
 
     def _add_limit_threshold(self):
         """Add the Neyman thresholds limit_threshold to the replica catalog."""
-        self.f_limit_threshold = File(self._get_file_name(self.limit_threshold))
+        self.f_limit_threshold = File(os.path.basename(self.limit_threshold))
         self.rc.add_replica(
             "local",
-            self._get_file_name(self.limit_threshold),
+            os.path.basename(self.limit_threshold),
             "file://{}".format(self.limit_threshold),
         )
         self.added_limit_threshold = True
@@ -538,14 +528,14 @@ class SubmitterHTCondor(Submitter):
         args_dict["statistical_model_args"]["template_path"] = "templates/"
 
         if "limit_threshold" in args_dict["statistical_model_args"].keys():
-            limit_threshold = self._get_file_name(
+            limit_threshold = os.path.basename(
                 args_dict["statistical_model_args"]["limit_threshold"]
             )
             args_dict["statistical_model_args"]["limit_threshold"] = limit_threshold
 
-        args_dict["toydata_filename"] = self._get_file_name(args_dict["toydata_filename"])
-        args_dict["output_filename"] = self._get_file_name(args_dict["output_filename"])
-        args_dict["statistical_model_config"] = self._get_file_name(
+        args_dict["toydata_filename"] = os.path.basename(args_dict["toydata_filename"])
+        args_dict["output_filename"] = os.path.basename(args_dict["output_filename"])
+        args_dict["statistical_model_config"] = os.path.basename(
             self.modified_statistical_model_config
         )
 
@@ -557,7 +547,7 @@ class SubmitterHTCondor(Submitter):
         Correct the paths on the fly.
 
         """
-        executable = self._get_file_name(script.split()[1])
+        executable = os.path.basename(script.split()[1])
         args_dict = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
 
         # Add the limit_threshold to the replica catalog if not added
@@ -696,7 +686,7 @@ class SubmitterHTCondor(Submitter):
             staging_sites={"condorpool": "staging-davs"},
             output_sites=["local"],
             dir=os.path.dirname(self.runs_dir),
-            relative_dir=self.workflow_id,
+            relative_dir=os.path.basename(self.runs_dir),
             **self.pegasus_config,
         )
 

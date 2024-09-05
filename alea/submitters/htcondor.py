@@ -456,7 +456,7 @@ class SubmitterHTCondor(Submitter):
     ):
         """Initilize a Pegasus job, also sets resource profiles.
 
-        Memory in unit of MB, and disk in unit of MB.
+        Memory in unit of MB, and disk in unit of KB.
 
         """
         job = Job(name)

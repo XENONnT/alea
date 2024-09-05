@@ -509,7 +509,7 @@ class SubmitterHTCondor(Submitter):
         separate_name = "separate"
         separate_job = self._initialize_job(
             name=separate_name,
-            cores=self.request_cpus,
+            cores=1,
             memory=self.request_memory * 2,
             disk=self.combine_disk,
             run_on_submit_node=True,

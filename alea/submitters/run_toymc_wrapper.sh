@@ -88,7 +88,7 @@ METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 # Extract tarballs input
 START=$(date +%s)
 for TAR in `ls *.tar.gz`; do
-    tar xzf $TAR
+    tar -xzf $TAR
 done
 rm *.tar.gz
 END=$(date +%s)

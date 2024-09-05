@@ -62,13 +62,13 @@ class SubmitterHTCondor(Submitter):
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
         self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
-        self.request_disk = self.htcondor_configurations.pop("request_disk", 2000000)
-        self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20000000)
+        self.request_disk = self.htcondor_configurations.pop("request_disk", 2_000)
+        self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20_000)
 
         # Dagman configurations
-        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100000)
+        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100_000)
         self.dagman_retry = self.htcondor_configurations.pop("dagman_retry", 2)
-        self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100000)
+        self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
         super().__init__(*args, **kwargs)
 
@@ -435,12 +435,12 @@ class SubmitterHTCondor(Submitter):
         name="run_toymc_wrapper",
         cores=1,
         memory=1_700,
-        disk=1_000_000,
+        disk=1_000,
         run_on_submit_node=False,
     ):
         """Initilize a Pegasus job, also sets resource profiles.
 
-        Memory in unit of MB, and disk in unit of KB.
+        Memory and disk in unit of MB.
 
         """
         job = Job(name)
@@ -453,13 +453,14 @@ class SubmitterHTCondor(Submitter):
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk
+        # Somehow we need to write memory in MB and disk in kB
         memory_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
             f"DAGNodeRetry == 0, {memory}, (DAGNodeRetry + 1) * {memory})"
         )
         disk_str = (
             "ifthenelse(isundefined(DAGNodeRetry) || "
-            f"DAGNodeRetry == 0, {disk}, (DAGNodeRetry + 1) * {disk})"
+            f"DAGNodeRetry == 0, {disk * 1_000}, (DAGNodeRetry + 1) * {disk * 1_000})"
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)

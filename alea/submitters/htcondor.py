@@ -78,9 +78,10 @@ class SubmitterHTCondor(Submitter):
         # User can provide a name for the workflow, otherwise it will be the current time
         self._setup_workflow_id()
         # Pegasus workflow directory
-        self.generated_dir = os.path.join(self.work_dir, "generated", self.workflow_id)
-        self.runs_dir = os.path.join(self.work_dir, "runs", self.workflow_id)
-        self.outputs_dir = os.path.join(self.work_dir, "outputs", self.workflow_id)
+        self.generated_dir = os.path.join(self.work_dir, self.workflow_id, "generated")
+        self.runs_dir = os.path.join(self.work_dir, self.workflow_id, "runs")
+        self.outputs_dir = os.path.join(self.work_dir, self.workflow_id, "outputs")
+        self.scratch_dir = os.path.join(self.work_dir, self.workflow_id, "scratch")
 
     @property
     def template_tarball(self):
@@ -269,20 +270,12 @@ class SubmitterHTCondor(Submitter):
         logger.debug("Defining local site")
         local = Site("local")
         # Logs and pegasus output goes here. This place is called stash in OSG jargon.
-        scratch_dir = Directory(
-            Directory.SHARED_SCRATCH, path=f"{self.work_dir}/scratch/{self.workflow_id}"
-        )
-        scratch_dir.add_file_servers(
-            FileServer(f"file:///{self.work_dir}/scratch/{self.workflow_id}", Operation.ALL)
-        )
+        scratch_dir = Directory(Directory.SHARED_SCRATCH, path=self.scratch_dir)
+        scratch_dir.add_file_servers(FileServer(f"file:///{self.scratch_dir}", Operation.ALL))
         # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
         # This place is called stash in OSG jargon.
-        storage_dir = Directory(
-            Directory.LOCAL_STORAGE, path=f"{self.work_dir}/outputs/{self.workflow_id}"
-        )
-        storage_dir.add_file_servers(
-            FileServer(f"file:///{self.work_dir}/outputs/{self.workflow_id}", Operation.ALL)
-        )
+        storage_dir = Directory(Directory.LOCAL_STORAGE, path=self.outputs_dir)
+        storage_dir.add_file_servers(FileServer(f"file:///{self.outputs_dir}", Operation.ALL))
         # Add scratch and storage directories to the local site
         local.add_directories(scratch_dir, storage_dir)
         # Add profiles to the local site

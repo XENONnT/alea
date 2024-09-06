@@ -357,8 +357,17 @@ class SubmitterHTCondor(Submitter):
             arch=Arch.X86_64,
         )
 
+        # Wrappers that untar outputs
+        separate = Transformation(
+            name="separate",
+            site="local",
+            pfn=self.top_dir / "alea/submitters/separate.sh",
+            is_stageable=True,
+            arch=Arch.X86_64,
+        )
+
         tc = TransformationCatalog()
-        tc.add_transformations(run_toymc_wrapper, combine)
+        tc.add_transformations(run_toymc_wrapper, combine, separate)
 
         return tc
 
@@ -415,6 +424,13 @@ class SubmitterHTCondor(Submitter):
             "local",
             "combine.sh",
             "file://{}".format(self.top_dir / "alea/submitters/combine.sh"),
+        )
+        # Add separate executable
+        self.f_separate = File("separate.sh")
+        rc.add_replica(
+            "local",
+            "separate.sh",
+            "file://{}".format(self.top_dir / "alea/submitters/separate.sh"),
         )
 
         return rc
@@ -476,6 +492,25 @@ class SubmitterHTCondor(Submitter):
         self.wf.add_jobs(combine_job)
 
         return combine_job
+
+    def _add_separate_job(self, combine_i):
+        """Add a separate job to the workflow."""
+        logger.info(f"Adding separate job {combine_i} to the workflow")
+        separate_name = "separate"
+        separate_job = self._initialize_job(
+            name=separate_name,
+            cores=1,
+            memory=self.request_memory * 2,
+            disk=self.combine_disk,
+            run_on_submit_node=True,
+        )
+
+        # Separate job configuration: all toymc results and files will be combined into one tarball
+        separate_job.add_inputs(File(f"{self.workflow_id}-{combine_i}-combined_output.tar.gz"))
+        separate_job.add_args(f"{self.workflow_id}-{combine_i}", self.outputfolder)
+        self.wf.add_jobs(separate_job)
+
+        return separate_job
 
     def _add_limit_threshold(self):
         """Add the Neyman thresholds limit_threshold to the replica catalog."""
@@ -556,6 +591,7 @@ class SubmitterHTCondor(Submitter):
             # If the number of jobs to combine is reached, add a new combine job
             if new_to_combine:
                 combine_job = self._add_combine_job(combine_i)
+                self._add_separate_job(combine_i)
 
             # Reorganize the script to get the executable and arguments,
             # in which the paths are corrected
@@ -589,6 +625,7 @@ class SubmitterHTCondor(Submitter):
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
                 self.f_combine,
+                self.f_separate,
             )
             if self.added_limit_threshold:
                 job.add_inputs(self.f_limit_threshold)
@@ -652,16 +689,6 @@ class SubmitterHTCondor(Submitter):
             **self.pegasus_config,
         )
 
-        print(f"Worfklow written to \n\n\t{self.runs_dir}\n\n")
-
-    def _warn_outputfolder(self):
-        """Warn users about the outputfolder in running config won't be really used."""
-        logger.warning(
-            "The outputfolder in the running configuration "
-            f"{self.outputfolder} won't be used in this submission."
-        )
-        logger.warning(f"Instead, you should find your outputs at {self.outputs_dir}")
-
     def _check_filename_unique(self):
         """Check if all the files in the template path are unique.
 
@@ -703,7 +730,6 @@ class SubmitterHTCondor(Submitter):
             self.wf.graph(
                 output=os.path.join(self.outputs_dir, "workflow_graph.svg"), label="xform-id"
             )
-        self._warn_outputfolder()
 
 
 class Shell(object):

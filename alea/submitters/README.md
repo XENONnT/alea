@@ -39,8 +39,7 @@ htcondor_configurations:
   dagman_maxidle: 100000
   dagman_retry: 2
   dagman_maxjobs: 100000
-  pegasus_transfer_threads: 4
-  max_jobs_to_combine: 100
+  combine_n_outputs: 100
   singularity_image: "/cvmfs/singularity.opensciencegrid.org/xenonnt/montecarlo:2024.04.1"
   workflow_id: "lq_b8_cevns_30"
 ```
@@ -53,8 +52,7 @@ htcondor_configurations:
 - `dagman_maxidle`: maximum of jobs allowed to be idle. The default 100000 is good for most cases.
 - `dagman_retry`: number of automatic retry for each job when failure happen for whatever reason. Note that everytime it retries, we will have new resources requirement `n_retry * request_memory` and `n_retry * request_disk` to get rid of failure due to resource shortage.
 - `dagman_maxjobs`: maximum of jobs allowed to be running. The default 100000 is good for most cases.
-- `pegasus_transfer_threads`: number of threads for transfering handled by `Pegasus`. The default 4 is good so in most cases you want to keep it.
-- `max_jobs_to_combine`: number of toymc job to combine when concluding. Be cautious to put a number larger than 200 here, since it might be too risky...
+- `combine_n_outputs`: number of toymc job to combine when concluding. Be cautious to put a number larger than 200 here, since it might be too risky...
 - `singularity_image`: the jobs will be running in this singularity image.
 - `workflow_id`: name of user's choice for this workflow. If not specified it will put the datetime as `workflow_id`.
 
@@ -64,9 +62,7 @@ Make sure you configured the running config well, then you just simply pass `--h
 
 In the end of the return, it should give you something like this:
 ```
-Worfklow written to
-
-	/scratch/yuanlq/workflows/runs/lq_b8_cevns_30
+pegasus-status -l /scratch/yuanlq/workflows/lq_b8_cevns_30/runs
 ```
 Keep this directory in mind, since all logs will go there and we call it "run directory"
 
@@ -92,21 +88,21 @@ condor_rm 12973662
 
 If you want to check the status of jobs.
 ```
-pegasus-status -l /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
+pegasus-status -l /scratch/yuanlq/workflows/lq_b8_cevns_30/runs
 ```
 
 If you want to know more details, like checking why the job failed, just do this in your "run directory". This command should give you a summary of the workflow, including errors encountered if any.
 ```
-pegasus-analyzer /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
+pegasus-analyzer /scratch/yuanlq/workflows/lq_b8_cevns_30/runs
 ```
 
 Let's say now the workflow is ended (you see nothing from `condor_q`). If it didn't finish successfully for weird error, a good thing to do is just to rerun it. However, keep in mind that the workflow itself will automatically retries up to `dagman_retry` times (defined in your running config). To rerun the failed jobs only, just do this.
 ```
-pegasus-run /scratch/yuanlq/workflows/runs/lq_b8_cevns_30
+pegasus-run /scratch/yuanlq/workflows/lq_b8_cevns_30/runs
 ```
 
 To collect the final outputs, there are two ways
-- Check your folder `/scratch/$USER/workflows/outputs/<workflow_id>/`. There should be a single tarball containing all toymc files and computation results.
+- Check your folder `/scratch/$USER/workflows/<workflow_id>/outputs/`. There should be a single tarball containing all toymc files and computation results.
 - A redundant way is to get files from dCache, in which you have to use `gfal` command to approach. For example ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/``` and to get the files, for example do ```gfal-ls davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/```. This contains both the final tarball and all `.h5` files before tarballing. To get them you want to do something like ```gfal-copy davs://xenon-gridftp.grid.uchicago.edu:2880/xenon/scratch/yuanlq/lq_b8_cevns_30/00/00/lq_b8_cevns_30-combined_output.tar.gz . -t 7200``` Note that this command works also on Midway/DaLI.
 
 ### Example Workflow

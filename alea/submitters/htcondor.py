@@ -504,11 +504,10 @@ class SubmitterHTCondor(Submitter):
             disk=self.combine_disk,
             run_on_submit_node=True,
         )
-        separate_job.add_profiles(Namespace.CONDOR, "requirements", self.requirements)
 
         # Separate job configuration: all toymc results and files will be combined into one tarball
         separate_job.add_inputs(File(f"{self.workflow_id}-{combine_i}-combined_output.tar.gz"))
-        separate_job.add_args(f"{self.workflow_id}-{combine_i}")
+        separate_job.add_args(f"{self.workflow_id}-{combine_i}", self.outputfolder)
         self.wf.add_jobs(separate_job)
 
         return separate_job
@@ -690,16 +689,6 @@ class SubmitterHTCondor(Submitter):
             **self.pegasus_config,
         )
 
-        print(f"Worfklow written to \n\n\t{self.runs_dir}\n\n")
-
-    def _warn_outputfolder(self):
-        """Warn users about the outputfolder in running config won't be really used."""
-        logger.warning(
-            "The outputfolder in the running configuration "
-            f"{self.outputfolder} won't be used in this submission."
-        )
-        logger.warning(f"Instead, you should find your outputs at {self.outputs_dir}")
-
     def _check_filename_unique(self):
         """Check if all the files in the template path are unique.
 
@@ -741,7 +730,6 @@ class SubmitterHTCondor(Submitter):
             self.wf.graph(
                 output=os.path.join(self.outputs_dir, "workflow_graph.svg"), label="xform-id"
             )
-        self._warn_outputfolder()
 
 
 class Shell(object):

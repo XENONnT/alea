@@ -52,7 +52,6 @@ htcondor_configurations:
 - `dagman_maxidle`: maximum of jobs allowed to be idle. The default 100000 is good for most cases.
 - `dagman_retry`: number of automatic retry for each job when failure happen for whatever reason. Note that everytime it retries, we will have new resources requirement `n_retry * request_memory` and `n_retry * request_disk` to get rid of failure due to resource shortage.
 - `dagman_maxjobs`: maximum of jobs allowed to be running. The default 100000 is good for most cases.
-- `pegasus_transfer_threads`: number of threads for transfering handled by `Pegasus`. The default 4 is good so in most cases you want to keep it.
 - `combine_n_outputs`: number of toymc job to combine when concluding. Be cautious to put a number larger than 200 here, since it might be too risky...
 - `singularity_image`: the jobs will be running in this singularity image.
 - `workflow_id`: name of user's choice for this workflow. If not specified it will put the datetime as `workflow_id`.

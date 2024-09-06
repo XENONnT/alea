@@ -611,9 +611,10 @@ class SubmitterHTCondor(Submitter):
                 self.f_alea_run_toymc,
             )
 
-            output_filename = args_dict["output_filename"]
-            job.add_outputs(File(os.path.basename(output_filename)), stage_out=False)
-            combine_job.add_inputs(File(os.path.basename(output_filename)))
+            if not args_dict["only_toydata"]:
+                output_filename = args_dict["output_filename"]
+                job.add_outputs(File(os.path.basename(output_filename)), stage_out=False)
+                combine_job.add_inputs(File(os.path.basename(output_filename)))
 
             toydata_filename = args_dict["toydata_filename"]
             if args_dict["toydata_mode"] == "read":

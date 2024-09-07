@@ -162,10 +162,10 @@ class SubmitterHTCondor(Submitter):
                 "The template path contains subdirectories. All templates files will be tarred."
             )
 
-    def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
+    def _tar_h5_files(self, directory, template_tarball="templates.tar.gz"):
         """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
         # Create a tar.gz archive
-        with tarfile.open(output_filename, "w:gz") as tar:
+        with tarfile.open(template_tarball, "w:gz") as tar:
             # Walk through the directory
             for dirpath, dirnames, filenames in os.walk(directory):
                 for filename in filenames:
@@ -655,8 +655,8 @@ class SubmitterHTCondor(Submitter):
 
             logger.info(f"Adding job {job_id} to the workflow")
             logger.debug(f"Naked Script: {script}")
-            logger.debug(f"Output: {args_dict['output_filename']}")
             logger.debug(f"Executable: {executable}")
+            logger.debug(f"Output: {args_dict['output_filename']}")
             logger.debug(f"Toydata: {args_dict['toydata_filename']}")
             logger.debug(f"Arguments: {args_dict}")
 

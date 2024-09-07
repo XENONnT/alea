@@ -162,10 +162,10 @@ class SubmitterHTCondor(Submitter):
                 "The template path contains subdirectories. All templates files will be tarred."
             )
 
-    def _tar_h5_files(self, directory, output_filename="templates.tar.gz"):
+    def _tar_h5_files(self, directory, template_tarball="templates.tar.gz"):
         """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
         # Create a tar.gz archive
-        with tarfile.open(output_filename, "w:gz") as tar:
+        with tarfile.open(template_tarball, "w:gz") as tar:
             # Walk through the directory
             for dirpath, dirnames, filenames in os.walk(directory):
                 for filename in filenames:
@@ -512,16 +512,6 @@ class SubmitterHTCondor(Submitter):
 
         return separate_job
 
-    def _add_limit_threshold(self):
-        """Add the Neyman thresholds limit_threshold to the replica catalog."""
-        self.f_limit_threshold = File(os.path.basename(self.limit_threshold))
-        self.rc.add_replica(
-            "local",
-            os.path.basename(self.limit_threshold),
-            "file://{}".format(self.limit_threshold),
-        )
-        self.added_limit_threshold = True
-
     def _correct_paths_args_dict(self, args_dict):
         """Correct the paths in the arguments dictionary in a hardcoding way."""
         args_dict["statistical_model_args"]["template_path"] = "templates/"
@@ -548,17 +538,6 @@ class SubmitterHTCondor(Submitter):
         """
         executable = os.path.basename(script.split()[1])
         args_dict = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
-
-        # Add the limit_threshold to the replica catalog if not added
-        if (
-            not self.added_limit_threshold
-            and "limit_threshold" in args_dict["statistical_model_args"].keys()
-        ):
-            self.limit_threshold = args_dict["statistical_model_args"]["limit_threshold"]
-            self._add_limit_threshold()
-
-        # Correct the paths in the arguments
-        args_dict = self._correct_paths_args_dict(args_dict)
 
         return executable, args_dict
 
@@ -596,17 +575,13 @@ class SubmitterHTCondor(Submitter):
             # Reorganize the script to get the executable and arguments,
             # in which the paths are corrected
             executable, args_dict = self._reorganize_script(script)
-            if not (args_dict["toydata_mode"] in ["generate_and_store", "generate"]):
+            if not (
+                args_dict["toydata_mode"]
+                in ["read", "generate_and_store", "generate", "no_toydata"]
+            ):
                 raise NotImplementedError(
                     "Only generate_and_store toydata mode is supported on OSG."
                 )
-
-            logger.info(f"Adding job {job_id} to the workflow")
-            logger.debug(f"Naked Script: {script}")
-            logger.debug(f"Output: {args_dict['output_filename']}")
-            logger.debug(f"Executable: {executable}")
-            logger.debug(f"Toydata: {args_dict['toydata_filename']}")
-            logger.debug(f"Arguments: {args_dict}")
 
             # Create a job with base requirements
             job = self._initialize_job(
@@ -617,6 +592,16 @@ class SubmitterHTCondor(Submitter):
             )
             job.add_profiles(Namespace.CONDOR, "requirements", self.requirements)
 
+            # Add the limit_threshold to the replica catalog if not added
+            if "limit_threshold" in args_dict["statistical_model_args"]:
+                limit_threshold = args_dict["statistical_model_args"]["limit_threshold"]
+                self.rc.add_replica(
+                    "local",
+                    os.path.basename(limit_threshold),
+                    f"file://{limit_threshold}",
+                )
+                job.add_inputs(File(os.path.basename(limit_threshold)))
+
             # Add the inputs and outputs
             job.add_inputs(
                 self.f_template_tarball,
@@ -624,19 +609,26 @@ class SubmitterHTCondor(Submitter):
                 self.f_statistical_model_config,
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
-                self.f_combine,
-                self.f_separate,
             )
-            if self.added_limit_threshold:
-                job.add_inputs(self.f_limit_threshold)
 
-            job.add_outputs(File(args_dict["output_filename"]), stage_out=False)
-            combine_job.add_inputs(File(args_dict["output_filename"]))
+            if not args_dict["only_toydata"]:
+                output_filename = args_dict["output_filename"]
+                job.add_outputs(File(os.path.basename(output_filename)), stage_out=False)
+                combine_job.add_inputs(File(os.path.basename(output_filename)))
 
-            # Only add the toydata file if instructed to do so
-            if args_dict["toydata_mode"] == "generate_and_store":
-                job.add_outputs(File(args_dict["toydata_filename"]), stage_out=False)
-                combine_job.add_inputs(File(args_dict["toydata_filename"]))
+            toydata_filename = args_dict["toydata_filename"]
+            if args_dict["toydata_mode"] == "read":
+                # Add toydata as input if needed
+                self.rc.add_replica(
+                    "local",
+                    os.path.basename(toydata_filename),
+                    f"file://{toydata_filename}",
+                )
+                job.add_inputs(File(os.path.basename(toydata_filename)))
+            elif args_dict["toydata_mode"] == "generate_and_store":
+                # Only add the toydata file if instructed to do so
+                job.add_outputs(File(os.path.basename(toydata_filename)), stage_out=False)
+                combine_job.add_inputs(File(os.path.basename(toydata_filename)))
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
@@ -646,6 +638,8 @@ class SubmitterHTCondor(Submitter):
                     for key in d.keys()
                 )
 
+            # Correct the paths in the arguments
+            args_dict = self._correct_paths_args_dict(args_dict)
             args_tuple = _extract_all_to_tuple(args_dict)
             job.add_args(*args_tuple)
 
@@ -658,6 +652,13 @@ class SubmitterHTCondor(Submitter):
                 combine_i += 1
             else:
                 new_to_combine = False
+
+            logger.info(f"Adding job {job_id} to the workflow")
+            logger.debug(f"Naked Script: {script}")
+            logger.debug(f"Executable: {executable}")
+            logger.debug(f"Output: {args_dict['output_filename']}")
+            logger.debug(f"Toydata: {args_dict['toydata_filename']}")
+            logger.debug(f"Arguments: {args_dict}")
 
         # Finalize the workflow
         self.wf.add_replica_catalog(self.rc)

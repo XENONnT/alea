@@ -86,18 +86,15 @@ SEED=$(echo "$seed" | sed "s/'/\"/g")
 METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
 # Extract tarballs input
+mkdir -p templates
 START=$(date +%s)
 for TAR in `ls *.tar.gz`; do
-    tar -xzf $TAR
+    tar -xzf $TAR -C templates
 done
 rm *.tar.gz
 END=$(date +%s)
 DIFF=$(( $END - $START ))
 echo "Untarring took $DIFF seconds."
-
-# Move all untarred files to templates/
-mkdir -p templates
-mv *.h5 templates/
 
 # Source the environment
 . /opt/XENONnT/setup.sh

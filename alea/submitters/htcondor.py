@@ -723,7 +723,8 @@ class SubmitterHTCondor(Submitter):
         self._make_template_tarball()
 
         self._generate_workflow()
-        self._plan_and_submit()
+        if len(self.wf.jobs):
+            self._plan_and_submit()
         if self.debug:
             self.wf.graph(
                 output=os.path.join(self.outputs_dir, "workflow_graph.dot"), label="xform-id"

@@ -613,22 +613,28 @@ class SubmitterHTCondor(Submitter):
 
             if not args_dict["only_toydata"]:
                 output_filename = args_dict["output_filename"]
-                job.add_outputs(File(os.path.basename(output_filename)), stage_out=False)
-                combine_job.add_inputs(File(os.path.basename(output_filename)))
+                output_filename_base = os.path.basename(output_filename)
+                job.add_outputs(File(output_filename_base), stage_out=False)
+                job.set_stdout(File(f"{output_filename_base}.log"), stage_out=False)
+                combine_job.add_inputs(File(output_filename_base))
+                combine_job.add_inputs(File(f"{output_filename_base}.log"))
 
             toydata_filename = args_dict["toydata_filename"]
+            toydata_filename_base = os.path.basename(toydata_filename)
             if args_dict["toydata_mode"] == "read":
+                if not os.path.exists(toydata_filename):
+                    raise ValueError(f"Can not find {toydata_filename} containing toydata.")
                 # Add toydata as input if needed
                 self.rc.add_replica(
                     "local",
-                    os.path.basename(toydata_filename),
+                    toydata_filename_base,
                     f"file://{toydata_filename}",
                 )
-                job.add_inputs(File(os.path.basename(toydata_filename)))
+                job.add_inputs(File(toydata_filename_base))
             elif args_dict["toydata_mode"] == "generate_and_store":
                 # Only add the toydata file if instructed to do so
-                job.add_outputs(File(os.path.basename(toydata_filename)), stage_out=False)
-                combine_job.add_inputs(File(os.path.basename(toydata_filename)))
+                job.add_outputs(File(toydata_filename_base), stage_out=False)
+                combine_job.add_inputs(File(toydata_filename_base))
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
@@ -706,7 +712,7 @@ class SubmitterHTCondor(Submitter):
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
         if os.path.exists(self.runs_dir):
-            raise RuntimeError(f"Workflow already exists at {self.runs_dir}. Exiting.")
+            raise RuntimeError(f"Workflow already exists at {self.runs_dir}.")
         self._validate_x509_proxy()
 
         # 0o755 means read/write/execute for owner, read/execute for everyone else

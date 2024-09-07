@@ -42,7 +42,6 @@ class SubmitterSlurm(Submitter):
         self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
-        self.log_dir = self.outputfolder
 
     def _submit(self, job, **kwargs):
         """Submits job to batch queue which actually runs the analysis.
@@ -61,7 +60,7 @@ class SubmitterSlurm(Submitter):
 
         log = kwargs.pop("log", None)
         if log is None:
-            log = os.path.join(self.log_dir, f"{jobname.lower()}.log")
+            log = os.path.join(self.outputfolder, f"{jobname.lower()}.log")
 
         kwargs_to_pop = []
         for key, val in kwargs.items():
@@ -103,6 +102,8 @@ class SubmitterSlurm(Submitter):
                 time.sleep(30)
             batchq_kwargs["jobname"] = f"{_jobname}_{job:03d}"
             if last_output_filename is not None:
-                batchq_kwargs["log"] = os.path.join(self.log_dir, f"{last_output_filename}.log")
+                batchq_kwargs["log"] = os.path.join(
+                    self.outputfolder, f"{last_output_filename}.log"
+                )
             self.logging.debug(f"Call '_submit' with job: {job} and kwargs: {batchq_kwargs}.")
             self._submit(script, **batchq_kwargs)

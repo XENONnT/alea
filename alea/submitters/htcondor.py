@@ -2,7 +2,6 @@ import os
 import getpass
 import tarfile
 import shlex
-import json
 import tempfile
 import time
 import threading
@@ -25,6 +24,7 @@ from Pegasus.api import (
     TransformationCatalog,
     ReplicaCatalog,
 )
+from alea.runner import Runner
 from alea.submitter import Submitter
 from alea.utils import load_yaml, dump_yaml
 
@@ -449,12 +449,13 @@ class SubmitterHTCondor(Submitter):
 
         """
         job = Job(name)
-        job.add_profiles(Namespace.CONDOR, "request_cpus", f"{cores}")
 
         if run_on_submit_node:
             job.add_selector_profile(execution_site="local")
             # no other attributes on a local job
             return job
+
+        job.add_profiles(Namespace.CONDOR, "request_cpus", f"{cores}")
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk
@@ -497,13 +498,7 @@ class SubmitterHTCondor(Submitter):
         """Add a separate job to the workflow."""
         logger.info(f"Adding separate job {combine_i} to the workflow")
         separate_name = "separate"
-        separate_job = self._initialize_job(
-            name=separate_name,
-            cores=1,
-            memory=self.request_memory * 2,
-            disk=self.combine_disk,
-            run_on_submit_node=True,
-        )
+        separate_job = self._initialize_job(name=separate_name, run_on_submit_node=True)
 
         # Separate job configuration: all toymc results and files will be combined into one tarball
         separate_job.add_inputs(File(f"{self.workflow_id}-{combine_i}-combined_output.tar.gz"))
@@ -564,6 +559,9 @@ class SubmitterHTCondor(Submitter):
         # Iterate over the tickets and generate jobs
         combine_i = 0
         new_to_combine = True
+
+        # Prepare for argument conversion
+        _, _, annotations = Runner.runner_arguments()
 
         # Generate jobstring and output names from tickets generator
         for job_id, (script, _) in enumerate(self.combined_tickets_generator()):
@@ -638,10 +636,11 @@ class SubmitterHTCondor(Submitter):
 
             # Add the arguments into the job
             # Using escaped argument to avoid the shell syntax error
-            def _extract_all_to_tuple(d):
+            def _extract_all_to_tuple(kwargs) -> tuple:
+                """Generate the submission script from the runner arguments."""
                 return tuple(
-                    f"{json.dumps(str(d[key])).replace(' ', '')}".replace("'", '\\"')
-                    for key in d.keys()
+                    shlex.quote(Submitter.arg_to_str(kwargs[arg], annotation))
+                    for arg, annotation in annotations.items()
                 )
 
             # Correct the paths in the arguments

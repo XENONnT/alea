@@ -2,6 +2,12 @@
 
 set -e
 
+# Check if number of arguments passed is correct
+if [ $# -ne 21 ]; then
+    echo "Error: You need to provide required number of arguments."
+    exit 1
+fi
+
 # Extract the arguments
 statistical_model=$1
 poi=$2

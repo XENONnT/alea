@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from alea.runner import Runner
 from alea.submitter import Submitter
 

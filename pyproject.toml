@@ -23,8 +23,8 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-alea_run_toymc = "bin.alea_run_toymc:main"
-alea_submission = "bin.alea_submission:main"
+alea_run_toymc = "alea.scripts.alea_run_toymc:main"
+alea_submission = "alea.scripts.alea_submission:main"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.13"

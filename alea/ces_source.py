@@ -32,12 +32,12 @@ class CESTemplateSource(HistogramPdfSource):
     def _load_true_histogram(self):
         """Load the true spectrum from the template (no transformation applied)"""
         h = template_to_multihist(self.templatename, self.histname, hist_to_read=Hist1d)
-        if self.config.get('zero_filling_for_outlier',False):
+        if self.config.get("zero_filling_for_outlier", False):
             bins = h.bin_centers
-            inter = interp1d(bins,h.histogram,bounds_error=False, fill_value=0)
+            inter = interp1d(bins, h.histogram, bounds_error=False, fill_value=0)
             width = self.ces_space[1] - self.ces_space[0]
-            new_hist = Hist1d(bins=np.arange(0,self.max_e+width,width))
-            new_hist.histogram  = inter(new_hist.bin_centers)
+            new_hist = Hist1d(bins=np.arange(0, self.max_e + width, width))
+            new_hist.histogram = inter(new_hist.bin_centers)
             return new_hist
         else:
             return h

@@ -32,7 +32,7 @@ Following this as an example
 htcondor_configurations:
   template_path: "/ospool/uc-shared/project/xenon/binference_common/binference_common/nt_cevns_templates/v7"
   cluster_size: 1
-  request_cpus: 4
+  request_cpus: 2
   request_memory: 2000
   request_disk: 2000
   combine_disk: 20000

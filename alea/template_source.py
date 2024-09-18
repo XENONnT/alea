@@ -373,14 +373,14 @@ class SpectrumTemplateSource(TemplateSource):
 
         if "spectrum_name" not in self.config:
             raise ValueError("spectrum_name not in config")
+        if "spectrum_axis" not in self.config:
+            raise ValueError("spectrum_axis not in config")
         spectrum = self._get_json_spectrum(
             self.config["spectrum_name"].format(**self.format_named_parameters)
         )
 
-        # Perform scaling, the first axis is assumed to be reweighted
         # The spectrum is assumed to be probability density (in per the unit of first axis).
-        axis = 0
-        # h = h.normalize(axis=axis)
+        axis = self.config["spectrum_axis"]
         bin_edges = h.bin_edges[axis]
         bin_centers = h.bin_centers(axis=axis)
         slices = [None] * h.histogram.ndim

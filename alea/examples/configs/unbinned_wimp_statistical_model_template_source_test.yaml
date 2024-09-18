@@ -126,4 +126,5 @@ likelihood_config:
           - signal_efficiency
         template_filename: wimp50gev_template.ii.h5
         spectrum_name: test_cs1_spectrum.json
+        spectrum_axis: 1
         efficiency_name: signal_efficiency

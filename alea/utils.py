@@ -206,6 +206,12 @@ def dump_yaml(file_name: str, data: dict):
         yaml.safe_dump(data, file)
 
 
+def dump_json(file_name: str, data: dict):
+    """Dump data to a json file."""
+    with open(file_name, "w") as file:
+        json.dump(data, file, indent=4)
+
+
 def _get_abspath(file_name):
     """Get the abspath of the file.
 

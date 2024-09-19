@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from tqdm import tqdm
 from utilix.x509 import _validate_x509_proxy
+from utilix.tarball import Tarball
 from Pegasus.api import (
     Arch,
     Operation,
@@ -403,8 +404,38 @@ class SubmitterHTCondor(Submitter):
             "separate.sh",
             "file://{}".format(self.top_dir / "alea/submitters/separate.sh"),
         )
+        # Untar and install the packages
+        self.f_install = File("install.sh")
+        rc.add_replica(
+            "local",
+            "install.sh",
+            "file://{}".format(self.top_dir / "alea/submitters/install.sh"),
+        )
 
         return rc
+
+    def make_tarballs(self):
+        """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
+        tarballs = []
+        tarball_paths = []
+        for package_name in ["alea"]:
+            _tarball = Tarball(self.generated_dir, package_name)
+            if not Tarball.get_installed_git_repo(package_name):
+                # Packages should not be non-editable user-installed
+                if Tarball.is_user_installed(package_name):
+                    raise RuntimeError(
+                        f"You should install {package_name} in non-editable user-installed mode."
+                    )
+            else:
+                _tarball.create_tarball()
+                tarball = File(_tarball.tarball_name)
+                tarball_path = _tarball.tarball_path
+                logger.warning(
+                    f"Using tarball of user installed package {package_name} at {tarball_path}."
+                )
+            tarballs.append(tarball)
+            tarball_paths.append(tarball_path)
+        return tarballs, tarball_paths
 
     def _initialize_job(
         self,
@@ -527,6 +558,11 @@ class SubmitterHTCondor(Submitter):
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
 
+        # Tarball the editable self-installed packages
+        tarballs, tarball_paths = self.make_tarballs()
+        for tarball, tarball_path in zip(tarballs, tarball_paths):
+            self.rc.add_replica("local", tarball, tarball_path)
+
         # Iterate over the tickets and generate jobs
         combine_i = 0
         new_to_combine = True
@@ -578,6 +614,8 @@ class SubmitterHTCondor(Submitter):
                 self.f_statistical_model_config,
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
+                self.f_install,
+                *tarballs,
             )
 
             if not args_dict["only_toydata"]:

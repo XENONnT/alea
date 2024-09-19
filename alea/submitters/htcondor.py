@@ -129,7 +129,7 @@ class SubmitterHTCondor(Submitter):
         return _requirements
 
     def _tar_h5_files(self, directory, template_tarball="templates.tar.gz"):
-        """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
+        """Tar all needed templates into a flat tarball."""
         # Create a tar.gz archive
         with tarfile.open(template_tarball, "w:gz") as tar:
             tar.add(directory, arcname=os.path.basename(directory))
@@ -192,32 +192,6 @@ class SubmitterHTCondor(Submitter):
             "Modified statistical model config file "
             f"written to {self.modified_statistical_model_config}"
         )
-
-    def _contains_subdirectories(self, directory):
-        """Check if the specified directory contains any subdirectories.
-
-        Args:
-        directory (str): The path to the directory to check.
-
-        Returns:
-        bool: True if there are subdirectories inside the given directory, False otherwise.
-
-        """
-        # List all entries in the directory
-        try:
-            for entry in os.listdir(directory):
-                # Check if the entry is a directory
-                if os.path.isdir(os.path.join(directory, entry)):
-                    return True
-        except FileNotFoundError:
-            print("The specified directory does not exist.")
-            return False
-        except PermissionError:
-            print("Permission denied for accessing the directory.")
-            return False
-
-        # If no subdirectories are found
-        return False
 
     def _setup_workflow_id(self):
         """Set up the workflow ID."""
@@ -382,6 +356,13 @@ class SubmitterHTCondor(Submitter):
             "local",
             "run_toymc_wrapper.sh",
             "file://{}".format(self.top_dir / "alea/submitters/run_toymc_wrapper.sh"),
+        )
+        # Add alea_run_toymc
+        self.f_alea_run_toymc = File("alea_run_toymc")
+        rc.add_replica(
+            "local",
+            "alea_run_toymc",
+            "file://{}".format(self.top_dir / "alea/scripts/alea_run_toymc.py"),
         )
         # Add combine executable
         self.f_combine = File("combine.sh")
@@ -578,7 +559,7 @@ class SubmitterHTCondor(Submitter):
                 in ["read", "generate_and_store", "generate", "no_toydata"]
             ):
                 raise NotImplementedError(
-                    "Only generate_and_store toydata mode is supported on OSG."
+                    f"{args_dict['toydata_mode']} toydata mode is not supported on OSG."
                 )
 
             # Create a job with base requirements

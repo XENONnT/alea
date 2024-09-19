@@ -113,7 +113,7 @@ echo "These are the contents of templates/:"
 ls -lh templates/
 
 # Print the command
-echo "Running command: alea_run_toymc \\
+echo "Running command: python alea_run_toymc.py \\
     --statistical_model $STATISTICAL_MODEL \\
     --poi $POI \\
     --hypotheses $HYPOTHESES \\
@@ -137,7 +137,7 @@ echo "Running command: alea_run_toymc \\
     --metadata $METADATA"
 
 # Run the toy MC
-time alea_run_toymc \
+time python alea_run_toymc.py \
     --statistical_model $STATISTICAL_MODEL \
     --poi $POI \
     --hypotheses $HYPOTHESES \

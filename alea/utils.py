@@ -66,7 +66,7 @@ class LockableSet(set):
         return [os.path.basename(record) for record in self]
 
 
-RECORDS = LockableSet()
+TEMPLATE_RECORDS = LockableSet()
 
 
 class ReadOnlyDict:
@@ -171,7 +171,7 @@ def _prefix_file_path(
         if isinstance(config[key], str) and key not in ignore_keys:
             try:
                 config[key] = get_file_path(config[key], template_folder_list)
-                RECORDS.update(glob(formatted_to_asterisked(config[key])))
+                TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
             except RuntimeError:
                 pass
 

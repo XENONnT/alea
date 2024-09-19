@@ -25,7 +25,7 @@ from Pegasus.api import (
 )
 from alea.runner import Runner
 from alea.submitter import Submitter
-from alea.utils import RECORDS, load_yaml, dump_yaml
+from alea.utils import TEMPLATE_RECORDS, load_yaml, dump_yaml
 
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
@@ -70,7 +70,7 @@ class SubmitterHTCondor(Submitter):
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
         super().__init__(*args, **kwargs)
-        RECORDS.lock()
+        TEMPLATE_RECORDS.lock()
 
         # Job input configurations
         self.config_file_path = os.path.abspath(self.config_file_path)
@@ -135,7 +135,7 @@ class SubmitterHTCondor(Submitter):
 
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""
-        if not RECORDS.uniqueness:
+        if not TEMPLATE_RECORDS.uniqueness:
             raise RuntimeError("All files in the template path must have unique basenames.")
         os.makedirs(self.templates_tarball_dir, exist_ok=True)
         if os.listdir(self.templates_tarball_dir):
@@ -145,7 +145,7 @@ class SubmitterHTCondor(Submitter):
             )
 
         logger.info(f"Copying templates into {self.templates_tarball_dir}")
-        for record in tqdm(RECORDS):
+        for record in tqdm(TEMPLATE_RECORDS):
             # Copy each file to the destination folder
             shutil.copy(record, self.templates_tarball_dir)
         self._tar_h5_files(self.templates_tarball_dir, self.template_tarball)

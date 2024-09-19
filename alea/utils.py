@@ -31,6 +31,44 @@ logging.basicConfig(level=logging.INFO)
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
 
 
+class CannotUpdate(Exception):
+    pass
+
+
+class LockableSet(set):
+    """A set whose `update` method can be locked."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.locked = False
+
+    def lock(self):
+        """Lock the set to prevent modifications."""
+        self.locked = True
+
+    def unlock(self):
+        """Unlock the set to allow modifications."""
+        self.locked = False
+
+    def update(self, *args):
+        """Update the set with elements if it is not locked."""
+        if not self.locked:
+            super().update(*args)
+        else:
+            raise CannotUpdate("LockableSet is locked so can not be updated!")
+
+    def uniqueness(self):
+        """Check if the basenames contains unique elements."""
+        return len(set(self.basenames)) == len(self.basenames)
+
+    def basenames(self):
+        """The basenames of the filenames in the set."""
+        return [os.path.basename(record) for record in self]
+
+
+RECORDS = LockableSet()
+
+
 class ReadOnlyDict:
     """A read-only dict."""
 
@@ -133,6 +171,7 @@ def _prefix_file_path(
         if isinstance(config[key], str) and key not in ignore_keys:
             try:
                 config[key] = get_file_path(config[key], template_folder_list)
+                RECORDS.update(glob(formatted_to_asterisked(config[key])))
             except RuntimeError:
                 pass
 
@@ -165,6 +204,7 @@ def adapt_likelihood_config_for_blueice(
             raise ValueError(f"Could not find {likelihood_config_copy['default_source_class']}!")
         likelihood_config_copy["default_source_class"] = default_source_class
 
+    # Translation to blueice's language
     for source in likelihood_config_copy["sources"]:
         if "template_filename" in source:
             source["templatename"] = get_file_path(
@@ -212,7 +252,7 @@ def dump_json(file_name: str, data: dict):
         json.dump(data, file, indent=4)
 
 
-def _get_abspath(file_name):
+def _get_internal(file_name):
     """Get the abspath of the file.
 
     Raise FileNotFoundError when not found in any subfolder
@@ -276,7 +316,7 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
 
     #. fname begin with '/', return absolute path
     #. folder begin with '/', return folder + name
-    #. can get file from _get_abspath, return alea internal file path
+    #. can get file from _get_internal, return alea internal file path
     #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
     #. can be downloaded from MongoDB, download and return cached path
 
@@ -312,7 +352,7 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
 
     # 3. From alea internal files
     try:
-        return _get_abspath(fname)
+        return _get_internal(fname)
     except FileNotFoundError:
         pass
 

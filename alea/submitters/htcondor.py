@@ -4,7 +4,9 @@ import tarfile
 import shlex
 from datetime import datetime
 import logging
+import shutil
 from pathlib import Path
+from tqdm import tqdm
 from utilix.x509 import _validate_x509_proxy
 from Pegasus.api import (
     Arch,
@@ -23,7 +25,7 @@ from Pegasus.api import (
 )
 from alea.runner import Runner
 from alea.submitter import Submitter
-from alea.utils import load_yaml, dump_yaml
+from alea.utils import RECORDS, load_yaml, dump_yaml
 
 
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
@@ -42,12 +44,12 @@ class SubmitterHTCondor(Submitter):
     def __init__(self, *args, **kwargs):
         # General start
         self.htcondor_configurations = kwargs.get("htcondor_configurations", {})
+        self.template_path = self.htcondor_configurations.pop("template_path", None)
         self.singularity_image = self.htcondor_configurations.pop(
             "singularity_image", DEFAULT_IMAGE
         )
         self.top_dir = TOP_DIR
         self.work_dir = WORK_DIR
-        self.template_path = self.htcondor_configurations.pop("template_path", None)
         self.combine_n_outputs = self.htcondor_configurations.pop("combine_n_outputs", 100)
 
         # A flag to check if limit_threshold is added to the rc
@@ -68,6 +70,7 @@ class SubmitterHTCondor(Submitter):
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
         super().__init__(*args, **kwargs)
+        RECORDS.lock()
 
         # Job input configurations
         self.config_file_path = os.path.abspath(self.config_file_path)
@@ -80,6 +83,7 @@ class SubmitterHTCondor(Submitter):
         self.runs_dir = os.path.join(self.workflow_dir, "runs")
         self.outputs_dir = os.path.join(self.workflow_dir, "outputs")
         self.scratch_dir = os.path.join(self.workflow_dir, "scratch")
+        self.templates_tarball_dir = os.path.join(self.generated_dir, "templates")
 
     @property
     def template_tarball(self):
@@ -123,41 +127,29 @@ class SubmitterHTCondor(Submitter):
 
         return _requirements
 
-    def _validate_template_path(self):
-        """Validate the template path."""
-        if self.template_path is None:
-            raise ValueError("Please provide a template path.")
-        # This path must exists locally, and it will be used to stage the input files
-        if not os.path.exists(self.template_path):
-            raise ValueError(f"Path {self.template_path} does not exist.")
-
-        # Printout the template path file structure
-        logger.info("Template path file structure:")
-        for dirpath, dirnames, filenames in os.walk(self.template_path):
-            for filename in filenames:
-                logger.info(f"File: {filename} in {dirpath}")
-        if self._contains_subdirectories(self.template_path):
-            logger.warning(
-                "The template path contains subdirectories. All templates files will be tarred."
-            )
-
     def _tar_h5_files(self, directory, template_tarball="templates.tar.gz"):
         """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
         # Create a tar.gz archive
         with tarfile.open(template_tarball, "w:gz") as tar:
-            # Walk through the directory
-            for dirpath, dirnames, filenames in os.walk(directory):
-                for filename in filenames:
-                    if filename.endswith(".h5"):
-                        # Get the full path to the file
-                        filepath = os.path.join(dirpath, filename)
-                        # Add the file to the tar
-                        # Specify the arcname to store relative path within the tar
-                        tar.add(filepath, arcname=os.path.basename(filename))
+            tar.add(directory, arcname=os.path.basename(directory))
 
     def _make_template_tarball(self):
         """Make tarball of the templates if not exists."""
-        self._tar_h5_files(self.template_path, self.template_tarball)
+        if not RECORDS.uniqueness:
+            raise RuntimeError("All files in the template path must have unique basenames.")
+        os.makedirs(self.templates_tarball_dir, exist_ok=True)
+        if os.listdir(self.templates_tarball_dir):
+            raise RuntimeError(
+                f"Directory {self.templates_tarball_dir} is not empty. "
+                "Please remove it before running the script."
+            )
+
+        logger.info(f"Copying templates into {self.templates_tarball_dir}")
+        for record in tqdm(RECORDS):
+            # Copy each file to the destination folder
+            shutil.copy(record, self.templates_tarball_dir)
+        self._tar_h5_files(self.templates_tarball_dir, self.template_tarball)
+        logger.info(f"Tarbal made at {self.template_tarball}")
 
     def _modify_yaml(self):
         """Modify the statistical model config file to correct the 'template_filename' fields.
@@ -674,19 +666,6 @@ class SubmitterHTCondor(Submitter):
             **self.pegasus_config,
         )
 
-    def _check_filename_unique(self):
-        """Check if all the files in the template path are unique.
-
-        We assume two levels of the template folder.
-
-        """
-        all_files = []
-        for _, _, filenames in os.walk(self.template_path):
-            for filename in filenames:
-                all_files.append(filename)
-        if len(all_files) != len(set(all_files)):
-            raise RuntimeError("All files in the template path must have unique names.")
-
     def submit(self, **kwargs):
         """Serve as the main function to submit the workflow."""
         if os.path.exists(self.workflow_dir):
@@ -704,8 +683,6 @@ class SubmitterHTCondor(Submitter):
         self._modify_yaml()
 
         # Handling templates as part of the inputs
-        self._validate_template_path()
-        self._check_filename_unique()
         self._make_template_tarball()
 
         self._generate_workflow()
@@ -715,6 +692,6 @@ class SubmitterHTCondor(Submitter):
             self.wf.graph(
                 output=os.path.join(self.generated_dir, "workflow_graph.dot"), label="xform-id"
             )
-            self.wf.graph(
-                output=os.path.join(self.generated_dir, "workflow_graph.svg"), label="xform-id"
-            )
+            # self.wf.graph(
+            #     output=os.path.join(self.generated_dir, "workflow_graph.svg"), label="xform-id"
+            # )

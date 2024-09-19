@@ -95,7 +95,7 @@ METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 mkdir -p templates
 START=$(date +%s)
 for TAR in `ls *.tar.gz`; do
-    tar -xzf $TAR -C templates
+    tar -xzf $TAR -C templates --strip-components=1
 done
 rm *.tar.gz
 END=$(date +%s)

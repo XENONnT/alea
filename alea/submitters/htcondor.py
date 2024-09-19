@@ -173,8 +173,8 @@ class SubmitterHTCondor(Submitter):
         def update_template_filenames(node):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    if key == "template_filename":
-                        filename = value.split("/")[-1]
+                    if key in ["template_filename", "spectrum_name"]:
+                        filename = os.path.basename(value)
                         node[key] = filename
                     else:
                         update_template_filenames(value)
@@ -382,13 +382,6 @@ class SubmitterHTCondor(Submitter):
             "local",
             "run_toymc_wrapper.sh",
             "file://{}".format(self.top_dir / "alea/submitters/run_toymc_wrapper.sh"),
-        )
-        # Add alea_run_toymc
-        self.f_alea_run_toymc = File("alea_run_toymc")
-        rc.add_replica(
-            "local",
-            "alea_run_toymc",
-            "file://{}".format(self.top_dir / "alea/scripts/alea_run_toymc.py"),
         )
         # Add combine executable
         self.f_combine = File("combine.sh")

@@ -321,7 +321,7 @@ class SubmitterHTCondor(Submitter):
         """Generate the ReplicaCatalog for the workflow.
 
         1. The input files for the job, which are the templates in tarball,
-            the yaml files and alea_run_toymc.
+            the yaml files, toydata files, alea_run_toymc.py and install.sh.
         2. The output files for the job, which are the toydata and the output files.
         Since the outputs are not known in advance, we will add them in the job definition.
 
@@ -358,10 +358,10 @@ class SubmitterHTCondor(Submitter):
             "file://{}".format(self.top_dir / "alea/submitters/run_toymc_wrapper.sh"),
         )
         # Add alea_run_toymc
-        self.f_alea_run_toymc = File("alea_run_toymc")
+        self.f_alea_run_toymc = File("alea_run_toymc.py")
         rc.add_replica(
             "local",
-            "alea_run_toymc",
+            "alea_run_toymc.py",
             "file://{}".format(self.top_dir / "alea/scripts/alea_run_toymc.py"),
         )
         # Add combine executable

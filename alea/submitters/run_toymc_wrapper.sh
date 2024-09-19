@@ -107,14 +107,13 @@ echo "Untarring took $DIFF seconds."
 
 # Source the environment
 . /opt/XENONnT/setup.sh
-chmod +x alea_run_toymc
 echo "Before running the toy MC, the work directory contains:"
 ls -lh
 echo "These are the contents of templates/:"
 ls -lh templates/
 
 # Print the command
-echo "Running command: python3 ./alea_run_toymc \\
+echo "Running command: python3 ./alea_run_toymc.py \\
     --statistical_model $STATISTICAL_MODEL \\
     --poi $POI \\
     --hypotheses $HYPOTHESES \\

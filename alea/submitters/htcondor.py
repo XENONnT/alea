@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from tqdm import tqdm
 from utilix.x509 import _validate_x509_proxy
+from utilix.tarball import Tarball
 from Pegasus.api import (
     Arch,
     Operation,
@@ -128,7 +129,7 @@ class SubmitterHTCondor(Submitter):
         return _requirements
 
     def _tar_h5_files(self, directory, template_tarball="templates.tar.gz"):
-        """Tar all .h5 templates in the directory and its subdirectories into a tarball."""
+        """Tar all needed templates into a flat tarball."""
         # Create a tar.gz archive
         with tarfile.open(template_tarball, "w:gz") as tar:
             tar.add(directory, arcname=os.path.basename(directory))
@@ -172,8 +173,8 @@ class SubmitterHTCondor(Submitter):
         def update_template_filenames(node):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    if key == "template_filename":
-                        filename = value.split("/")[-1]
+                    if key in ["template_filename", "spectrum_name"]:
+                        filename = os.path.basename(value)
                         node[key] = filename
                     else:
                         update_template_filenames(value)
@@ -191,32 +192,6 @@ class SubmitterHTCondor(Submitter):
             "Modified statistical model config file "
             f"written to {self.modified_statistical_model_config}"
         )
-
-    def _contains_subdirectories(self, directory):
-        """Check if the specified directory contains any subdirectories.
-
-        Args:
-        directory (str): The path to the directory to check.
-
-        Returns:
-        bool: True if there are subdirectories inside the given directory, False otherwise.
-
-        """
-        # List all entries in the directory
-        try:
-            for entry in os.listdir(directory):
-                # Check if the entry is a directory
-                if os.path.isdir(os.path.join(directory, entry)):
-                    return True
-        except FileNotFoundError:
-            print("The specified directory does not exist.")
-            return False
-        except PermissionError:
-            print("Permission denied for accessing the directory.")
-            return False
-
-        # If no subdirectories are found
-        return False
 
     def _setup_workflow_id(self):
         """Set up the workflow ID."""
@@ -346,7 +321,7 @@ class SubmitterHTCondor(Submitter):
         """Generate the ReplicaCatalog for the workflow.
 
         1. The input files for the job, which are the templates in tarball,
-            the yaml files and alea_run_toymc.
+            the yaml files, toydata files, alea_run_toymc.py and install.sh.
         2. The output files for the job, which are the toydata and the output files.
         Since the outputs are not known in advance, we will add them in the job definition.
 
@@ -383,10 +358,10 @@ class SubmitterHTCondor(Submitter):
             "file://{}".format(self.top_dir / "alea/submitters/run_toymc_wrapper.sh"),
         )
         # Add alea_run_toymc
-        self.f_alea_run_toymc = File("alea_run_toymc")
+        self.f_alea_run_toymc = File("alea_run_toymc.py")
         rc.add_replica(
             "local",
-            "alea_run_toymc",
+            "alea_run_toymc.py",
             "file://{}".format(self.top_dir / "alea/scripts/alea_run_toymc.py"),
         )
         # Add combine executable
@@ -403,8 +378,38 @@ class SubmitterHTCondor(Submitter):
             "separate.sh",
             "file://{}".format(self.top_dir / "alea/submitters/separate.sh"),
         )
+        # Untar and install the packages
+        self.f_install = File("install.sh")
+        rc.add_replica(
+            "local",
+            "install.sh",
+            "file://{}".format(self.top_dir / "alea/submitters/install.sh"),
+        )
 
         return rc
+
+    def make_tarballs(self):
+        """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
+        tarballs = []
+        tarball_paths = []
+        for package_name in ["alea"]:
+            _tarball = Tarball(self.generated_dir, package_name)
+            if not Tarball.get_installed_git_repo(package_name):
+                # Packages should not be non-editable user-installed
+                if Tarball.is_user_installed(package_name):
+                    raise RuntimeError(
+                        f"You should install {package_name} in non-editable user-installed mode."
+                    )
+            else:
+                _tarball.create_tarball()
+                tarball = File(_tarball.tarball_name)
+                tarball_path = _tarball.tarball_path
+                logger.warning(
+                    f"Using tarball of user installed package {package_name} at {tarball_path}."
+                )
+            tarballs.append(tarball)
+            tarball_paths.append(tarball_path)
+        return tarballs, tarball_paths
 
     def _initialize_job(
         self,
@@ -527,6 +532,11 @@ class SubmitterHTCondor(Submitter):
         self.tc = self._generate_tc()
         self.rc = self._generate_rc()
 
+        # Tarball the editable self-installed packages
+        tarballs, tarball_paths = self.make_tarballs()
+        for tarball, tarball_path in zip(tarballs, tarball_paths):
+            self.rc.add_replica("local", tarball, tarball_path)
+
         # Iterate over the tickets and generate jobs
         combine_i = 0
         new_to_combine = True
@@ -549,7 +559,7 @@ class SubmitterHTCondor(Submitter):
                 in ["read", "generate_and_store", "generate", "no_toydata"]
             ):
                 raise NotImplementedError(
-                    "Only generate_and_store toydata mode is supported on OSG."
+                    f"{args_dict['toydata_mode']} toydata mode is not supported on OSG."
                 )
 
             # Create a job with base requirements
@@ -578,6 +588,8 @@ class SubmitterHTCondor(Submitter):
                 self.f_statistical_model_config,
                 self.f_run_toymc_wrapper,
                 self.f_alea_run_toymc,
+                self.f_install,
+                *tarballs,
             )
 
             if not args_dict["only_toydata"]:

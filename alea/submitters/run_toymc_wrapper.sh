@@ -91,6 +91,9 @@ OUTPUT_FILENAME=$(echo "$output_filename" | sed "s/'/\"/g")
 SEED=$(echo "$seed" | sed "s/'/\"/g")
 METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
+# Installing customized packages
+. install.sh
+
 # Extract tarballs input
 mkdir -p templates
 START=$(date +%s)
@@ -110,7 +113,7 @@ echo "These are the contents of templates/:"
 ls -lh templates/
 
 # Print the command
-echo "Running command: python3 ./alea_run_toymc.py \\
+echo "Running command: python alea_run_toymc.py \\
     --statistical_model $STATISTICAL_MODEL \\
     --poi $POI \\
     --hypotheses $HYPOTHESES \\
@@ -134,7 +137,7 @@ echo "Running command: python3 ./alea_run_toymc.py \\
     --metadata $METADATA"
 
 # Run the toy MC
-time python3 ./alea_run_toymc \
+time python alea_run_toymc.py \
     --statistical_model $STATISTICAL_MODEL \
     --poi $POI \
     --hypotheses $HYPOTHESES \

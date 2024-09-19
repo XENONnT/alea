@@ -387,7 +387,7 @@ class SubmitterHTCondor(Submitter):
         rc.add_replica(
             "local",
             "alea_run_toymc",
-            "file://{}".format(self.top_dir / "bin/alea_run_toymc"),
+            "file://{}".format(self.top_dir / "alea/scripts/alea_run_toymc.py"),
         )
         # Add combine executable
         self.f_combine = File("combine.sh")

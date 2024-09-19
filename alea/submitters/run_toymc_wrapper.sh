@@ -91,6 +91,9 @@ OUTPUT_FILENAME=$(echo "$output_filename" | sed "s/'/\"/g")
 SEED=$(echo "$seed" | sed "s/'/\"/g")
 METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
+# Installing customized packages
+. install.sh
+
 # Extract tarballs input
 mkdir -p templates
 START=$(date +%s)

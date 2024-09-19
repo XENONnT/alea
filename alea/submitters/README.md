@@ -23,7 +23,6 @@ chmod 600 $HOME/.xenon_service_proxy
 
 export X509_USER_PROXY=$HOME/.xenon_service_proxy
 export PYTHONPATH=`pegasus-config --python`:$PYTHONPATH
-export PYTHONPATH="$HOME/.local/lib/python3.9/site-packages${PYTHONPATH:+:$PYTHONPATH}"
 ```
 
 ### Configuration

@@ -13,7 +13,7 @@ ls -lh
 output_filename=$workflow_id-combined_output.tar.gz
 
 # Tar all the .h5 files into the output file
-tar -czf $output_filename *.h5 *.h5.log
+tar czfv $output_filename *.h5 *.h5.log
 
 # Check the output
 echo "Checking the output"

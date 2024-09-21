@@ -92,7 +92,7 @@ SEED=$(echo "$seed" | sed "s/'/\"/g")
 METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
 # Installing customized packages
-. install.sh
+. install.sh alea
 
 # Extract tarballs input
 mkdir -p templates

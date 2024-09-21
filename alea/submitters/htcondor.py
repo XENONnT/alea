@@ -7,6 +7,7 @@ import logging
 import shutil
 from pathlib import Path
 from tqdm import tqdm
+import utilix
 from utilix.x509 import _validate_x509_proxy
 from utilix.tarball import Tarball
 from Pegasus.api import (
@@ -66,8 +67,8 @@ class SubmitterHTCondor(Submitter):
         self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20_000)
 
         # Dagman configurations
-        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100_000)
         self.dagman_retry = self.htcondor_configurations.pop("dagman_retry", 2)
+        self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100_000)
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
         super().__init__(*args, **kwargs)
@@ -383,7 +384,7 @@ class SubmitterHTCondor(Submitter):
         rc.add_replica(
             "local",
             "install.sh",
-            "file://{}".format(self.top_dir / "alea/submitters/install.sh"),
+            f"file://{os.path.join(os.path.dirname(utilix.__file__), 'install.sh')}",
         )
 
         return rc

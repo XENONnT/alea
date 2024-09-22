@@ -1,3 +1,31 @@
+0.3.0 / 2024-09-21
+------------------
+* Use `pyproject.toml` to install alea-inference by @dachengx in https://github.com/XENONnT/alea/pull/192
+* Removed deprecated `_pegasus_properties` by @FaroutYLq in https://github.com/XENONnT/alea/pull/196
+* Simplify `SubmitterHTCondor` by @dachengx in https://github.com/XENONnT/alea/pull/193
+* Debug for pypi build by @dachengx in https://github.com/XENONnT/alea/pull/197
+* There was a typo in docstr by @FaroutYLq in https://github.com/XENONnT/alea/pull/198
+* Prefer f-string than format by @dachengx in https://github.com/XENONnT/alea/pull/200
+* Use tree structure work directory by @dachengx in https://github.com/XENONnT/alea/pull/202
+* Use MB all the time in `SubmitterHTCondor`, no more kB by @dachengx in https://github.com/XENONnT/alea/pull/201
+* Decompress outputs into `outputfolder` by @dachengx in https://github.com/XENONnT/alea/pull/199
+* Support more `toydata_mode` by @dachengx in https://github.com/XENONnT/alea/pull/206
+* No need to plan or submit workflow if no job added by @dachengx in https://github.com/XENONnT/alea/pull/207
+* Save log for OSG jobs by @dachengx in https://github.com/XENONnT/alea/pull/208
+* Use `shlex.quote` to convert the arguments into unix format by @dachengx in https://github.com/XENONnT/alea/pull/209
+* Fix the usage of scripts by @dachengx in https://github.com/XENONnT/alea/pull/210
+* Add `spectrum_axis` configuration for `SpectrumTemplateSource` by @dachengx in https://github.com/XENONnT/alea/pull/212
+* Use utilix to validate X509 proxy by @dachengx in https://github.com/XENONnT/alea/pull/213
+* Tarball all needed templates from different folder by @dachengx in https://github.com/XENONnT/alea/pull/214
+* Fix the path of `alea_run_toymc` script by @dachengx in https://github.com/XENONnT/alea/pull/216
+* Tarball alea for later user installation by @dachengx in https://github.com/XENONnT/alea/pull/215
+* Use `install.sh` from utilix by @dachengx in https://github.com/XENONnT/alea/pull/217
+* Bump version of utilix by @dachengx in https://github.com/XENONnT/alea/pull/218
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.2.8...v0.3.0
+
+
 0.2.8 / 2024-08-26
 ------------------
 * Fix OSG submission by @hammannr in https://github.com/XENONnT/alea/pull/189

@@ -40,7 +40,7 @@ numpy = "*"
 PyYAML = "*"
 scipy = "*"
 tqdm = "*"
-utilix = ">=0.7.4"
+utilix = ">=0.9.0"
 commonmark = { version = "0.9.1", optional = true }
 graphviz = { version = "0.20.1", optional = true }
 m2r = { version = "0.2.1", optional = true }

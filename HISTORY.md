@@ -1,9 +1,7 @@
 0.3.0 / 2024-09-21
 ------------------
-* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci in https://github.com/XENONnT/alea/pull/191
 * Use `pyproject.toml` to install alea-inference by @dachengx in https://github.com/XENONnT/alea/pull/192
 * Removed deprecated `_pegasus_properties` by @FaroutYLq in https://github.com/XENONnT/alea/pull/196
-* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci in https://github.com/XENONnT/alea/pull/195
 * Simplify `SubmitterHTCondor` by @dachengx in https://github.com/XENONnT/alea/pull/193
 * Debug for pypi build by @dachengx in https://github.com/XENONnT/alea/pull/197
 * There was a typo in docstr by @FaroutYLq in https://github.com/XENONnT/alea/pull/198

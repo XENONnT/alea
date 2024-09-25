@@ -62,7 +62,7 @@ class SubmitterHTCondor(Submitter):
 
         # Resources configurations
         self.request_cpus = self.htcondor_configurations.pop("request_cpus", 1)
-        self.request_memory = self.htcondor_configurations.pop("request_memory", 2000)
+        self.request_memory = self.htcondor_configurations.pop("request_memory", 2_000)
         self.request_disk = self.htcondor_configurations.pop("request_disk", 2_000)
         self.combine_disk = self.htcondor_configurations.pop("combine_disk", 20_000)
 
@@ -432,7 +432,7 @@ class SubmitterHTCondor(Submitter):
             # no other attributes on a local job
             return job
 
-        job.add_profiles(Namespace.CONDOR, "request_cpus", f"{cores}")
+        job.add_profiles(Namespace.CONDOR, "request_cpus", cores)
 
         # Set memory and disk requirements
         # If the job fails, retry with more memory and disk

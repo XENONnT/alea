@@ -238,7 +238,7 @@ class SubmitterHTCondor(Submitter):
         local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["X509_USER_PROXY"])
 
         # Staging sites: for XENON it is physically at dCache in UChicago
-        # Logs and pegasus output goes here. This place is called stash in OSG jargon.
+        # You will be able to download results from there via gfal commands
         logger.debug("Defining stagging site")
         staging_davs = Site("staging-davs")
         scratch_dir = Directory(

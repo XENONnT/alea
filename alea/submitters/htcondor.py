@@ -84,7 +84,6 @@ class SubmitterHTCondor(Submitter):
         self.generated_dir = os.path.join(self.workflow_dir, "generated")
         self.runs_dir = os.path.join(self.workflow_dir, "runs")
         self.outputs_dir = os.path.join(self.workflow_dir, "outputs")
-        self.scratch_dir = os.path.join(self.workflow_dir, "scratch")
         self.templates_tarball_dir = os.path.join(self.generated_dir, "templates")
 
     @property
@@ -212,15 +211,12 @@ class SubmitterHTCondor(Submitter):
         # Local site: this is the submit host
         logger.debug("Defining local site")
         local = Site("local")
-        # Logs and pegasus output goes here. This place is called stash in OSG jargon.
-        scratch_dir = Directory(Directory.SHARED_SCRATCH, path=self.scratch_dir)
-        scratch_dir.add_file_servers(FileServer(f"file:///{self.scratch_dir}", Operation.ALL))
         # Jobs outputs goes here, but note that it is in scratch so it only stays for short term
         # This place is called stash in OSG jargon.
         storage_dir = Directory(Directory.LOCAL_STORAGE, path=self.outputs_dir)
         storage_dir.add_file_servers(FileServer(f"file:///{self.outputs_dir}", Operation.ALL))
         # Add scratch and storage directories to the local site
-        local.add_directories(scratch_dir, storage_dir)
+        local.add_directories(storage_dir)
         # Add profiles to the local site
         local.add_profiles(Namespace.ENV, HOME=os.environ["HOME"])
         local.add_profiles(Namespace.ENV, GLOBUS_LOCATION="")
@@ -242,7 +238,7 @@ class SubmitterHTCondor(Submitter):
         local.add_profiles(Namespace.ENV, X509_USER_PROXY=os.environ["X509_USER_PROXY"])
 
         # Staging sites: for XENON it is physically at dCache in UChicago
-        # You will be able to download results from there via gfal commands
+        # Logs and pegasus output goes here. This place is called stash in OSG jargon.
         logger.debug("Defining stagging site")
         staging_davs = Site("staging-davs")
         scratch_dir = Directory(

@@ -7,7 +7,7 @@ from blueice import HistogramPdfSource
 from multihist import Hist1d
 from inference_interface import template_to_multihist
 
-from alea.utils import load_json
+from alea.utils import load_json, compute_file_hash
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
@@ -50,6 +50,14 @@ class TemplateSource(HistogramPdfSource):
         # override the default interpolation method
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
+
+        # add file hash to the config
+        format_named_parameters = self._get_format_named_parameters(config)
+        path = config["templatename"].format(**format_named_parameters)
+        file_hash = compute_file_hash(path)
+        print(f"{config['name']} File hash: {file_hash}")
+        config["file_hash"] = file_hash
+
         super().__init__(config, *args, **kwargs)
 
     def _check_binning(self, h, histogram_info: str):
@@ -96,9 +104,12 @@ class TemplateSource(HistogramPdfSource):
     @property
     def format_named_parameters(self):
         """Get the named parameters in the config to dictionary format."""
-        format_named_parameters = {
-            k: self.config[k] for k in self.config.get("named_parameters", [])
-        }
+        format_named_parameters = self._get_format_named_parameters(self.config)
+        return format_named_parameters
+
+    @staticmethod
+    def _get_format_named_parameters(config: Dict) -> Dict:
+        format_named_parameters = {k: config[k] for k in config.get("named_parameters", [])}
         return format_named_parameters
 
     def build_histogram(self):

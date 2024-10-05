@@ -7,7 +7,7 @@ from blueice import HistogramPdfSource
 from multihist import Hist1d
 from inference_interface import template_to_multihist
 
-from alea.utils import load_json, compute_file_hash
+from alea.utils import load_json, compute_file_hash, deterministic_hash
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
@@ -53,12 +53,32 @@ class TemplateSource(HistogramPdfSource):
 
         # add file hash to the config
         format_named_parameters = self._get_format_named_parameters(config)
-        path = config["templatename"].format(**format_named_parameters)
-        file_hash = compute_file_hash(path)
-        print(f"{config['name']} File hash: {file_hash}")
-        config["file_hash"] = file_hash
+
+        if "templatename" in config:
+            config["file_hash"] = self._compute_single_file_hash(
+                config["templatename"], format_named_parameters
+            )
+        elif "templatenames" in config:
+            config["file_hash"] = self._compute_multiple_file_hashes(
+                config["templatenames"], format_named_parameters
+            )
+        else:
+            raise ValueError("Either 'templatename' or 'templatenames' must be in the config")
 
         super().__init__(config, *args, **kwargs)
+
+    def _compute_single_file_hash(self, templatename: str, format_named_parameters: Dict) -> str:
+        """Compute the hash for a single template file."""
+        path = templatename.format(**format_named_parameters)
+        return compute_file_hash(path)
+
+    def _compute_multiple_file_hashes(
+        self, templatenames: List[str], format_named_parameters: Dict
+    ) -> str:
+        """Compute a deterministic hash for multiple template files."""
+        paths = [name.format(**format_named_parameters) for name in templatenames]
+        file_hashes = [compute_file_hash(path) for path in paths]
+        return deterministic_hash(file_hashes, 32)
 
     def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.

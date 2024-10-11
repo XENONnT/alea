@@ -196,7 +196,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ):
             ret[ll_name] = {}
             ll_index = self.likelihood_names.index(ll_name)
-            lt = generate_values.pop(lt_name, None)
+            lt = generate_values.get(lt_name, None)
             # compute the mus
             self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values, livetime_days=lt)
             mus = self.data_generators[ll_index].mus

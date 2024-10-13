@@ -700,6 +700,15 @@ def deterministic_hash(thing, length=10):
     return b32encode(digest)[:length].decode("ascii").lower()
 
 
+def compute_file_hash(file_path: str) -> str:
+    """Compute the SHA-256 hash of a file."""
+    hash_sha256 = sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    return hash_sha256.hexdigest()
+
+
 def signal_multiplier_estimator(
     signal: np.ndarray,
     background: np.ndarray,

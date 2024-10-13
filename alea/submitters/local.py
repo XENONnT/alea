@@ -287,9 +287,13 @@ class NeymanConstructor(SubmitterLocal):
         metadata_list = get_metadata(output_filename_pattern)
         for m in metadata_list:
             m.pop("date", None)
-        if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
+        n_metadata = len(set([deterministic_hash(m) for m in metadata_list]))
+        if n_metadata != 1:
             raise ValueError(
-                f"The metadata are not the same for all the {len(output_filename_list)} output!"
+                "The metadata for output_filename_pattern "
+                f"{output_filename_pattern} are not the same for all the "
+                f"{len(output_filename_list)} outputs "
+                f"({n_metadata} unique sets of metadata)!"
             )
         metadata = metadata_list[0]
         if metadata["poi"] != self.poi:

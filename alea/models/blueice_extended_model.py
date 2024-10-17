@@ -196,7 +196,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ):
             ret[ll_name] = {}
             ll_index = self.likelihood_names.index(ll_name)
-            lt = generate_values.pop(lt_name, None)
+            lt = generate_values.get(lt_name, None)
             # compute the mus
             self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values, livetime_days=lt)
             mus = self.data_generators[ll_index].mus
@@ -305,7 +305,8 @@ class BlueiceExtendedModel(StatisticalModel):
         parameters_to_ignore: List[str] = [
             p.name
             for p in self.parameters
-            if (p.ptype in ["shape", "index"]) and (p.name not in source["parameters"])
+            if (p.ptype in ["shape", "index", "needs_reinit"])
+            and (p.name not in source["parameters"])
         ]
         # no efficiency affects PDF:
         parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
@@ -360,7 +361,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     )
 
                 # set efficiency parameters
-                if source.get("apply_efficiency", False):
+                if source.get("efficiency_name", None):
                     self._set_efficiency(source, ll)
 
                 # set shape parameters

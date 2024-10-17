@@ -62,6 +62,7 @@ class Submitter:
     config_file_path: str
     template_path: str
     combine_n_jobs: int = 1
+    first_i_batch: int = 0
     allowed_special_args: List[str] = []
     logging = logging.getLogger("submitter_logger")
 
@@ -73,6 +74,7 @@ class Submitter:
         computation_options: dict,
         computation: str = "discovery_power",
         outputfolder: Optional[str] = None,
+        fit_strategy: Optional[dict] = None,
         debug: bool = False,
         resubmit: bool = False,
         loglevel: str = "INFO",
@@ -88,10 +90,10 @@ class Submitter:
         self.logging.setLevel(loglevel)
 
         # find the path of template, requires users install alea-inference properly
-        self.run_toymc = shutil.which("alea-run_toymc")
+        self.run_toymc = shutil.which("alea_run_toymc")
         if self.run_toymc is None:
             raise RuntimeError(
-                "Excecutable alea-run_toymc is not found, "
+                "Excecutable alea_run_toymc is not found, "
                 "please make sure you have installed alea-inference correctly, "
                 "and appended alea/bin or .local/bin(pip install direction) to your $PATH."
             )
@@ -100,6 +102,7 @@ class Submitter:
         self.statistical_model_config = statistical_model_config
         self.poi = poi
         self.outputfolder = outputfolder
+        self.fit_strategy = fit_strategy
 
         self.computation = computation
         self.computation_dict = computation_options[self.computation]
@@ -264,6 +267,7 @@ class Submitter:
             "statistical_model": self.statistical_model,
             "statistical_model_config": self.statistical_model_config,
             "poi": self.poi,
+            "fit_strategy": self.fit_strategy,
         }
 
         if set(merged_args_list[0].keys()) & set(common_runner_args.keys()):
@@ -312,6 +316,7 @@ class Submitter:
         """
         needed_kwargs = {
             "i_batch": runner_args["i_batch"],
+            "confidence_level": runner_args["confidence_level"],
             **runner_args["nominal_values"],
             **runner_args["generate_values"],
         }
@@ -336,7 +341,7 @@ class Submitter:
         _, _, annotations = Runner.runner_arguments()
 
         for runner_args in self.merged_arguments_generator():
-            for i_batch in range(runner_args.get("n_batch", 1)):
+            for i_batch in range(self.first_i_batch, runner_args.get("n_batch", 1)):
                 i_args = deepcopy(runner_args)
                 i_args["i_batch"] = i_batch
 
@@ -353,17 +358,9 @@ class Submitter:
                                 f"{needed_kwargs}, please check the {name}."
                             )
 
-                script_array = []
-                for arg, annotation in annotations.items():
-                    script_array.append(f"--{arg}")
-                    script_array.append(self.arg_to_str(i_args[arg], annotation))
-                script = " ".join(script_array)
-
-                script = (
-                    "python3 "
-                    + self.run_toymc
-                    + " "
-                    + " ".join(map(shlex.quote, script.split(" ")))
+                script = Submitter.script_from_runner_kwargs(annotations, i_args)
+                script = f"python3 {self.run_toymc} " + " ".join(
+                    map(shlex.quote, script.split(" "))
                 )
 
                 if not self.already_done(i_args):
@@ -566,7 +563,7 @@ class Submitter:
         """
         signatures = inspect.signature(Runner.__init__)
         args = list(signatures.parameters.keys())[1:]
-        parser = ArgumentParser(description="Command line running of alea-run_toymc")
+        parser = ArgumentParser(description="Command line running of alea_run_toymc")
 
         # skip the first one because it is self(Runner itself)
         for arg in args:
@@ -577,3 +574,13 @@ class Submitter:
         for arg, value in parsed_args.__dict__.items():
             kwargs.update({arg: Submitter.str_to_arg(value, signatures.parameters[arg].annotation)})
         return kwargs
+
+    @staticmethod
+    def script_from_runner_kwargs(annotations, kwargs) -> str:
+        """Generate the submission script from the runner arguments."""
+        script_array = []
+        for arg, annotation in annotations.items():
+            script_array.append(f"--{arg}")
+            script_array.append(Submitter.arg_to_str(kwargs[arg], annotation))
+        script = " ".join(script_array)
+        return script

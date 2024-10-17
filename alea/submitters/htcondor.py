@@ -397,7 +397,8 @@ class SubmitterHTCondor(Submitter):
                 # Packages should not be non-editable user-installed
                 if Tarball.is_user_installed(package_name):
                     raise RuntimeError(
-                        f"You should install {package_name} in non-editable user-installed mode."
+                        f"You should not install {package_name} in "
+                        "non-editable user-installed mode."
                     )
             else:
                 _tarball.create_tarball()

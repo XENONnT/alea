@@ -93,6 +93,7 @@ METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
 # Installing customized packages
 . install.sh alea
+. install.sh blueice
 
 # Extract tarballs input
 mkdir -p templates

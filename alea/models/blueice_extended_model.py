@@ -4,6 +4,7 @@ from pydoc import locate
 import itertools
 from copy import deepcopy
 
+from tqdm import tqdm
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
@@ -196,7 +197,7 @@ class BlueiceExtendedModel(StatisticalModel):
         ):
             ret[ll_name] = {}
             ll_index = self.likelihood_names.index(ll_name)
-            lt = generate_values.pop(lt_name, None)
+            lt = generate_values.get(lt_name, None)
             # compute the mus
             self.data_generators[ll_index].compute_pdfs_and_mus(**generate_values, livetime_days=lt)
             mus = self.data_generators[ll_index].mus
@@ -305,7 +306,8 @@ class BlueiceExtendedModel(StatisticalModel):
         parameters_to_ignore: List[str] = [
             p.name
             for p in self.parameters
-            if (p.ptype in ["shape", "index"]) and (p.name not in source["parameters"])
+            if (p.ptype in ["shape", "index", "needs_reinit"])
+            and (p.name not in source["parameters"])
         ]
         # no efficiency affects PDF:
         parameters_to_ignore += [p.name for p in self.parameters if (p.ptype == "efficiency")]
@@ -333,6 +335,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
+            blueice_config.setdefault("source_wise_interpolation", True)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
@@ -360,7 +363,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     )
 
                 # set efficiency parameters
-                if source.get("apply_efficiency", False):
+                if source.get("efficiency_name", None):
                     self._set_efficiency(source, ll)
 
                 # set shape parameters
@@ -398,7 +401,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # last one is AncillaryLikelihood
         data_generators = []
-        for ll_term in self.likelihood_list[:-1]:
+        for ll_term in tqdm(self.likelihood_list[:-1], desc="building data generators"):
             methods = [s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources]
             # make sure that all sources have the same pdf_interpolation_method
             if len(set(methods)) != 1:

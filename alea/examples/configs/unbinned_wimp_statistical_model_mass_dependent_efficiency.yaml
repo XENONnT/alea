@@ -4,15 +4,17 @@ parameter_definition:
     fittable: false
     description: WIMP mass in GeV/c^2
 
-  livetime_sr2:
-    nominal_value: 0.5
+  livetime_sr0:
+    nominal_value: 0.2
+    ptype: livetime
     fittable: false
-    description: Livetime of SR2 in years
+    description: Livetime of SR0 in years
 
-  livetime_sr3:
+  livetime_sr1:
     nominal_value: 1.0
+    ptype: livetime
     fittable: false
-    description: Livetime of SR3 in years
+    description: Livetime of SR1 in years
 
   wimp_rate_multiplier:
     nominal_value: 1.0
@@ -37,9 +39,15 @@ parameter_definition:
     fit_guess: 1.0
 
   signal_efficiency:
+    conditioning_parameter_name: wimp_mass
     nominal_value: 1.0
     ptype: efficiency
-    uncertainty: 0.1
+    uncertainty:
+      5: 0.3
+      10: 0.2
+      50: 0.15
+      100: 0.1
+      500: 0.1
     relative_uncertainty: true
     fittable: true
     fit_limits:
@@ -54,59 +62,64 @@ parameter_definition:
     uncertainty: 'stats.uniform(loc=-2, scale=4)'
     # relative_uncertainty: false
     fittable: true
-    blueice_anchors: 'np.arange(-2, 3)'
+    blueice_anchors:
+      - -2
+      - -1
+      - 0
+      - 1
+      - 2
     fit_limits:
       - -2
       - 2
     description: ER band shape parameter (shifts the ER band up and down)
 
 likelihood_config:
+  likelihood_weights: [1, 1, 1]
+  template_folder: null  # will try to find the templates in alea
   likelihood_terms:
-    # SR2
-    - name: sr2
+    # SR0
+    - name: sr0
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       analysis_space:
         - cs1: np.linspace(0, 100, 51)
         - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
-      livetime_parameter: livetime_sr2
+      livetime_parameter: livetime_sr0
       slice_args: {}
       sources:
       - name: er
-        class: alea.template_source.CombinedSource
+        histname: er_template  # TODO: implement a default histname based on the source name
         parameters:
           - er_rate_multiplier
           - er_band_shift
         named_parameters:
           - er_band_shift
-        fixed_weight: 0.2
-        weight_names: [fixed_weight, er_band_shift]  # not meaningful, just an example
-        histnames: [er_template, er_template, er_template]
-        template_filenames: [er_template_0.ii.h5, er_template_1.ii.h5, er_template_-1.ii.h5]
-        histogram_scale_factor: 100  # absolute rate, /year
+        template_filename: er_template_{er_band_shift}.ii.h5
+        histogram_scale_factor: 1
 
       - name: wimp
         histname: wimp_template
         parameters:
-          - wimp_rate_multiplier
           - wimp_mass
+          - wimp_rate_multiplier
           - signal_efficiency
-        template_filename: wimp50gev_template.ii.h5
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.ii.h5
+        apply_efficiency: True
         efficiency_name: signal_efficiency
 
-    # SR3, 1D inference on cS2 space
-    - name: sr3
+    # SR1
+    - name: sr1
       default_source_class: alea.template_source.TemplateSource
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
-      pdf_interpolation_method: piecewise
       analysis_space:
         - cs1: np.linspace(0, 100, 51)
+        - cs2: np.geomspace(100, 100000, 51)
       in_events_per_bin: true
-      livetime_parameter: livetime_sr3
-      slice_args:
-      - slice_axis: 1
-        sum_axis: true
+      livetime_parameter: livetime_sr1
+      slice_args: {}
       sources:
       - name: er
         histname: er_template
@@ -116,15 +129,16 @@ likelihood_config:
         named_parameters:
           - er_band_shift
         template_filename: er_template_{er_band_shift}.ii.h5
+        histogram_scale_factor: 2
 
       - name: wimp
-        class: alea.template_source.SpectrumTemplateSource
         histname: wimp_template
         parameters:
-          - wimp_rate_multiplier
           - wimp_mass
+          - wimp_rate_multiplier
           - signal_efficiency
-        template_filename: wimp50gev_template.ii.h5
-        spectrum_name: test_cs1_spectrum.json
-        spectrum_axis: 1
+        named_parameters:
+          - wimp_mass
+        template_filename: wimp{wimp_mass:d}gev_template.ii.h5
+        apply_efficiency: True
         efficiency_name: signal_efficiency

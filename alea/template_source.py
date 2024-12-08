@@ -7,7 +7,7 @@ from blueice import HistogramPdfSource
 from multihist import Hist1d
 from inference_interface import template_to_multihist
 
-from alea.utils import load_json
+from alea.utils import load_json, compute_file_hash, deterministic_hash
 
 logging.basicConfig(level=logging.INFO)
 can_check_binning = True
@@ -50,7 +50,35 @@ class TemplateSource(HistogramPdfSource):
         # override the default interpolation method
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
+
+        # add file hash to the config
+        format_named_parameters = self._get_format_named_parameters(config)
+
+        if "templatename" in config:
+            config["file_hash"] = self._compute_single_file_hash(
+                config["templatename"], format_named_parameters
+            )
+        elif "templatenames" in config:
+            config["file_hash"] = self._compute_multiple_file_hashes(
+                config["templatenames"], format_named_parameters
+            )
+        else:
+            raise ValueError("Either 'templatename' or 'templatenames' must be in the config")
+
         super().__init__(config, *args, **kwargs)
+
+    def _compute_single_file_hash(self, templatename: str, format_named_parameters: Dict) -> str:
+        """Compute the hash for a single template file."""
+        path = templatename.format(**format_named_parameters)
+        return compute_file_hash(path)
+
+    def _compute_multiple_file_hashes(
+        self, templatenames: List[str], format_named_parameters: Dict
+    ) -> str:
+        """Compute a deterministic hash for multiple template files."""
+        paths = [name.format(**format_named_parameters) for name in templatenames]
+        file_hashes = [compute_file_hash(path) for path in paths]
+        return deterministic_hash(file_hashes, 32)
 
     def _check_binning(self, h, histogram_info: str):
         """Check if the histogram"s bin edges are the same to analysis_space.
@@ -96,9 +124,12 @@ class TemplateSource(HistogramPdfSource):
     @property
     def format_named_parameters(self):
         """Get the named parameters in the config to dictionary format."""
-        format_named_parameters = {
-            k: self.config[k] for k in self.config.get("named_parameters", [])
-        }
+        format_named_parameters = self._get_format_named_parameters(self.config)
+        return format_named_parameters
+
+    @staticmethod
+    def _get_format_named_parameters(config: Dict) -> Dict:
+        format_named_parameters = {k: config[k] for k in config.get("named_parameters", [])}
         return format_named_parameters
 
     def build_histogram(self):
@@ -215,7 +246,7 @@ class TemplateSource(HistogramPdfSource):
         if self.events_per_day > 0:
             h.histogram /= self.events_per_day
         else:
-            raise ValueError("Sum of histogram is zero.")
+            logging.warn("Sum of histogram is zero.")
 
         if self.config.get("convert_to_uniform", False):
             h.histogram = 1.0 / self._bin_volumes
@@ -373,14 +404,14 @@ class SpectrumTemplateSource(TemplateSource):
 
         if "spectrum_name" not in self.config:
             raise ValueError("spectrum_name not in config")
+        if "spectrum_axis" not in self.config:
+            raise ValueError("spectrum_axis not in config")
         spectrum = self._get_json_spectrum(
             self.config["spectrum_name"].format(**self.format_named_parameters)
         )
 
-        # Perform scaling, the first axis is assumed to be reweighted
         # The spectrum is assumed to be probability density (in per the unit of first axis).
-        axis = 0
-        # h = h.normalize(axis=axis)
+        axis = self.config["spectrum_axis"]
         bin_edges = h.bin_edges[axis]
         bin_centers = h.bin_centers(axis=axis)
         slices = [None] * h.histogram.ndim

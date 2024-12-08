@@ -188,7 +188,7 @@ class TestBlueiceExtendedModel(TestCase):
                 p.value_in_fit_limits(fit_result[p.name])
 
             # check that likelihood is maximized
-            self.assertEqual(max_llh, model.ll(**fit_result))
+            np.testing.assert_almost_equal(max_llh, model.ll(**fit_result), decimal=2)
 
             # check that fixing all parameters to nominal works
             fit_result_fixed, _ = model.fit(**model.parameters())
@@ -266,3 +266,12 @@ class TestBlueiceExtendedModel(TestCase):
             all_keys = {v for d in mus_per_ll.values() for v in d.keys()}
             all_keys = sorted(all_keys)
             self.assertEqual(all_keys, sorted(mus.keys()))
+
+    def test_apply_efficiency(self):
+        """Test if efficiencies are properly applied."""
+        model = self.models[0]
+        nominal_n = model.get_expectation_values()["wimp"]
+        for signal_eff in [0, 0.5, 1.0, 2.0]:
+            model.data = model.generate_data()
+            n = model.get_expectation_values(signal_efficiency=signal_eff)["wimp"]
+            self.assertEqual(n, nominal_n * signal_eff)

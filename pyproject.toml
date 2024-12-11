@@ -29,7 +29,7 @@ alea_submission = "alea.scripts.alea_submission:main"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.13"
 atomicwrites = "*"
-blueice = "*"
+blueice = ">=1.2.1"
 h5py = "*"
 inference-interface = "*"
 iminuit = ">=2.21.0"

@@ -296,16 +296,9 @@ class BlueiceExtendedModel(StatisticalModel):
         # get blueice likelihood_config if it's given
         likelihood_config = config.get("likelihood_config", None)
 
-        source_wise_interpolation = config.get("source_wise_interpolation", True)
-
-        if source_wise_interpolation and likelihood_config:
-            if likelihood_config.get("morpher") == "IndexMorpher":
-                raise ValueError("Source-wise interpolation is not yet supported for IndexMorpher.")
-
         blueice_config = {
             "pdf_base_config": pdf_base_config,
             "likelihood_config": likelihood_config,
-            "source_wise_interpolation": source_wise_interpolation,
         }
         return blueice_config
 
@@ -342,6 +335,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
+            blueice_config.setdefault("source_wise_interpolation", True)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:

@@ -4,6 +4,7 @@ from pydoc import locate
 import itertools
 from copy import deepcopy
 
+from tqdm import tqdm
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
@@ -295,9 +296,16 @@ class BlueiceExtendedModel(StatisticalModel):
         # get blueice likelihood_config if it's given
         likelihood_config = config.get("likelihood_config", None)
 
+        source_wise_interpolation = config.get("source_wise_interpolation", True)
+
+        if source_wise_interpolation and likelihood_config:
+            if likelihood_config.get("morpher") == "IndexMorpher":
+                raise ValueError("Source-wise interpolation is not yet supported for IndexMorpher.")
+
         blueice_config = {
             "pdf_base_config": pdf_base_config,
             "likelihood_config": likelihood_config,
+            "source_wise_interpolation": source_wise_interpolation,
         }
         return blueice_config
 
@@ -399,7 +407,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # last one is AncillaryLikelihood
         data_generators = []
-        for ll_term in self.likelihood_list[:-1]:
+        for ll_term in tqdm(self.likelihood_list[:-1], desc="building data generators"):
             methods = [s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources]
             # make sure that all sources have the same pdf_interpolation_method
             if len(set(methods)) != 1:

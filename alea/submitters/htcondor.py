@@ -407,8 +407,8 @@ class SubmitterHTCondor(Submitter):
                 logger.warning(
                     f"Using tarball of user installed package {package_name} at {tarball_path}."
                 )
-            tarballs.append(tarball)
-            tarball_paths.append(tarball_path)
+                tarballs.append(tarball)
+                tarball_paths.append(tarball_path)
         return tarballs, tarball_paths
 
     def _initialize_job(

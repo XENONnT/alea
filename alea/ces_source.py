@@ -11,6 +11,32 @@ from alea.ces_transformation import Transformation
 
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
+def safe_lookup(hist_obj):
+    "A Wrapper to make sure the lookup function returns 0 for out-of-range values"
+    original_lookup = hist_obj.lookup
+    
+    def new_lookup(self, *args):
+        if isinstance(self, Hist1d):
+            coordinates = np.asarray(args[0])
+            in_range = (coordinates >= self.bin_edges[0]) & (coordinates <= self.bin_edges[-1])
+            
+            if not in_range.any():
+                return np.zeros_like(coordinates)
+            
+            clipped_coords = np.clip(coordinates, self.bin_edges[0], self.bin_edges[-1])
+            result = original_lookup(clipped_coords)
+            result[~in_range] = 0
+            
+            return result
+        else:
+            for i, coords in enumerate(args):
+                coords = np.asarray(coords)
+                if (coords < self.bin_edges[i][0]).any() or (coords > self.bin_edges[i][-1]).any():
+                    return np.zeros_like(coords)
+            return original_lookup(*args)
+            
+    hist_obj.lookup = new_lookup.__get__(hist_obj)
+    return hist_obj
 
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
@@ -149,6 +175,7 @@ class CESTemplateSource(HistogramPdfSource):
         h_pdf = h
         h_pdf /= frac_in_roi
         self._pdf_histogram = h_pdf
+        self._pdf_histogram = safe_lookup(self._pdf_histogram)
         self.set_dtype()
 
     def simulate(self, n_events: int):

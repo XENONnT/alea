@@ -4,6 +4,7 @@ from pydoc import locate
 import itertools
 from copy import deepcopy
 
+from tqdm import tqdm
 import numpy as np
 import scipy.stats as stats
 from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
@@ -334,6 +335,7 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
+            blueice_config.setdefault("source_wise_interpolation", True)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
@@ -399,7 +401,7 @@ class BlueiceExtendedModel(StatisticalModel):
         """
         # last one is AncillaryLikelihood
         data_generators = []
-        for ll_term in self.likelihood_list[:-1]:
+        for ll_term in tqdm(self.likelihood_list[:-1], desc="building data generators"):
             methods = [s.config["pdf_interpolation_method"] for s in ll_term.base_model.sources]
             # make sure that all sources have the same pdf_interpolation_method
             if len(set(methods)) != 1:

@@ -335,7 +335,8 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            blueice_config.setdefault("source_wise_interpolation", True)
+            blueice_config["source_wise_interpolation"] = config.get("source_wise_interpolation", True)
+            print(blueice_config["source_wise_interpolation"])
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:

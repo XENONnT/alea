@@ -38,6 +38,54 @@ def safe_lookup(hist_obj):
     hist_obj.lookup = new_lookup.__get__(hist_obj)
     return hist_obj
 
+def rebin_interpolate_normalized(hist, new_edges):
+    """
+    Rebin a normalized histogram using interpolation, preserving normalization
+    
+    Parameters:
+    -----------
+    hist : Hist1d
+        Input histogram (assumed to be normalized)
+    new_edges : array-like
+        New bin edges
+        
+    Returns:
+    --------
+    Hist1d
+        New histogram with desired binning, properly normalized
+    """
+    from scipy.interpolate import interp1d
+    import numpy as np
+    from copy import deepcopy
+    
+    # First convert histogram values to density
+    density = hist.histogram / hist.bin_volumes()
+    
+    # Create interpolation function for the density
+    f = interp1d(hist.bin_centers, density, kind='linear', 
+                 bounds_error=False, fill_value=(density[0], density[-1]))
+    
+    # Get new bin centers
+    new_centers = 0.5 * (new_edges[1:] + new_edges[:-1])
+    
+    # Interpolate density at new bin centers
+    new_density = f(new_centers)
+    
+    # Convert back to histogram values
+    new_volumes = np.diff(new_edges)
+    new_hist = new_density * new_volumes
+    
+    # Create new histogram
+    result = deepcopy(hist)
+    result.histogram = new_hist
+    result.bin_edges = new_edges
+    
+    # Normalize to ensure total probability = 1
+    norm = np.sum(result.histogram * result.bin_volumes())
+    result.histogram = result.histogram / norm
+    
+    return result
+
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
@@ -128,7 +176,8 @@ class CESTemplateSource(HistogramPdfSource):
 
     def _normalize_histogram(self, h: Hist1d):
         """Normalize the histogram and calculate the rate of the source."""
-        # To avoid confusion, we always normalize the histogram, regardless of the bin volume
+        # The binning MUST be uniform
+        # To avoid confusion, we always normalize the histogram
         # So the unit is always events/year/keV, the rate multipliers are always in terms of that
         total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram = h.histogram.astype(np.float64)
@@ -145,6 +194,9 @@ class CESTemplateSource(HistogramPdfSource):
         right_edges = h.bin_edges[1:]
         outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
         h.histogram[outside_index] = 0
+        
+        # create a new histogram with self.ces_space as the binning
+        h = rebin_interpolate_normalized(h, self.ces_space)
 
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()

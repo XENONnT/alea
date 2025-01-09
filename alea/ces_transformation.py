@@ -141,7 +141,7 @@ MODELS: Dict[str, Dict[str, Callable]] = {
 # input: model name, parameters, transformation mode
 class Transformation(BaseModel):
     parameters: Dict[str, float]
-    action: Literal["smearing", "bias", "efficiency"]
+    action: Literal["bias", "smearing", "efficiency"]
     model: str
 
     @validator("model")

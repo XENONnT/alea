@@ -26,7 +26,7 @@ class CESTemplateSource(HistogramPdfSource):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
-        self.templatename = self.config["templatename"]
+        self.templatename = self.config["template_filename"]
         self.histname = self.config["histname"]
 
     def _load_true_histogram(self):
@@ -65,7 +65,7 @@ class CESTemplateSource(HistogramPdfSource):
             )
 
     def _create_transformation(
-        self, transformation_type: Literal["smearing", "bias", "efficiency"]
+        self, transformation_type: Literal["smearing","bias",  "efficiency"]
     ):
         """Create a transformation object based on the transformation type."""
         if self.config.get(f"apply_{transformation_type}", True):
@@ -120,14 +120,32 @@ class CESTemplateSource(HistogramPdfSource):
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
-        h = self._transform_histogram(h)
+        h_pre = self._transform_histogram(h)
+
+        # Re-bin with minimal E_res
+        inter_pre = interp1d(h_pre.bin_centers,h_pre.histogram,bounds_error=False,fill_value='extrapolate')
+        inter_bins=np.linspace(h_pre.bin_edges[0],h_pre.bin_edges[-1],int((h_pre.bin_edges[-1]-h_pre.bin_edges[0])/MINIMAL_ENERGY_RESOLUTION)) #interpolate and re-bin with minimal resolution
+        h = Hist1d(bins=inter_bins)
+        h.histogram  = np.where(inter_pre(h.bin_centers)<0,0,inter_pre(h.bin_centers))
 
         # Calculate the integration of the histogram after all transformations
         # Only from min_e to max_e
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
-        outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
-        h.histogram[outside_index] = 0
+        outside_index_left = np.where((left_edges < self.min_e))[0]
+        outside_index_right= np.where((right_edges > self.max_e))[0]
+        #outside_index = np.where((left_edges <= self.min_e) | (right_edges >= self.max_e))
+        #h.histogram[outside_index] = 0
+        #need the treatment for the bins at the edge
+        if len(outside_index_right>0):#right bins
+            frac_right = (right_edges[outside_index_right[0]] - self.max_e)/(right_edges[outside_index_right[0]] - right_edges[outside_index_right[0]-1])
+            h.histogram[outside_index_right[0]] *= (1-frac_right)
+        if len(outside_index_left>0):#left bins
+            if self.min_e!=0: #do nothing if min_e==0
+                frac_left = (self.min_e-left_edges[outside_index_left[-1]])/(left_edges[outside_index_left[-1]]+1 - left_edges[outside_index_left[-1]])
+                h.histogram[outside_index_left[-1]] *= (1-frac_left)
+        h.histogram[outside_index_left[:-1]] = 0
+        h.histogram[outside_index_right[1:]] = 0
 
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
@@ -150,7 +168,7 @@ class CESTemplateSource(HistogramPdfSource):
         It's always called during the initialization of the source. So the attributes are set here.
 
         """
-        print("Building histogram")
+        #print("Building histogram")
         self._load_inputs()
         h = self._load_true_histogram()
         self._check_histogram(h)
@@ -253,11 +271,12 @@ class CESFlatSource(CESTemplateSource):
 
     def _load_true_histogram(self):
         """Create a histogram for the flat source."""
-        number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
+        # define the histogram outside the max energy to prevent the impact of smearing effect.
+        number_of_bins = int((self.max_e+100 - 0) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
-            data=np.linspace(self.min_e, self.max_e, number_of_bins),
+            data=np.linspace(0, self.max_e+100, number_of_bins),
             bins=number_of_bins,
-            range=(self.min_e, self.max_e),
+            range=(0, self.max_e+100),
         )
         h.histogram = h.histogram.astype(np.float64)
         return h

@@ -13,6 +13,81 @@ from alea.ces_transformation import Transformation
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
 
+def safe_lookup(hist_obj):
+    "A Wrapper to make sure the lookup function returns 0 for out-of-range values"
+    original_lookup = hist_obj.lookup
+
+    def new_lookup(self, *args):
+        if isinstance(self, Hist1d):
+            coordinates = np.asarray(args[0])
+            in_range = (coordinates >= self.bin_edges[0]) & (coordinates <= self.bin_edges[-1])
+
+            if not in_range.any():
+                return np.zeros_like(coordinates)
+
+            clipped_coords = np.clip(coordinates, self.bin_edges[0], self.bin_edges[-1])
+            result = original_lookup(clipped_coords)
+            result[~in_range] = 0
+
+            return result
+        else:
+            for i, coords in enumerate(args):
+                coords = np.asarray(coords)
+                if (coords < self.bin_edges[i][0]).any() or (coords > self.bin_edges[i][-1]).any():
+                    return np.zeros_like(coords)
+            return original_lookup(*args)
+
+    hist_obj.lookup = new_lookup.__get__(hist_obj)
+    return hist_obj
+
+def rebin_interpolate_normalized(hist, new_edges):
+    """
+    Rebin a normalized histogram using interpolation, preserving normalization
+    
+    Parameters:
+    -----------
+    hist : Hist1d
+        Input histogram (assumed to be normalized)
+    new_edges : array-like
+        New bin edges
+        
+    Returns:
+    --------
+    Hist1d
+        New histogram with desired binning, properly normalized
+    """
+    from scipy.interpolate import interp1d
+    import numpy as np
+    from copy import deepcopy
+    
+    # First convert histogram values to density
+    density = hist.histogram / hist.bin_volumes()
+    
+    # Create interpolation function for the density
+    f = interp1d(hist.bin_centers, density, kind='linear', 
+                 bounds_error=False, fill_value=(density[0], density[-1]))
+    
+    # Get new bin centers
+    new_centers = 0.5 * (new_edges[1:] + new_edges[:-1])
+    
+    # Interpolate density at new bin centers
+    new_density = f(new_centers)
+    
+    # Convert back to histogram values
+    new_volumes = np.diff(new_edges)
+    new_hist = new_density * new_volumes
+    
+    # Create new histogram
+    result = deepcopy(hist)
+    result.histogram = new_hist
+    result.bin_edges = new_edges
+    
+    # Normalize to ensure total probability = 1
+    norm = np.sum(result.histogram * result.bin_volumes())
+    result.histogram = result.histogram / norm
+    
+    return result
+
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
@@ -111,7 +186,8 @@ class CESTemplateSource(HistogramPdfSource):
 
     def _normalize_histogram(self, h: Hist1d):
         """Normalize the histogram and calculate the rate of the source."""
-        # To avoid confusion, we always normalize the histogram, regardless of the bin volume
+        # The binning MUST be uniform
+        # To avoid confusion, we always normalize the histogram
         # So the unit is always events/year/keV, the rate multipliers are always in terms of that
         total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram = h.histogram.astype(np.float64)
@@ -146,6 +222,9 @@ class CESTemplateSource(HistogramPdfSource):
                 h.histogram[outside_index_left[-1]] *= (1-frac_left)
         h.histogram[outside_index_left[:-1]] = 0
         h.histogram[outside_index_right[1:]] = 0
+        
+        # create a new histogram with self.ces_space as the binning
+        h = rebin_interpolate_normalized(h, self.ces_space)
 
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
@@ -176,6 +255,7 @@ class CESTemplateSource(HistogramPdfSource):
         h_pdf = h
         h_pdf /= frac_in_roi
         self._pdf_histogram = h_pdf
+        self._pdf_histogram = safe_lookup(self._pdf_histogram)
         self.set_dtype()
 
     def simulate(self, n_events: int):

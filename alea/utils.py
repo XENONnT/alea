@@ -31,6 +31,44 @@ logging.basicConfig(level=logging.INFO)
 MAX_FLOAT = np.sqrt(np.finfo(np.float32).max)
 
 
+class CannotUpdate(Exception):
+    pass
+
+
+class LockableSet(set):
+    """A set whose `update` method can be locked."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.locked = False
+
+    def lock(self):
+        """Lock the set to prevent modifications."""
+        self.locked = True
+
+    def unlock(self):
+        """Unlock the set to allow modifications."""
+        self.locked = False
+
+    def update(self, *args):
+        """Update the set with elements if it is not locked."""
+        if not self.locked:
+            super().update(*args)
+        else:
+            raise CannotUpdate("LockableSet is locked so can not be updated!")
+
+    def uniqueness(self):
+        """Check if the basenames contains unique elements."""
+        return len(set(self.basenames)) == len(self.basenames)
+
+    def basenames(self):
+        """The basenames of the filenames in the set."""
+        return [os.path.basename(record) for record in self]
+
+
+TEMPLATE_RECORDS = LockableSet()
+
+
 class ReadOnlyDict:
     """A read-only dict."""
 
@@ -117,6 +155,27 @@ def get_analysis_space(analysis_space: list) -> list:
     return eval_analysis_space
 
 
+def _prefix_file_path(
+    config: dict, template_folder_list: list, ignore_keys: List[str] = ["name", "histname"]
+):
+    """Prefix file path with template_folder_list whenever possible.
+
+    Args:
+        config (dict): dictionary contains file path
+        template_folder_list (list): list of possible base folders. Ordered by priority.
+        ignore_keys (list, optional (default=["name", "histname"])):
+        keys to be ignored when prefixing
+
+    """
+    for key in config.keys():
+        if isinstance(config[key], str) and key not in ignore_keys:
+            try:
+                config[key] = get_file_path(config[key], template_folder_list)
+                TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
+            except RuntimeError:
+                pass
+
+
 def adapt_likelihood_config_for_blueice(
     likelihood_config: dict, template_folder_list: list
 ) -> dict:
@@ -137,12 +196,15 @@ def adapt_likelihood_config_for_blueice(
         likelihood_config_copy["analysis_space"]
     )
 
+    _prefix_file_path(likelihood_config_copy, template_folder_list)
+
     if "default_source_class" in likelihood_config_copy:
         default_source_class = locate(likelihood_config_copy["default_source_class"])
         if default_source_class is None:
             raise ValueError(f"Could not find {likelihood_config_copy['default_source_class']}!")
         likelihood_config_copy["default_source_class"] = default_source_class
 
+    # Translation to blueice's language
     for source in likelihood_config_copy["sources"]:
         if "template_filename" in source:
             source["templatename"] = get_file_path(
@@ -158,6 +220,9 @@ def adapt_likelihood_config_for_blueice(
                 get_file_path(template_filename, template_folder_list)
                 for template_filename in source["template_filenames"]
             ]
+        if source.get("efficiency_name", None):
+            source["apply_efficiency"] = True
+        _prefix_file_path(source, template_folder_list)
     return likelihood_config_copy
 
 
@@ -175,7 +240,19 @@ def load_json(file_name: str):
     return data
 
 
-def _get_abspath(file_name):
+def dump_yaml(file_name: str, data: dict):
+    """Dump data from yaml file."""
+    with open(get_file_path(file_name), "w") as file:
+        yaml.safe_dump(data, file)
+
+
+def dump_json(file_name: str, data: dict):
+    """Dump data to a json file."""
+    with open(file_name, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def _get_internal(file_name):
     """Get the abspath of the file.
 
     Raise FileNotFoundError when not found in any subfolder
@@ -239,7 +316,7 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
 
     #. fname begin with '/', return absolute path
     #. folder begin with '/', return folder + name
-    #. can get file from _get_abspath, return alea internal file path
+    #. can get file from _get_internal, return alea internal file path
     #. can be found in local installed ntauxfiles, return ntauxfiles absolute path
     #. can be downloaded from MongoDB, download and return cached path
 
@@ -275,7 +352,7 @@ def get_file_path(fname, folder_list: Optional[List[str]] = None):
 
     # 3. From alea internal files
     try:
-        return _get_abspath(fname)
+        return _get_internal(fname)
     except FileNotFoundError:
         pass
 
@@ -299,7 +376,7 @@ def get_template_folder_list(likelihood_config, extra_template_path: Optional[st
     # Add extra_template_path to the end of template_folder_list
     if extra_template_path is not None:
         template_folder_list.append(extra_template_path)
-    return template_folder_list
+    return list(set(template_folder_list))
 
 
 def asymptotic_critical_value(
@@ -621,6 +698,15 @@ def deterministic_hash(thing, length=10):
     # disable bandit
     digest = sha256(jsonned.encode("ascii")).digest()
     return b32encode(digest)[:length].decode("ascii").lower()
+
+
+def compute_file_hash(file_path: str) -> str:
+    """Compute the SHA-256 hash of a file."""
+    hash_sha256 = sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    return hash_sha256.hexdigest()
 
 
 def signal_multiplier_estimator(

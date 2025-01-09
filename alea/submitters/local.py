@@ -33,6 +33,7 @@ class SubmitterLocal(Submitter):
         self.local_configurations = kwargs.get("local_configurations", {})
         self.template_path = self.local_configurations.pop("template_path", None)
         self.combine_n_jobs = self.local_configurations.pop("combine_n_jobs", 1)
+        self.first_i_batch = kwargs.pop("i_batch", 0)
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -52,7 +53,7 @@ class SubmitterLocal(Submitter):
         runner = Runner(**kwargs)
         return runner
 
-    def submit(self):
+    def submit(self, *args, **kwargs):
         """Run job in subprocess locally.
 
         If debug is True, only return the first instance of Runner.
@@ -60,7 +61,21 @@ class SubmitterLocal(Submitter):
         """
         for _, (script, _) in enumerate(self.combined_tickets_generator()):
             if self.debug:
-                print(script)
+                if kwargs:
+                    print(f"{' KWARGS ':#^80}")
+                    print(kwargs)
+                    _, _, annotations = Runner.runner_arguments()
+                    runner_kwargs = Submitter.runner_kwargs_from_script(shlex.split(script)[2:])
+                    runner_kwargs.update(kwargs)
+                    script = Submitter.script_from_runner_kwargs(annotations, runner_kwargs)
+                    script = f"python3 {self.run_toymc} " + " ".join(
+                        map(shlex.quote, script.split(" "))
+                    )
+                    print("\n\n" + f"{' SCRIPT ':#^80}")
+                    print(script)
+                else:
+                    print(f"{' SCRIPT ':#^80}")
+                    print(script)
                 runner = self.initialized_runner(script)
                 # print all parameters
                 print("\n\n" + f"{' PARAMETERS ':#^80}")
@@ -91,7 +106,7 @@ class NeymanConstructor(SubmitterLocal):
         self,
         free_name: str = "free",
         true_name: str = "true",
-        confidence_levels: List[float] = [0.8, 0.9, 0.95],
+        confidence_levels: List[float] = [0.6827, 0.8, 0.9, 0.95],
     ):
         """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
         threshold will be saved into a json file. The threshold will be sorted based on the elements
@@ -101,6 +116,7 @@ class NeymanConstructor(SubmitterLocal):
             free_name: the name of the free hypothesis
             true_name: the name of the true hypothesis
             confidence_levels: the confidence levels to calculate the threshold
+                0.6827 = stats.norm.cdf(1) - stats.norm.cdf(-1)
 
         Example:
             >>> data = json.load(open("limit_threshold.json")); print(json.dumps(data, indent=4))
@@ -271,9 +287,13 @@ class NeymanConstructor(SubmitterLocal):
         metadata_list = get_metadata(output_filename_pattern)
         for m in metadata_list:
             m.pop("date", None)
-        if len(set([deterministic_hash(m) for m in metadata_list])) != 1:
+        n_metadata = len(set([deterministic_hash(m) for m in metadata_list]))
+        if n_metadata != 1:
             raise ValueError(
-                f"The metadata are not the same for all the {len(output_filename_list)} output!"
+                "The metadata for output_filename_pattern "
+                f"{output_filename_pattern} are not the same for all the "
+                f"{len(output_filename_list)} outputs "
+                f"({n_metadata} unique sets of metadata)!"
             )
         metadata = metadata_list[0]
         if metadata["poi"] != self.poi:
@@ -395,11 +415,17 @@ class NeymanConstructor(SubmitterLocal):
         values = np.empty((*[len(p) for p in points], len(poi_values)), dtype=float)
         for p in itertools.product(*points):
             indices = [pi.index(pii) for pii, pi in zip(p, points)]
-            values[indices] = [
+            _threshold = [
                 i["threshold"]
                 for i in inputs
                 if i["hashed_keys"]["generate_values"] == dict(zip(names, p))
             ]
+            if len(_threshold) > 1:
+                raise ValueError(
+                    f"More than one threshold for nominal_values {nominal_values} "
+                    f"confidence_level {confidence_level}, and generate_values keys {names}!"
+                )
+            values[tuple(indices)] = _threshold[0]
 
         interpolator = RegularGridInterpolator(
             points + [poi_values], values, method="linear", bounds_error=True
@@ -471,7 +497,6 @@ class NeymanConstructor(SubmitterLocal):
                 )
 
             # get the poi_values and threshold_values for interp1d
-            interpolator = None
             if threshold_key in threshold:
                 # if threshold_key in threshold, get the poi_values and threshold_values directly
                 poi_values = threshold[threshold_key][poi]
@@ -481,23 +506,22 @@ class NeymanConstructor(SubmitterLocal):
                 # interpolate the threshold from the existing threshold
                 if len(hashed_keys["generate_values"]) == 0:
                     warnings.warn(
-                        f"If hypothesis {hypothesis} does not container any values except "
+                        f"If hypothesis {hypothesis} does not contain any values except "
                         f"poi, the nominal values should be in limit_threshold, so that "
                         f"the threshold can be interpolated from the existing threshold."
                     )
                     func_list.append(None)
                     continue
 
-                if interpolator is None:
-                    names = list(hashed_keys["generate_values"].keys())
-                    interpolator = NeymanConstructor.build_interpolator(
-                        poi,
-                        threshold,
-                        hashed_keys["generate_values"],
-                        hashed_keys["nominal_values"],
-                        confidence_level,
-                    )
-                    poi_values = interpolator.grid[-1]
+                names = list(hashed_keys["generate_values"].keys())
+                interpolator = NeymanConstructor.build_interpolator(
+                    poi,
+                    threshold,
+                    hashed_keys["generate_values"],
+                    hashed_keys["nominal_values"],
+                    confidence_level,
+                )
+                poi_values = interpolator.grid[-1]
 
                 if set(hashed_keys["generate_values"].keys()) != set(names):
                     raise ValueError(

@@ -1,0 +1,86 @@
+[tool]
+[tool.poetry]
+name = "alea-inference"
+version = "0.3.0"
+description = "A tool to perform toyMC-based inference constructions"
+readme = "README.md"
+authors = [
+  "Alea contributors, the XENON collaboration",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: BSD License",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+repository = "https://github.com/XENONnT/alea"
+packages = [
+    { include = "alea" }
+]
+
+[tool.poetry.scripts]
+alea_run_toymc = "alea.scripts.alea_run_toymc:main"
+alea_submission = "alea.scripts.alea_submission:main"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.13"
+atomicwrites = "*"
+blueice = "*"
+h5py = "*"
+inference-interface = "*"
+iminuit = ">=2.21.0"
+matplotlib = "*"
+mergedeep = "*"
+multihist = "*"
+numpy = "*"
+PyYAML = "*"
+scipy = "*"
+tqdm = "*"
+utilix = ">=0.9.0"
+commonmark = { version = "0.9.1", optional = true }
+graphviz = { version = "0.20.1", optional = true }
+m2r = { version = "0.2.1", optional = true }
+mistune = { version = "0.8.4", optional = true }
+nbsphinx = { version = "0.8.9", optional = true }
+recommonmark = { version = "0.7.1", optional = true }
+sphinx = { version = "5.2.3", optional = true }
+sphinx_rtd_theme = { version = "1.0.0", optional = true }
+Jinja2 = { version = "3.0.3", optional = true }
+lxml_html_clean = { version = "*", optional = true }
+
+[tool.poetry.extras]
+docs = [
+  "commonmark",
+  "graphviz",
+  "m2r",
+  "mistune",
+  "nbsphinx",
+  "recommonmark",
+  "sphinx",
+  "sphinx_rtd_theme",
+  "Jinja2",
+  "lxml_html_clean",
+]
+
+[build-system]
+requires = ["poetry-core>=1.0.8", "setuptools>=61.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+preview = true
+
+[tool.docformatter]
+recursive = true
+in-place = true
+style = "google"
+wrap-summaries = 100
+wrap-descriptions = 100
+blank = true
+
+[tool.doc8]
+max-line-length = 100

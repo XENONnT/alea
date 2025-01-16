@@ -81,8 +81,8 @@ def rebin_interpolate_normalized(hist, new_edges):
     result.histogram = new_hist
     result.bin_edges = new_edges
     
-    # Normalize to ensure total probability = 1
-    norm = np.sum(result.histogram * result.bin_volumes())
+    # Normalize to ensure total probability is unchanged
+    norm = np.sum(result.histogram * result.bin_volumes())/np.sum(hist.histogram * hist.bin_volumes())
     result.histogram = result.histogram / norm
     
     return result
@@ -197,7 +197,7 @@ class CESTemplateSource(HistogramPdfSource):
         h.histogram[outside_index] = 0
         
         # create a new histogram with self.ces_space as the binning
-        h = rebin_interpolate_normalized(h, self.ces_space)
+        # h = rebin_interpolate_normalized(h, self.ces_space)
 
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
@@ -289,6 +289,16 @@ class CESTemplateSource(HistogramPdfSource):
             ("ces", float),
             ("source", int),
         ]
+        
+    def get_pmf_grid(self):
+        # note that each source may have different binning. 
+        # we need to make sure that the binning is the same for all sources 
+        # in the original code, it returns return self._pdf_histogram.histogram * self._bin_volumes, self._n_events_histogram.histogram
+        # But here we want to make sure that the binning is always self.ces_space
+        # So we need to interpolate the histogram to the self.ces_space
+        # We can use the rebin_interpolate_normalized function to do that
+        h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)
+        return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
 
 
 class CESMonoenergySource(CESTemplateSource):

@@ -196,9 +196,6 @@ class CESTemplateSource(HistogramPdfSource):
         outside_index = np.where((left_edges < self.min_e) | (right_edges > self.max_e))
         h.histogram[outside_index] = 0
         
-        # create a new histogram with self.ces_space as the binning
-        # h = rebin_interpolate_normalized(h, self.ces_space)
-
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
 

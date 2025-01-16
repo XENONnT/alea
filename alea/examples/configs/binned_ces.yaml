@@ -17,6 +17,18 @@ parameter_definition:
       - 50
     fit_guess: 1000
 
+  xe136_rate_multiplier:
+    nominal_value: 1000
+    ptype: rate
+    fittable: true
+    fit_limits:
+      - 0
+      - null
+    parameter_interval_bounds:
+      - 0
+      - 50
+    fit_guess: 1000
+
   test_flat_rate_multiplier:
     nominal_value: 1000
     ptype: rate
@@ -108,6 +120,14 @@ likelihood_config:
           - smearing_b
           - efficiency_constant
         template_filename: xe133_template.ii.h5
+      - name: xe136
+        histname: xe136_hsd
+        parameters:
+          - xe136_rate_multiplier
+          - smearing_a
+          - smearing_b
+          - efficiency_constant
+        template_filename: xe136_template.ii.h5
       - name: test_gaussian
         class: alea.ces_source.CESMonoenergySource
         peak_energy: 300

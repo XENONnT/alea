@@ -292,11 +292,8 @@ class CESTemplateSource(HistogramPdfSource):
         
     def get_pmf_grid(self):
         # note that each source may have different binning. 
-        # we need to make sure that the binning is the same for all sources 
-        # in the original code, it returns return self._pdf_histogram.histogram * self._bin_volumes, self._n_events_histogram.histogram
-        # But here we want to make sure that the binning is always self.ces_space
+        # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space
-        # We can use the rebin_interpolate_normalized function to do that
         h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)
         return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
 

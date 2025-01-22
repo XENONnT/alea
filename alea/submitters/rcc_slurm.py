@@ -21,8 +21,8 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 
 
 class SubmitterRCCSlurm(Submitter):
-    """Submitter for RCC slurm cluster, using utilix.batchq.submit_job. The default batchq arguments are
-    defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
+    """Submitter for RCC slurm cluster, using utilix.batchq.submit_job. The default batchq arguments
+    are defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
     configuration file.
 
     Keyword Args:

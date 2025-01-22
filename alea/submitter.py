@@ -21,7 +21,6 @@ from alea.utils import (
 )
 
 
-
 class Submitter:
     """Submitter base class that generate the submission script from the configuration. It is
     initialized by the configuration file, and the configuration file should contain the arguments

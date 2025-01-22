@@ -71,7 +71,8 @@ class SubmitterSlurm(Submitter):
         self.logging.debug(f"Submitting the following job: '{job}'")
         self.submit_job(job, jobname=jobname, log=log, **{**self.batchq_arguments, **kwargs})
 
-    def submit_job(self,
+    def submit_job(
+        self,
         jobstring: str,
         log: str = "job.log",
         qos: str = "xenon1t",
@@ -86,12 +87,12 @@ class SubmitterSlurm(Submitter):
         exclude_nodes: Optional[str] = None,
         dependency: Optional[str] = None,
         verbose: bool = False,
-        partition = None,
-        container = None,
-        bind = None,
+        partition=None,
+        container=None,
+        bind=None,
         bypass_validation: Optional[List[str]] = [],
         constraint: Optional[str] = None,
-                   ) -> None:
+    ) -> None:
         """Submit a job to the SLURM queue.
         adapted from https://github.com/XENONnT/utilix/blob/master/utilix/batchq.py
 
@@ -112,19 +113,21 @@ class SubmitterSlurm(Submitter):
             verbose (bool): Print the sbatch command before submitting. Default is False.
             bypass_validation (List[str]): List of parameters to bypass validation for.
                 Default is None.
-        
+
 
         """
         if partition is not None or container is not None or bind is not None:
             print(partition, container, bind)
-            raise NotImplementedError("General SLURM submission does not implement partition, container, bind != None")
+            raise NotImplementedError(
+                "General SLURM submission does not implement partition, container, bind != None"
+            )
 
         TMPDIR = "/global/homes/k/kdund/tmp/"
         os.makedirs(TMPDIR, exist_ok=True)
 
         slurm_params: Dict[str, Any] = {
             "job_name": jobname,
-            "output":log,
+            "output": log,
             "qos": qos,
             "error": log,
             "mem_per_cpu": mem_per_cpu,
@@ -148,7 +151,7 @@ class SubmitterSlurm(Submitter):
 
         jobstring = f"source {exec_file}"
         slurm.add_cmd(jobstring)
-        print("SLURM is ",slurm)
+        print("SLURM is ", slurm)
 
         # Handle dry run scenario
         if verbose or dry_run:
@@ -167,15 +170,6 @@ class SubmitterSlurm(Submitter):
                 print("Job submission failed.")
         except Exception as e:
             print(f"An error occurred while submitting the job: {str(e)}")
-
-
-
-
-
-
-
-
-
 
     def submit(self, **kwargs):
         """Submits job to batch queue which actually runs the analysis. Overwrite the

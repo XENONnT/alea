@@ -380,7 +380,11 @@ class BlueiceExtendedModel(StatisticalModel):
                     # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
-            ll.prepare()
+            n_cores = config.get("n_cores", 1)
+            if n_cores==1:
+                ll.prepare()
+            else:
+                ll.prepare(n_cores=n_cores)
             lls.append(ll)
 
         # ancillary likelihood

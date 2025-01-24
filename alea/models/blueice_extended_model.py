@@ -296,9 +296,16 @@ class BlueiceExtendedModel(StatisticalModel):
         # get blueice likelihood_config if it's given
         likelihood_config = config.get("likelihood_config", None)
 
+        source_wise_interpolation = config.get("source_wise_interpolation", True)
+
+        if source_wise_interpolation and likelihood_config:
+            if likelihood_config.get("morpher") == "IndexMorpher":
+                raise ValueError("Source-wise interpolation is not yet supported for IndexMorpher.")
+
         blueice_config = {
             "pdf_base_config": pdf_base_config,
             "likelihood_config": likelihood_config,
+            "source_wise_interpolation": source_wise_interpolation,
         }
         return blueice_config
 

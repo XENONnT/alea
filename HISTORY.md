@@ -1,3 +1,23 @@
+0.3.1 / 2024-12-11
+------------------
+* Set `request_cpus` as integer by @dachengx in https://github.com/XENONnT/alea/pull/220
+* Keep only one `Directory.SHARED_SCRATCH` by @dachengx in https://github.com/XENONnT/alea/pull/222
+* Revert "Keep only one `Directory.SHARED_SCRATCH`" by @dachengx in https://github.com/XENONnT/alea/pull/223
+* Add the workflow id to the folder in staging-davs by @dachengx in https://github.com/XENONnT/alea/pull/224
+* Fix livetime bug in get_expectation_values() by @hammannr in https://github.com/XENONnT/alea/pull/227
+* Add file hash to blueice hash by @hammannr in https://github.com/XENONnT/alea/pull/225
+* Make metadata error message more informative by @hammannr in https://github.com/XENONnT/alea/pull/229
+* Add unused needs_reinit parameters to ignored parameters by @hammannr in https://github.com/XENONnT/alea/pull/230
+* Tar user-installed blueice to osg nodes by @hammannr in https://github.com/XENONnT/alea/pull/231
+* Source-wise interpolation by @hammannr in https://github.com/XENONnT/alea/pull/228
+* Fix bug, only add tarball when git installed by @dachengx in https://github.com/XENONnT/alea/pull/233
+* Switch to master for docformatter by @dachengx in https://github.com/XENONnT/alea/pull/234
+* Update blueice dependence by @hammannr in https://github.com/XENONnT/alea/pull/236
+
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.3.0...v0.3.1
+
+
 0.3.0 / 2024-09-21
 ------------------
 * Use `pyproject.toml` to install alea-inference by @dachengx in https://github.com/XENONnT/alea/pull/192

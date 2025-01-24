@@ -40,53 +40,62 @@ def safe_lookup(hist_obj):
     hist_obj.lookup = new_lookup.__get__(hist_obj)
     return hist_obj
 
+
 def rebin_interpolate_normalized(hist, new_edges):
-    """
-    Rebin a normalized histogram using interpolation, preserving normalization
-    
+    """Rebin a normalized histogram using interpolation, preserving normalization.
+
     Parameters:
     -----------
     hist : Hist1d
         Input histogram (assumed to be normalized)
     new_edges : array-like
         New bin edges
-        
+
     Returns:
     --------
     Hist1d
         New histogram with desired binning, properly normalized
+
     """
     from scipy.interpolate import interp1d
     import numpy as np
     from copy import deepcopy
-    
+
     # First convert histogram values to density
     density = hist.histogram / hist.bin_volumes()
-    
+
     # Create interpolation function for the density
-    f = interp1d(hist.bin_centers, density, kind='linear', 
-                 bounds_error=False, fill_value=(density[0], density[-1]))
-    
+    f = interp1d(
+        hist.bin_centers,
+        density,
+        kind="linear",
+        bounds_error=False,
+        fill_value=(density[0], density[-1]),
+    )
+
     # Get new bin centers
     new_centers = 0.5 * (new_edges[1:] + new_edges[:-1])
-    
+
     # Interpolate density at new bin centers
     new_density = f(new_centers)
-    
+
     # Convert back to histogram values
     new_volumes = np.diff(new_edges)
     new_hist = new_density * new_volumes
-    
+
     # Create new histogram
     result = deepcopy(hist)
     result.histogram = new_hist
     result.bin_edges = new_edges
-    
+
     # Normalize to ensure total probability is unchanged
-    norm = np.sum(result.histogram * result.bin_volumes())/np.sum(hist.histogram * hist.bin_volumes())
+    norm = np.sum(result.histogram * result.bin_volumes()) / np.sum(
+        hist.histogram * hist.bin_volumes()
+    )
     result.histogram = result.histogram / norm
-    
+
     return result
+
 
 class CESTemplateSource(HistogramPdfSource):
     def __init__(self, config: Dict, *args, **kwargs):
@@ -94,12 +103,12 @@ class CESTemplateSource(HistogramPdfSource):
         # override the default interpolation method
         if "pdf_interpolation_method" not in config:
             config["pdf_interpolation_method"] = "piecewise"
-        
+
         # Add essential attributes to cache
-        config['cache_attributes'] = config.get('cache_attributes', []) + [
-            'ces_space',
-            'max_e',
-            'min_e',
+        config["cache_attributes"] = config.get("cache_attributes", []) + [
+            "ces_space",
+            "max_e",
+            "min_e",
             #'templatename',
             #'histname',
         ]
@@ -116,12 +125,12 @@ class CESTemplateSource(HistogramPdfSource):
     def _load_true_histogram(self):
         """Load the true spectrum from the template (no transformation applied)"""
         h = template_to_multihist(self.templatename, self.histname, hist_to_read=Hist1d)
-        if self.config.get('zero_filling_for_outlier',False):
+        if self.config.get("zero_filling_for_outlier", False):
             bins = h.bin_centers
-            inter = interp1d(bins,h.histogram,bounds_error=False, fill_value=0)
+            inter = interp1d(bins, h.histogram, bounds_error=False, fill_value=0)
             width = self.ces_space[1] - self.ces_space[0]
-            new_hist = Hist1d(bins=np.arange(0,self.max_e+width,width))
-            new_hist.histogram  = inter(new_hist.bin_centers)
+            new_hist = Hist1d(bins=np.arange(0, self.max_e + width, width))
+            new_hist.histogram = inter(new_hist.bin_centers)
             return new_hist
         else:
             return h
@@ -149,7 +158,7 @@ class CESTemplateSource(HistogramPdfSource):
             )
 
     def _create_transformation(
-        self, transformation_type: Literal["smearing","bias",  "efficiency"]
+        self, transformation_type: Literal["smearing", "bias", "efficiency"]
     ):
         """Create a transformation object based on the transformation type."""
         if self.config.get(f"apply_{transformation_type}", True):
@@ -208,30 +217,40 @@ class CESTemplateSource(HistogramPdfSource):
         h_pre = self._transform_histogram(h)
 
         # Re-bin with minimal E_res
-        inter_pre = interp1d(h_pre.bin_centers,h_pre.histogram,bounds_error=False,fill_value='extrapolate')
-        inter_bins=np.linspace(h_pre.bin_edges[0],h_pre.bin_edges[-1],int((h_pre.bin_edges[-1]-h_pre.bin_edges[0])/MINIMAL_ENERGY_RESOLUTION)) #interpolate and re-bin with minimal resolution
+        inter_pre = interp1d(
+            h_pre.bin_centers, h_pre.histogram, bounds_error=False, fill_value="extrapolate"
+        )
+        inter_bins = np.linspace(
+            h_pre.bin_edges[0],
+            h_pre.bin_edges[-1],
+            int((h_pre.bin_edges[-1] - h_pre.bin_edges[0]) / MINIMAL_ENERGY_RESOLUTION),
+        )  # interpolate and re-bin with minimal resolution
         h = Hist1d(bins=inter_bins)
-        h.histogram  = np.where(inter_pre(h.bin_centers)<0,0,inter_pre(h.bin_centers))
+        h.histogram = np.where(inter_pre(h.bin_centers) < 0, 0, inter_pre(h.bin_centers))
 
         # Calculate the integration of the histogram after all transformations
         # Only from min_e to max_e
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
         outside_index_left = np.where((left_edges < self.min_e))[0]
-        outside_index_right= np.where((right_edges > self.max_e))[0]
-        #outside_index = np.where((left_edges <= self.min_e) | (right_edges >= self.max_e))
-        #h.histogram[outside_index] = 0
-        #need the treatment for the bins at the edge
-        if len(outside_index_right>0):#right bins
-            frac_right = (right_edges[outside_index_right[0]] - self.max_e)/(right_edges[outside_index_right[0]] - right_edges[outside_index_right[0]-1])
-            h.histogram[outside_index_right[0]] *= (1-frac_right)
-        if len(outside_index_left>0):#left bins
-            if self.min_e!=0: #do nothing if min_e==0
-                frac_left = (self.min_e-left_edges[outside_index_left[-1]])/(left_edges[outside_index_left[-1]]+1 - left_edges[outside_index_left[-1]])
-                h.histogram[outside_index_left[-1]] *= (1-frac_left)
+        outside_index_right = np.where((right_edges > self.max_e))[0]
+        # outside_index = np.where((left_edges <= self.min_e) | (right_edges >= self.max_e))
+        # h.histogram[outside_index] = 0
+        # need the treatment for the bins at the edge
+        if len(outside_index_right > 0):  # right bins
+            frac_right = (right_edges[outside_index_right[0]] - self.max_e) / (
+                right_edges[outside_index_right[0]] - right_edges[outside_index_right[0] - 1]
+            )
+            h.histogram[outside_index_right[0]] *= 1 - frac_right
+        if len(outside_index_left > 0):  # left bins
+            if self.min_e != 0:  # do nothing if min_e==0
+                frac_left = (self.min_e - left_edges[outside_index_left[-1]]) / (
+                    left_edges[outside_index_left[-1]] + 1 - left_edges[outside_index_left[-1]]
+                )
+                h.histogram[outside_index_left[-1]] *= 1 - frac_left
         h.histogram[outside_index_left[:-1]] = 0
         h.histogram[outside_index_right[1:]] = 0
-        
+
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
 
@@ -253,7 +272,7 @@ class CESTemplateSource(HistogramPdfSource):
         It's always called during the initialization of the source. So the attributes are set here.
 
         """
-        #print("Building histogram")
+        # print("Building histogram")
         self._load_inputs()
         h = self._load_true_histogram()
         self._check_histogram(h)
@@ -322,9 +341,9 @@ class CESTemplateSource(HistogramPdfSource):
             ("ces", float),
             ("source", int),
         ]
-        
+
     def get_pmf_grid(self):
-        # note that each source may have different binning. 
+        # note that each source may have different binning.
         # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space
         try:
@@ -334,9 +353,9 @@ class CESTemplateSource(HistogramPdfSource):
                 print("current source name: ", self.templatename_list)
             except Exception as e:
                 print(e)
-                
-        print("from cache?",self.from_cache)  # Is it True?
-        
+
+        print("from cache?", self.from_cache)  # Is it True?
+
         h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)
         return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
 
@@ -375,11 +394,11 @@ class CESFlatSource(CESTemplateSource):
     def _load_true_histogram(self):
         """Create a histogram for the flat source."""
         # define the histogram outside the max energy to prevent the impact of smearing effect.
-        number_of_bins = int((self.max_e+100 - 0) / MINIMAL_ENERGY_RESOLUTION)
+        number_of_bins = int((self.max_e + 100 - 0) / MINIMAL_ENERGY_RESOLUTION)
         h = Hist1d(
-            data=np.linspace(0, self.max_e+100, number_of_bins),
+            data=np.linspace(0, self.max_e + 100, number_of_bins),
             bins=number_of_bins,
-            range=(0, self.max_e+100),
+            range=(0, self.max_e + 100),
         )
         h.histogram = h.histogram.astype(np.float64)
         return h

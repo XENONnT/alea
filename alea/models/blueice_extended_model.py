@@ -342,7 +342,9 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            blueice_config["source_wise_interpolation"] = config.get("source_wise_interpolation", True)
+            blueice_config["source_wise_interpolation"] = config.get(
+                "source_wise_interpolation", True
+            )
             print(blueice_config["source_wise_interpolation"])
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
@@ -388,7 +390,7 @@ class BlueiceExtendedModel(StatisticalModel):
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
             n_cores = config.get("n_cores", 1)
-            if n_cores==1:
+            if n_cores == 1:
                 ll.prepare()
             else:
                 ll.prepare(n_cores=n_cores)

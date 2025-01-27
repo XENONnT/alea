@@ -122,7 +122,7 @@ class SubmitterSlurm(Submitter):
                 "General SLURM submission does not implement partition, container, bind != None"
             )
 
-        TMPDIR = "/global/homes/k/kdund/tmp/"
+        TMPDIR = os.environ["HOME"] + "/tmp/"
         os.makedirs(TMPDIR, exist_ok=True)
 
         slurm_params: Dict[str, Any] = {
@@ -145,7 +145,7 @@ class SubmitterSlurm(Submitter):
         # Create the Slurm instance with the conditional arguments
         slurm = batchq.Slurm(**slurm_params)
 
-        file_descriptor, exec_file = tempfile.mkstemp(suffix=".sh", dir="/global/homes/k/kdund/tmp")
+        file_descriptor, exec_file = tempfile.mkstemp(suffix=".sh", dir=TMPDIR)
         batchq._make_executable(exec_file)
         os.write(file_descriptor, bytes("#!/bin/bash\n" + jobstring, "utf-8"))
 

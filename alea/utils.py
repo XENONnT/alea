@@ -2,7 +2,7 @@ import os
 import re
 import json
 import yaml
-import importlib_resources
+import importlib
 import itertools
 import blueice
 from glob import glob
@@ -267,7 +267,7 @@ def _get_internal(file_name):
 
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder."""
-    return importlib_resources.files("alea") / sub_directory
+    return importlib.resources.files("alea") / sub_directory
 
 
 def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):

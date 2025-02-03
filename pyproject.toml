@@ -11,8 +11,7 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: BSD License",
   "Natural Language :: English",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.11",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Scientific/Engineering :: Physics",
@@ -27,7 +26,7 @@ alea_run_toymc = "alea.scripts.alea_run_toymc:main"
 alea_submission = "alea.scripts.alea_submission:main"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.13"
+python = ">=3.11,<3.13"
 atomicwrites = "*"
 blueice = ">=1.2.1"
 h5py = "*"

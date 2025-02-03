@@ -11,18 +11,13 @@ import logging
 from hashlib import sha256
 from base64 import b32encode
 from collections.abc import Mapping
+from importlib.resources import files as _files
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 from blueice.pdf_morphers import Morpher
 from itertools import product
 
 import h5py
 import matplotlib.pyplot as plt
-
-try:
-    # Python 3.11+
-    from importlib.resources import files as _files
-except ImportError:
-    from importlib_resources import files as _files  # type: ignore
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401

@@ -2,7 +2,6 @@ import os
 import re
 import json
 import yaml
-import importlib
 import itertools
 import blueice
 from glob import glob
@@ -18,6 +17,12 @@ from itertools import product
 
 import h5py
 import matplotlib.pyplot as plt
+
+try:
+    # Python 3.11+
+    from importlib.resources import files as _files
+except ImportError:
+    from importlib_resources import files as _files  # type: ignore
 
 # These imports are needed to evaluate strings
 import numpy  # noqa: F401
@@ -267,7 +272,7 @@ def _get_internal(file_name):
 
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder."""
-    return importlib.resources.files("alea") / sub_directory
+    return _files("alea") / sub_directory
 
 
 def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):

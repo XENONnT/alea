@@ -1,3 +1,10 @@
+0.3.2 / 2025-02-03
+------------------
+* Use `importlib.resources.files` and support python 3.11 by @dachengx in https://github.com/XENONnT/alea/pull/240
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.3.1...v0.3.2
+
+
 0.3.1 / 2024-12-11
 ------------------
 * Set `request_cpus` as integer by @dachengx in https://github.com/XENONnT/alea/pull/220

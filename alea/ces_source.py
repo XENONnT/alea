@@ -396,8 +396,9 @@ class CESFlatSource(CESTemplateSource):
         # Add padding to account for smearing effects at the edge
         padded_min = self.min_e - MINIMAL_ENERGY_RESOLUTION
         padded_max = self.max_e + MINIMAL_ENERGY_RESOLUTION
-        number_of_bins = int((self.max_e - self.min_e + 2 * MINIMAL_ENERGY_RESOLUTION) / 
-                            MINIMAL_ENERGY_RESOLUTION)
+        number_of_bins = int(
+            (self.max_e - self.min_e + 2 * MINIMAL_ENERGY_RESOLUTION) / MINIMAL_ENERGY_RESOLUTION
+        )
         # We should NOT extend the hist beyond the analysis range
         # Otherwise the input rate multiplier will be representing the rate in the extended range
         h = Hist1d(

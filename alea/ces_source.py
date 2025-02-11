@@ -392,13 +392,19 @@ class CESFlatSource(CESTemplateSource):
         self.min_e = np.min(self.ces_space)
 
     def _load_true_histogram(self):
-        """Create a histogram for the flat source."""
-        # define the histogram outside the max energy to prevent the impact of smearing effect.
-        number_of_bins = int((self.max_e + 100 - 0) / MINIMAL_ENERGY_RESOLUTION)
+    """Create a histogram for the flat source."""
+        # Add padding to account for smearing effects at the edge
+        padded_min = self.min_e - MINIMAL_ENERGY_RESOLUTION
+        padded_max = self.max_e + MINIMAL_ENERGY_RESOLUTION
+        
+        number_of_bins = int((self.max_e - self.min_e + 2 * MINIMAL_ENERGY_RESOLUTION) / 
+                            MINIMAL_ENERGY_RESOLUTION)
+        # We should NOT extend the hist beyond the analysis range
+        # Otherwise the input rate multiplier will be representing the rate in the extended range
         h = Hist1d(
-            data=np.linspace(0, self.max_e + 100, number_of_bins),
+            data=np.linspace(padded_min, padded_max, number_of_bins),
             bins=number_of_bins,
-            range=(0, self.max_e + 100),
+            range=(padded_min, padded_max),  # Match the data range
         )
-        h.histogram = h.histogram.astype(np.float64)
+        h.histogram = np.ones_like(h.histogram, dtype=np.float64)  # Create flat distribution
         return h

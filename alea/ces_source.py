@@ -279,6 +279,7 @@ class CESTemplateSource(HistogramPdfSource):
         h, frac_in_roi = self._normalize_histogram(h)
         h_pdf = h
         h_pdf /= frac_in_roi
+        self.fraction_in_range = frac_in_roi
         self._pdf_histogram = h_pdf
         self._pdf_histogram = safe_lookup(self._pdf_histogram)
         self.set_dtype()
@@ -346,6 +347,7 @@ class CESTemplateSource(HistogramPdfSource):
         # note that each source may have different binning.
         # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space
+        """
         try:
             print("current source name: ", self.templatename)
         except AttributeError:  # It's better to catch specific exceptions
@@ -353,11 +355,18 @@ class CESTemplateSource(HistogramPdfSource):
                 print("current source name: ", self.templatename_list)
             except Exception as e:
                 print(e)
+        """
 
         print("from cache?", self.from_cache)  # Is it True?
 
         h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)
         return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
+    
+    @property
+    def expected_events(self):
+        ret = (self.events_per_day * self.config['livetime_days']
+               * self.fraction_in_range * self.config['rate_multiplier'])
+        return ret
 
 
 class CESMonoenergySource(CESTemplateSource):
@@ -407,3 +416,10 @@ class CESFlatSource(CESTemplateSource):
         )
         h.histogram = np.ones_like(h.histogram, dtype=np.float64)  # Create flat distribution
         return h
+
+    def _normalize_histogram(self, h: Hist1d):
+        """Normalize the histogram and calculate the rate of the source."""
+        # For a flat source within the analysis range, we want to ensure
+        # fraction_in_range is 1 and proper normalization
+        h = super()._normalize_histogram(h)[0]  # Get just the histogram, ignore the fraction
+        return h, 1.0  # Return normalized histogram and fraction_in_range = 1

@@ -347,16 +347,6 @@ class CESTemplateSource(HistogramPdfSource):
         # note that each source may have different binning.
         # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space
-        """
-        try:
-            print("current source name: ", self.templatename)
-        except AttributeError:  # It's better to catch specific exceptions
-            try:
-                print("current source name: ", self.templatename_list)
-            except Exception as e:
-                print(e)
-        """
-
         print("from cache?", self.from_cache)  # Is it True?
 
         h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)

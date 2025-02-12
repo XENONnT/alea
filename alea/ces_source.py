@@ -205,17 +205,47 @@ class CESTemplateSource(HistogramPdfSource):
     def _normalize_histogram(self, h: Hist1d):
         """Normalize the histogram and calculate the rate of the source."""
         # The binning MUST be uniform
-        # To avoid confusion, we always normalize the histogram
-        # So the unit is always events/year/keV, the rate multipliers are always in terms of that
-        total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram = h.histogram.astype(np.float64)
-        total_integration = total_integration.astype(np.float64)
-
+        
+        # Calculate fraction in range for raw histogram
+        left_edges = h.bin_edges[:-1]
+        right_edges = h.bin_edges[1:]
+        outside_index_left = np.where((left_edges < self.min_e))[0]
+        outside_index_right = np.where((right_edges > self.max_e))[0]
+        
+        # Create a copy of histogram for ROI calculation
+        h_roi = h.histogram.copy()
+        
+        # Handle edge bins for raw histogram
+        if len(outside_index_right) > 0:
+            frac_right = (right_edges[outside_index_right[0]] - self.max_e) / (
+                right_edges[outside_index_right[0]] - left_edges[outside_index_right[0]]
+            )
+            h_roi[outside_index_right[0]] *= 1 - frac_right
+        
+        if len(outside_index_left) > 0 and self.min_e != 0:
+            frac_left = (self.min_e - left_edges[outside_index_left[-1]]) / (
+                right_edges[outside_index_left[-1]] - left_edges[outside_index_left[-1]]
+            )
+            h_roi[outside_index_left[-1]] *= 1 - frac_left
+        
+        h_roi[outside_index_left[:-1]] = 0
+        h_roi[outside_index_right[1:]] = 0
+        
+        # Calculate fraction in range before transformation
+        total_integration = np.sum(h.histogram * h.bin_volumes())
+        integration_in_roi = np.sum(h_roi * h.bin_volumes())
+        self.fraction_in_range = integration_in_roi / total_integration
+        
+        # Normalize the histogram
         h.histogram /= total_integration
-
+        
         # Apply the transformations to the histogram
         h_pre = self._transform_histogram(h)
-
+        # Make a copy for total integral calculation
+        h_total = h.histogram.copy()
+        total_after_transformation = np.sum(h_total * h.bin_volumes())
+        
         # Re-bin with minimal E_res
         inter_pre = interp1d(
             h_pre.bin_centers, h_pre.histogram, bounds_error=False, fill_value="extrapolate"
@@ -224,47 +254,42 @@ class CESTemplateSource(HistogramPdfSource):
             h_pre.bin_edges[0],
             h_pre.bin_edges[-1],
             int((h_pre.bin_edges[-1] - h_pre.bin_edges[0]) / MINIMAL_ENERGY_RESOLUTION),
-        )  # interpolate and re-bin with minimal resolution
+        )
         h = Hist1d(bins=inter_bins)
         h.histogram = np.where(inter_pre(h.bin_centers) < 0, 0, inter_pre(h.bin_centers))
-
-        # Calculate the integration of the histogram after all transformations
-        # Only from min_e to max_e
+        
+        # Calculate integration after transformation with proper edge treatment
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
         outside_index_left = np.where((left_edges < self.min_e))[0]
         outside_index_right = np.where((right_edges > self.max_e))[0]
-        # outside_index = np.where((left_edges <= self.min_e) | (right_edges >= self.max_e))
-        # h.histogram[outside_index] = 0
-        # need the treatment for the bins at the edge
-        if len(outside_index_right > 0):  # right bins
+        
+        if len(outside_index_right) > 0:
             frac_right = (right_edges[outside_index_right[0]] - self.max_e) / (
-                right_edges[outside_index_right[0]] - right_edges[outside_index_right[0] - 1]
+                right_edges[outside_index_right[0]] - left_edges[outside_index_right[0]]
             )
             h.histogram[outside_index_right[0]] *= 1 - frac_right
-        if len(outside_index_left > 0):  # left bins
-            if self.min_e != 0:  # do nothing if min_e==0
-                frac_left = (self.min_e - left_edges[outside_index_left[-1]]) / (
-                    left_edges[outside_index_left[-1]] + 1 - left_edges[outside_index_left[-1]]
-                )
-                h.histogram[outside_index_left[-1]] *= 1 - frac_left
+        
+        if len(outside_index_left) > 0 and self.min_e != 0:
+            frac_left = (self.min_e - left_edges[outside_index_left[-1]]) / (
+                right_edges[outside_index_left[-1]] - left_edges[outside_index_left[-1]]
+            )
+            h.histogram[outside_index_left[-1]] *= 1 - frac_left
+        
         h.histogram[outside_index_left[:-1]] = 0
         h.histogram[outside_index_right[1:]] = 0
-
+        
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()
-
-        # Note that it already does what "fraction_in_roi" does in the old code
-        # So no need to do again
+        
         integration_after_transformation_in_roi = np.sum(h.histogram * h.bin_volumes())
-
-        self.events_per_year = (
-            integration_after_transformation_in_roi * self.config["rate_multiplier"]
-        )
+        
+        # Calculate events per year and day
+        self.events_per_year = self.config["rate_multiplier"] * (integration_after_transformation_in_roi/integration_after_transformation_in_roi)
         self.events_per_day = self.events_per_year / 365
-
-        # For pdf, we need to normalize the histogram to 1 again
-        return h, integration_after_transformation_in_roi
+        
+        # Normalize final histogram
+        return h/integration_after_transformation_in_roi
 
     def build_histogram(self):
         """Build the histogram of the source.
@@ -276,10 +301,7 @@ class CESTemplateSource(HistogramPdfSource):
         self._load_inputs()
         h = self._load_true_histogram()
         self._check_histogram(h)
-        h, frac_in_roi = self._normalize_histogram(h)
-        h_pdf = h
-        h_pdf /= frac_in_roi
-        self.fraction_in_range = frac_in_roi
+        h_pdf= self._normalize_histogram(h)
         self._pdf_histogram = h_pdf
         self._pdf_histogram = safe_lookup(self._pdf_histogram)
         self.set_dtype()
@@ -354,8 +376,7 @@ class CESTemplateSource(HistogramPdfSource):
     
     @property
     def expected_events(self):
-        ret = (self.events_per_day * self.config['livetime_days']
-               * self.fraction_in_range * self.config['rate_multiplier'])
+        ret = (self.events_per_day * self.config['livetime_days'] * self.config['rate_multiplier'])
         return ret
 
 
@@ -406,10 +427,3 @@ class CESFlatSource(CESTemplateSource):
         )
         h.histogram = np.ones_like(h.histogram, dtype=np.float64)  # Create flat distribution
         return h
-
-    def _normalize_histogram(self, h: Hist1d):
-        """Normalize the histogram and calculate the rate of the source."""
-        # For a flat source within the analysis range, we want to ensure
-        # fraction_in_range is 1 and proper normalization
-        h = super()._normalize_histogram(h)[0]  # Get just the histogram, ignore the fraction
-        return h, 1.0  # Return normalized histogram and fraction_in_range = 1

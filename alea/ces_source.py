@@ -374,14 +374,26 @@ class CESTemplateSource(HistogramPdfSource):
         h = rebin_interpolate_normalized(self._pdf_histogram, self.ces_space)
         return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
 
-    @property
-    def expected_events(self):
-        ret = (
+    def _calculate_expected_events(self):
+        return (
             self.events_per_day
             * self.config["livetime_days"]
             * self.config["rate_multiplier"]
             * self.fraction_in_range
         )
+
+    @property
+    def expected_events(self):
+        return self._calculate_expected_events()
+
+    def get_expected_events_with_debug(self):
+        ret = self._calculate_expected_events()
+        print(f"Expected events calculation:")
+        print(f"  events_per_day: {self.events_per_day}")
+        print(f"  livetime_days: {self.config['livetime_days']}")
+        print(f"  rate_multiplier: {self.config['rate_multiplier']}")
+        print(f"  fraction_in_range: {self.fraction_in_range}")
+        print(f"  result: {ret}")
         return ret
 
 
@@ -406,6 +418,34 @@ class CESMonoenergySource(CESTemplateSource):
         )
         h.histogram = h.histogram.astype(np.float64)
         self.config["smearing_model"] = "mono_" + self.config["smearing_model"]
+        return h
+    
+    def _normalize_histogram(self, h: Hist1d):
+        """For mono-energetic source, fraction_in_range is simply 1 or 0
+        depending on whether the peak energy is within ROI"""
+        # Check if peak energy is in ROI
+        if self.min_e <= self.mu <= self.max_e:
+            self.fraction_in_range = 1.0
+        else:
+            self.fraction_in_range = 0.0
+            
+        # Normalize the histogram
+        h.histogram = h.histogram.astype(np.float64)
+        total_integration = np.sum(h.histogram * h.bin_volumes())
+        if total_integration > 0:
+            h.histogram /= total_integration
+            
+        # Apply the transformations
+        h = self._transform_histogram(h)
+        
+        # Set up attributes needed by the base class
+        self._bin_volumes = h.bin_volumes()
+        self._n_events_histogram = h.similar_blank_histogram()
+        
+        # Calculate events per year and day, before ROI and transformation
+        self.events_per_year = self.config["rate_multiplier"]
+        self.events_per_day = self.events_per_year / 365
+        
         return h
 
 

@@ -158,22 +158,26 @@ def get_analysis_space(analysis_space: list) -> list:
 def _prefix_file_path(
     config: dict, template_folder_list: list, ignore_keys: List[str] = ["name", "histname"]
 ):
-    """Prefix file path with template_folder_list whenever possible.
-
-    Args:
-        config (dict): dictionary contains file path
-        template_folder_list (list): list of possible base folders. Ordered by priority.
-        ignore_keys (list, optional (default=["name", "histname"])):
-        keys to be ignored when prefixing
-
-    """
+    """Prefix file path with template_folder_list whenever possible."""
     for key in config.keys():
-        if isinstance(config[key], str) and key not in ignore_keys:
-            try:
-                config[key] = get_file_path(config[key], template_folder_list)
-                TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
-            except RuntimeError:
-                pass
+        if key not in ignore_keys:
+            if isinstance(config[key], str):
+                try:
+                    config[key] = get_file_path(config[key], template_folder_list)
+                    TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
+                except RuntimeError:
+                    pass
+            elif isinstance(config[key], list): 
+                try:
+                    config[key] = [
+                        get_file_path(item, template_folder_list) if isinstance(item, str) else item
+                        for item in config[key]
+                    ]
+                    for item in config[key]:
+                        if isinstance(item, str):
+                            TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(item)))
+                except RuntimeError:
+                    pass
 
 
 def adapt_likelihood_config_for_blueice(

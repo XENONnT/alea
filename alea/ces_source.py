@@ -283,14 +283,14 @@ class CESTemplateSource(HistogramPdfSource):
         self._n_events_histogram = h.similar_blank_histogram()
 
         integration_after_transformation_in_roi = np.sum(h.histogram * h.bin_volumes())
-        
+
         # Calculate events per year and day, before ROI and transformation
         self.events_per_year = self.config["rate_multiplier"]
         self.events_per_day = self.events_per_year / 365
 
         # Normalize final histogram
-        return h/integration_after_transformation_in_roi
-    
+        return h / integration_after_transformation_in_roi
+
     def build_histogram(self):
         """Build the histogram of the source.
 
@@ -376,7 +376,12 @@ class CESTemplateSource(HistogramPdfSource):
 
     @property
     def expected_events(self):
-        ret = (self.events_per_day * self.config['livetime_days'] * self.config['rate_multiplier'] * self.fraction_in_range)
+        ret = (
+            self.events_per_day
+            * self.config["livetime_days"]
+            * self.config["rate_multiplier"]
+            * self.fraction_in_range
+        )
         return ret
 
 

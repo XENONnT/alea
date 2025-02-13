@@ -167,7 +167,7 @@ def _prefix_file_path(
                     TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
                 except RuntimeError:
                     pass
-            elif isinstance(config[key], list): 
+            elif isinstance(config[key], list):
                 try:
                     config[key] = [
                         get_file_path(item, template_folder_list) if isinstance(item, str) else item

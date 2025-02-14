@@ -109,6 +109,8 @@ class CESTemplateSource(HistogramPdfSource):
             "ces_space",
             "max_e",
             "min_e",
+            "fraction_in_range",
+            "fraction_efficiency_loss",
             #'templatename',
             #'histname',
         ]
@@ -121,6 +123,10 @@ class CESTemplateSource(HistogramPdfSource):
         self.min_e = np.min(self.ces_space)
         self.templatename = self.config["template_filename"]
         self.histname = self.config["histname"]
+        
+        # Initialize fractions
+        self.fraction_in_range = 1.0
+        self.fraction_efficiency_loss = 1.0
 
     def _load_true_histogram(self):
         """Load the true spectrum from the template (no transformation applied)"""
@@ -183,7 +189,7 @@ class CESTemplateSource(HistogramPdfSource):
                 parameters=combined_parameter_dict,
                 action=transformation_type,
                 model=self.config[model_key],
-            )
+            )       
         return None
 
     def _transform_histogram(self, h: Hist1d):
@@ -192,21 +198,14 @@ class CESTemplateSource(HistogramPdfSource):
         smearing_transformation = self._create_transformation("smearing")
         bias_transformation = self._create_transformation("bias")
         efficiency_transformation = self._create_transformation("efficiency")
-
+    
+        original_histogram = deepcopy(h)
+        
         # Apply the transformations to the histogram
         if smearing_transformation is not None:
             h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
             h = bias_transformation.apply_transformation(h)
-        if efficiency_transformation is not None:
-            h = efficiency_transformation.apply_transformation(h)
-        return h
-
-    def _normalize_histogram(self, h: Hist1d):
-        """Normalize the histogram and calculate the rate of the source."""
-        # The binning MUST be uniform
-        h.histogram = h.histogram.astype(np.float64)
-
         # Calculate fraction in range for raw histogram
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
@@ -232,19 +231,30 @@ class CESTemplateSource(HistogramPdfSource):
         h_roi[outside_index_left[:-1]] = 0
         h_roi[outside_index_right[1:]] = 0
 
-        # Calculate fraction in range before transformation
+        # Calculate fraction in range before applyting efficiency
         total_integration = np.sum(h.histogram * h.bin_volumes())
         integration_in_roi = np.sum(h_roi * h.bin_volumes())
         self.fraction_in_range = integration_in_roi / total_integration
+            
+        if efficiency_transformation is not None:
+            temp_histogram = deepcopy(h)
+            h = efficiency_transformation.apply_transformation(h)
+            self.fraction_efficiency_loss = np.sum(h.histogram * h.bin_volumes()) / np.sum(
+                temp_histogram.histogram * temp_histogram.bin_volumes()
+            )
+        return h/np.sum(h.histogram * h.bin_volumes())
+
+    def _normalize_histogram(self, h: Hist1d):
+        """Normalize the histogram and calculate the rate of the source."""
+        # The binning MUST be uniform
+        h.histogram = h.histogram.astype(np.float64)
 
         # Normalize the histogram
+        total_integration = np.sum(h.histogram * h.bin_volumes())
         h.histogram /= total_integration
 
         # Apply the transformations to the histogram
         h_pre = self._transform_histogram(h)
-        # Make a copy for total integral calculation
-        h_total = h.histogram.copy()
-        total_after_transformation = np.sum(h_total * h.bin_volumes())
 
         # Re-bin with minimal E_res
         inter_pre = interp1d(
@@ -375,11 +385,14 @@ class CESTemplateSource(HistogramPdfSource):
         return h.histogram * h.bin_volumes(), h.similar_blank_histogram().histogram
 
     def _calculate_expected_events(self):
+        # The expected events MUST include the efficiency loss and fraction_in_range
+        # For CES source we DON'T use the efficiency application in defaulf blueice
         return (
             self.events_per_day
             * self.config["livetime_days"]
             * self.config["rate_multiplier"]
             * self.fraction_in_range
+            * self.fraction_efficiency_loss
         )
 
     @property
@@ -393,6 +406,7 @@ class CESTemplateSource(HistogramPdfSource):
         print(f"  livetime_days: {self.config['livetime_days']}")
         print(f"  rate_multiplier: {self.config['rate_multiplier']}")
         print(f"  fraction_in_range: {self.fraction_in_range}")
+        print(f"  fraction_efficiency_loss: {self.fraction_efficiency_loss}")
         print(f"  result: {ret}")
         return ret
 
@@ -455,6 +469,8 @@ class CESFlatSource(CESTemplateSource):
         self.ces_space = self.config["analysis_space"][0][1]
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
+        self.fraction_in_range = 1.0
+        self.fraction_efficiency_loss = 1.0
 
     def _load_true_histogram(self):
         """Create a histogram for the flat source."""

@@ -2,7 +2,6 @@ import os
 import re
 import json
 import yaml
-import importlib_resources
 import itertools
 import blueice
 from glob import glob
@@ -12,6 +11,7 @@ import logging
 from hashlib import sha256
 from base64 import b32encode
 from collections.abc import Mapping
+from importlib.resources import files as _files
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 from blueice.pdf_morphers import Morpher
 from itertools import product
@@ -271,7 +271,7 @@ def _get_internal(file_name):
 
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder."""
-    return importlib_resources.files("alea") / sub_directory
+    return _files("alea") / sub_directory
 
 
 def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):

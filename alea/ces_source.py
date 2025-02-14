@@ -123,7 +123,7 @@ class CESTemplateSource(HistogramPdfSource):
         self.min_e = np.min(self.ces_space)
         self.templatename = self.config["template_filename"]
         self.histname = self.config["histname"]
-        
+
         # Initialize fractions
         self.fraction_in_range = 1.0
         self.fraction_efficiency_loss = 1.0
@@ -189,7 +189,7 @@ class CESTemplateSource(HistogramPdfSource):
                 parameters=combined_parameter_dict,
                 action=transformation_type,
                 model=self.config[model_key],
-            )       
+            )
         return None
 
     def _transform_histogram(self, h: Hist1d):
@@ -198,9 +198,9 @@ class CESTemplateSource(HistogramPdfSource):
         smearing_transformation = self._create_transformation("smearing")
         bias_transformation = self._create_transformation("bias")
         efficiency_transformation = self._create_transformation("efficiency")
-    
+
         original_histogram = deepcopy(h)
-        
+
         # Apply the transformations to the histogram
         if smearing_transformation is not None:
             h = smearing_transformation.apply_transformation(h)
@@ -235,14 +235,14 @@ class CESTemplateSource(HistogramPdfSource):
         total_integration = np.sum(h.histogram * h.bin_volumes())
         integration_in_roi = np.sum(h_roi * h.bin_volumes())
         self.fraction_in_range = integration_in_roi / total_integration
-            
+
         if efficiency_transformation is not None:
             temp_histogram = deepcopy(h)
             h = efficiency_transformation.apply_transformation(h)
             self.fraction_efficiency_loss = np.sum(h.histogram * h.bin_volumes()) / np.sum(
                 temp_histogram.histogram * temp_histogram.bin_volumes()
             )
-        return h/np.sum(h.histogram * h.bin_volumes())
+        return h / np.sum(h.histogram * h.bin_volumes())
 
     def _normalize_histogram(self, h: Hist1d):
         """Normalize the histogram and calculate the rate of the source."""

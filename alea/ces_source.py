@@ -111,8 +111,6 @@ class CESTemplateSource(HistogramPdfSource):
             "min_e",
             "fraction_in_range",
             "fraction_efficiency_loss",
-            #'templatename',
-            #'histname',
         ]
         super().__init__(config, *args, **kwargs)
 
@@ -198,8 +196,6 @@ class CESTemplateSource(HistogramPdfSource):
         smearing_transformation = self._create_transformation("smearing")
         bias_transformation = self._create_transformation("bias")
         efficiency_transformation = self._create_transformation("efficiency")
-
-        original_histogram = deepcopy(h)
 
         # Apply the transformations to the histogram
         if smearing_transformation is not None:
@@ -401,7 +397,7 @@ class CESTemplateSource(HistogramPdfSource):
 
     def get_expected_events_with_debug(self):
         ret = self._calculate_expected_events()
-        print(f"Expected events calculation:")
+        print("Expected events calculation:")
         print(f"  events_per_day: {self.events_per_day}")
         print(f"  livetime_days: {self.config['livetime_days']}")
         print(f"  rate_multiplier: {self.config['rate_multiplier']}")

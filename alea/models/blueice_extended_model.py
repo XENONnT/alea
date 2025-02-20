@@ -268,9 +268,11 @@ class BlueiceExtendedModel(StatisticalModel):
         pdf_base_config["livetime_days"] = self.parameters[
             pdf_base_config["livetime_parameter"]
         ].nominal_value
-        pdf_base_config["fiducial_mass"] = self.parameters[
-            pdf_base_config["fiducial_mass_parameter"]
-        ].nominal_value
+        pdf_base_config["fiducial_mass"] = (
+            self.parameters[pdf_base_config["fiducial_mass_parameter"]].nominal_value 
+            if "fiducial_mass_parameter" in pdf_base_config 
+            else 1
+        )
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters

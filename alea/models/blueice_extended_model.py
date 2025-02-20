@@ -548,7 +548,15 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
+        allowed_ptypes = [
+            "rate",
+            "shape",
+            "index",
+            "efficiency",
+            "livetime",
+            "needs_reinit",
+            "mass",
+        ]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

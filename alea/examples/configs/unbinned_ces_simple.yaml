@@ -5,6 +5,12 @@ parameter_definition:
     fittable: false
     description: Livetime in day
 
+  fiducial_mass:
+    nominal_value: 4
+    ptype: needs_reinit
+    fittable: false
+    description: Fiducial mass in ton
+
   xe133_rate_multiplier:
     nominal_value: 1000
     ptype: rate
@@ -101,6 +107,7 @@ likelihood_config:
         - smearing_b
       apply_bias: false
       livetime_parameter: livetime
+      fiducial_mass_parameter: fiducial_mass
       slice_args: {}
       sources:
       - name: xe133

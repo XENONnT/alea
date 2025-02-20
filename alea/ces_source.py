@@ -291,7 +291,8 @@ class CESTemplateSource(HistogramPdfSource):
         integration_after_transformation_in_roi = np.sum(h.histogram * h.bin_volumes())
 
         # Calculate events per year and day, before ROI and transformation
-        self.events_per_year = self.config["rate_multiplier"]
+        # Input rate multiplier should be in events per year per ton
+        self.events_per_year = self.config["rate_multiplier"] * self.config["fiducial_mass"]
         self.events_per_day = self.events_per_year / 365
 
         # Normalize final histogram
@@ -387,6 +388,7 @@ class CESTemplateSource(HistogramPdfSource):
             self.events_per_day
             * self.config["livetime_days"]
             * self.config["rate_multiplier"]
+            * self.config["fiducial_mass"]
             * self.fraction_in_range
             * self.fraction_efficiency_loss
         )
@@ -400,6 +402,7 @@ class CESTemplateSource(HistogramPdfSource):
         print("Expected events calculation:")
         print(f"  events_per_day: {self.events_per_day}")
         print(f"  livetime_days: {self.config['livetime_days']}")
+        print(f"  fiducial_mass: {self.config['fiducial_mass']}")
         print(f"  rate_multiplier: {self.config['rate_multiplier']}")
         print(f"  fraction_in_range: {self.fraction_in_range}")
         print(f"  fraction_efficiency_loss: {self.fraction_efficiency_loss}")
@@ -453,7 +456,7 @@ class CESMonoenergySource(CESTemplateSource):
         self._n_events_histogram = h.similar_blank_histogram()
 
         # Calculate events per year and day, before ROI and transformation
-        self.events_per_year = self.config["rate_multiplier"]
+        self.events_per_year = self.config["rate_multiplier"] * self.config["fiducial_mass"]
         self.events_per_day = self.events_per_year / 365
 
         return h

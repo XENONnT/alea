@@ -388,7 +388,7 @@ class CESTemplateSource(HistogramPdfSource):
             self.events_per_day
             * self.config["livetime_days"]
             * self.config["rate_multiplier"]
-            * self.config["fiducial_mass"]
+            #* self.config["fiducial_mass"]
             * self.fraction_in_range
             * self.fraction_efficiency_loss
         )
@@ -402,7 +402,7 @@ class CESTemplateSource(HistogramPdfSource):
         print("Expected events calculation:")
         print(f"  events_per_day: {self.events_per_day}")
         print(f"  livetime_days: {self.config['livetime_days']}")
-        print(f"  fiducial_mass: {self.config['fiducial_mass']}")
+        #print(f"  fiducial_mass: {self.config['fiducial_mass']}")
         print(f"  rate_multiplier: {self.config['rate_multiplier']}")
         print(f"  fraction_in_range: {self.fraction_in_range}")
         print(f"  fraction_efficiency_loss: {self.fraction_efficiency_loss}")

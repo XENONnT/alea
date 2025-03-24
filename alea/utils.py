@@ -158,7 +158,15 @@ def get_analysis_space(analysis_space: list) -> list:
 def _prefix_file_path(
     config: dict, template_folder_list: list, ignore_keys: List[str] = ["name", "histname"]
 ):
-    """Prefix file path with template_folder_list whenever possible."""
+    """Prefix file path with template_folder_list whenever possible.
+    
+    Args:
+        config (dict): dictionary contains file path
+        template_folder_list (list): list of possible base folders. Ordered by priority.
+        ignore_keys (list, optional (default=["name", "histname"])):
+        keys to be ignored when prefixing
+        
+    """
     for key in config.keys():
         if key not in ignore_keys:
             if isinstance(config[key], str):

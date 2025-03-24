@@ -555,7 +555,6 @@ class BlueiceExtendedModel(StatisticalModel):
             "efficiency",
             "livetime",
             "needs_reinit",
-            "mass",
         ]
         default_ptype = "needs_reinit"
         for p in self.parameters:

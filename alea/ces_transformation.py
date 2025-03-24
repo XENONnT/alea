@@ -16,6 +16,7 @@ def energy_res(energy, a=25.8, b=1.429):
 
     Returns:
         Energy resolution in keV.
+
     """
     # Reference for the values of a,b:
     # xenon:xenonnt:analysis:ntsciencerun0:g1g2_update#standard_gaussian_vs_skew-gaussian_yue
@@ -43,6 +44,7 @@ def smearing_mono_gaussian(
 
     Raises:
         ValueError: If bins has less than 2 elements.
+
     """
 
     if bins is None:
@@ -92,6 +94,7 @@ def smearing_hist_gaussian(
     Raises:
         AssertionError: If hist is not a Hist1d object.
         ValueError: If bins has less than 2 elements.
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
@@ -139,6 +142,7 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
 
     Raises:
         AssertionError: If hist is not a Hist1d object.
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
@@ -161,6 +165,7 @@ def efficiency_hist_constant(hist: Any, efficiency_constant: float):
     Raises:
         AssertionError: If hist is not a Hist1d object
         or if efficiency_constant is not between 0 and 1.
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     assert 0 <= efficiency_constant <= 1, "Efficiency must be between 0 and 1"
@@ -200,6 +205,7 @@ class Transformation(BaseModel):
 
         Raises:
             ValueError: If the model does not exist for the given action.
+
         """
         if v not in MODELS[values["action"]]:
             raise ValueError(f"Model {v} not found for action {values['action']}")
@@ -213,6 +219,7 @@ class Transformation(BaseModel):
 
         Returns:
             The transformed histogram.
+
         """
         chosen_model = MODELS[self.action][self.model]
         return chosen_model(histogram, **self.parameters)

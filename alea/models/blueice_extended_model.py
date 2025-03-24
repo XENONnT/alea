@@ -269,8 +269,8 @@ class BlueiceExtendedModel(StatisticalModel):
             pdf_base_config["livetime_parameter"]
         ].nominal_value
         pdf_base_config["fiducial_mass"] = (
-            self.parameters[pdf_base_config["fiducial_mass_parameter"]].nominal_value 
-            if "fiducial_mass_parameter" in pdf_base_config 
+            self.parameters[pdf_base_config["fiducial_mass_parameter"]].nominal_value
+            if "fiducial_mass_parameter" in pdf_base_config
             else 1
         )
         for p in self.parameters:

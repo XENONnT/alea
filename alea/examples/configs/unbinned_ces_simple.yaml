@@ -26,7 +26,7 @@ parameter_definition:
   test_flat_rate_multiplier:
     nominal_value: 1000
     ptype: rate
-    fittable: ture
+    fittable: true
     fit_limits:
       - 0
       - null
@@ -82,7 +82,7 @@ parameter_definition:
     ptype: shape
     uncertainty: 0.05
     relative_uncertainty: false
-    fittable: ture
+    fittable: true
     blueice_anchors:
       - 0.7
       - 0.9

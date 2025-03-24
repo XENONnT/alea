@@ -9,8 +9,13 @@ from multihist import Hist1d
 def energy_res(energy, a=25.8, b=1.429):
     """Return energy resolution in keV.
 
-    :param energy: true energy in keV :return: energy resolution in keV
+    Args:
+        energy: True energy in keV.
+        a: First resolution parameter. Defaults to 25.8.
+        b: Second resolution parameter. Defaults to 1.429.
 
+    Returns:
+        Energy resolution in keV.
     """
     # Reference for the values of a,b:
     # xenon:xenonnt:analysis:ntsciencerun0:g1g2_update#standard_gaussian_vs_skew-gaussian_yue
@@ -24,7 +29,21 @@ def smearing_mono_gaussian(
     peak_energy: float,
     bins: Optional[np.ndarray] = None,
 ):
-    """Smear a mono-energetic peak with a Gaussian."""
+    """Smear a mono-energetic peak with a Gaussian.
+
+    Args:
+        hist: The histogram to smear.
+        smearing_a: First smearing parameter.
+        smearing_b: Second smearing parameter.
+        peak_energy: Energy of the mono-energetic peak.
+        bins: Optional bin edges for the returned histogram. Defaults to None.
+
+    Returns:
+        Smeared histogram.
+
+    Raises:
+        ValueError: If bins has less than 2 elements.
+    """
 
     if bins is None:
         # create an emptyzero histogram with the same binning as the input histogram
@@ -61,9 +80,18 @@ def smearing_hist_gaussian(
 ):
     """Smear a histogram with Gaussian. This allows for non-uniform histogram binning.
 
-    :param hist: the spectrum we want to smear :param bins: bin edges of the returned spectrum
-    :return: smeared histogram in the same unit as input spectrum
+    Args:
+        hist: The spectrum we want to smear.
+        smearing_a: First smearing parameter.
+        smearing_b: Second smearing parameter.
+        bins: Bin edges of the returned spectrum. Defaults to None.
 
+    Returns:
+        Smeared histogram in the same unit as input spectrum.
+
+    Raises:
+        AssertionError: If hist is not a Hist1d object.
+        ValueError: If bins has less than 2 elements.
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
@@ -101,9 +129,16 @@ def smearing_hist_gaussian(
 def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
     """Apply a constant bias to a histogram.
 
-    :param hist: the spectrum we want to apply the bias to :param bias: the bias to apply to the
-    spectrum :return: the spectrum with the bias applied
+    Args:
+        hist: The spectrum we want to apply the bias to.
+        A: First bias parameter. Defaults to 0.01977.
+        k: Second bias parameter. Defaults to 0.01707.
 
+    Returns:
+        The spectrum with the bias applied.
+
+    Raises:
+        AssertionError: If hist is not a Hist1d object.
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     true_energy = hist.bin_centers
@@ -116,9 +151,16 @@ def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
 def efficiency_hist_constant(hist: Any, efficiency_constant: float):
     """Apply a constant efficiency to a histogram.
 
-    :param hist: the spectrum we want to apply the efficiency to :param efficiency: the efficiency
-    to apply to the spectrum :return: the spectrum with the efficiency applied
+    Args:
+        hist: The spectrum we want to apply the efficiency to.
+        efficiency_constant: The efficiency to apply to the spectrum.
 
+    Returns:
+        The spectrum with the efficiency applied.
+
+    Raises:
+        AssertionError: If hist is not a Hist1d object
+        or if efficiency_constant is not between 0 and 1.
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     assert 0 <= efficiency_constant <= 1, "Efficiency must be between 0 and 1"
@@ -147,11 +189,30 @@ class Transformation(BaseModel):
     @validator("model")
     @classmethod
     def check_model(cls, v, values):
-        """Check if the model exists for the given action."""
+        """Check if the model exists for the given action.
+
+        Args:
+            v: The model name.
+            values: The values dictionary containing the action.
+
+        Returns:
+            The model name if it exists.
+
+        Raises:
+            ValueError: If the model does not exist for the given action.
+        """
         if v not in MODELS[values["action"]]:
             raise ValueError(f"Model {v} not found for action {values['action']}")
         return v
 
     def apply_transformation(self, histogram: Hist1d):
+        """Apply the transformation to a histogram.
+
+        Args:
+            histogram: The histogram to transform.
+
+        Returns:
+            The transformed histogram.
+        """
         chosen_model = MODELS[self.action][self.model]
         return chosen_model(histogram, **self.parameters)

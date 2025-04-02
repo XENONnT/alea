@@ -240,18 +240,8 @@ class CESTemplateSource(HistogramPdfSource):
             )
         return h / np.sum(h.histogram * h.bin_volumes())
 
-    def _normalize_histogram(self, h: Hist1d):
-        """Normalize the histogram and calculate the rate of the source."""
-        # The binning MUST be uniform
-        h.histogram = h.histogram.astype(np.float64)
-
-        # Normalize the histogram
-        total_integration = np.sum(h.histogram * h.bin_volumes())
-        h.histogram /= total_integration
-
-        # Apply the transformations to the histogram
-        h_pre = self._transform_histogram(h)
-
+    def _rebin_histogram(self, h_pre):
+        """Re-bin the histogram with minimal energy resolution."""
         # Re-bin with minimal E_res
         inter_pre = interp1d(
             h_pre.bin_centers, h_pre.histogram, bounds_error=False, fill_value="extrapolate"
@@ -263,13 +253,17 @@ class CESTemplateSource(HistogramPdfSource):
         )
         h = Hist1d(bins=inter_bins)
         h.histogram = np.where(inter_pre(h.bin_centers) < 0, 0, inter_pre(h.bin_centers))
-
-        # Calculate integration after transformation with proper edge treatment
+        
+        # Calculate edge indices for treatment
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
         outside_index_left = np.where((left_edges < self.min_e))[0]
         outside_index_right = np.where((right_edges > self.max_e))[0]
+        
+        return h, left_edges, right_edges, outside_index_left, outside_index_right
 
+    def _apply_edge_treatment(self, h, left_edges, right_edges, outside_index_left, outside_index_right):
+        """Apply proper edge treatment to histogram bins outside the ROI."""
         if len(outside_index_right) > 0:
             frac_right = (right_edges[outside_index_right[0]] - self.max_e) / (
                 right_edges[outside_index_right[0]] - left_edges[outside_index_right[0]]
@@ -284,6 +278,26 @@ class CESTemplateSource(HistogramPdfSource):
 
         h.histogram[outside_index_left[:-1]] = 0
         h.histogram[outside_index_right[1:]] = 0
+        
+        return h
+
+    def _normalize_histogram(self, h: Hist1d):
+        """Normalize the histogram and calculate the rate of the source."""
+        # The binning MUST be uniform
+        h.histogram = h.histogram.astype(np.float64)
+
+        # Normalize the histogram
+        total_integration = np.sum(h.histogram * h.bin_volumes())
+        h.histogram /= total_integration
+
+        # Apply the transformations to the histogram
+        h_pre = self._transform_histogram(h)
+
+        # Call the new rebinning function
+        h, left_edges, right_edges, outside_index_left, outside_index_right = self._rebin_histogram(h_pre)
+        
+        # Call the new edge treatment function
+        h = self._apply_edge_treatment(h, left_edges, right_edges, outside_index_left, outside_index_right)
 
         self._bin_volumes = h.bin_volumes()
         self._n_events_histogram = h.similar_blank_histogram()

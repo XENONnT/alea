@@ -202,11 +202,40 @@ class CESTemplateSource(HistogramPdfSource):
             h = smearing_transformation.apply_transformation(h)
         if bias_transformation is not None:
             h = bias_transformation.apply_transformation(h)
+            
         # Calculate fraction in range for raw histogram
         left_edges = h.bin_edges[:-1]
         right_edges = h.bin_edges[1:]
         outside_index_left = np.where((left_edges < self.min_e))[0]
-        outside_index_right = np.where((right_edges > self.max_e))[0]
+        outside_index_right = np.where((right_edges > self.max_e))[0]    
+        
+        if efficiency_transformation is not None:
+            temp_histogram = deepcopy(h)
+            h = efficiency_transformation.apply_transformation(h)
+            
+            # Update the masks after efficiency applied
+            left_edges = h.bin_edges[:-1]
+            right_edges = h.bin_edges[1:]
+            outside_index_left = np.where((left_edges < self.min_e))[0]
+            outside_index_right = np.where((right_edges > self.max_e))[0]
+            
+            # Create masks for the bins within analysis range
+            within_range_mask = (left_edges >= self.min_e) & (right_edges <= self.max_e)
+            
+            # Handle edge bins partially within range
+            if len(outside_index_left) > 0 and self.min_e != 0:
+                within_range_mask[outside_index_left[-1]] = True
+            
+            if len(outside_index_right) > 0:
+                within_range_mask[outside_index_right[0]] = True
+            
+            # Calculate efficiency loss only for bins within analysis range
+            bins_in_range_before = np.sum(temp_histogram.histogram[within_range_mask] * 
+                                        temp_histogram.bin_volumes()[within_range_mask])
+            bins_in_range_after = np.sum(h.histogram[within_range_mask] * 
+                                        h.bin_volumes()[within_range_mask])
+            
+            self.fraction_efficiency_loss = bins_in_range_after / bins_in_range_before
 
         # Create a copy of histogram for ROI calculation
         h_roi = h.histogram.copy()
@@ -226,33 +255,12 @@ class CESTemplateSource(HistogramPdfSource):
 
         h_roi[outside_index_left[:-1]] = 0
         h_roi[outside_index_right[1:]] = 0
-
-        # Calculate fraction in range before applyting efficiency
+            
+        # Calculate fraction in range after applying efficiency
         total_integration = np.sum(h.histogram * h.bin_volumes())
         integration_in_roi = np.sum(h_roi * h.bin_volumes())
         self.fraction_in_range = integration_in_roi / total_integration
-
-        if efficiency_transformation is not None:
-            temp_histogram = deepcopy(h)
-            h = efficiency_transformation.apply_transformation(h)
-            
-            # Create masks for the bins within analysis range
-            within_range_mask = (left_edges >= self.min_e) & (right_edges <= self.max_e)
-            
-            # Handle edge bins partially within range
-            if len(outside_index_left) > 0 and self.min_e != 0:
-                within_range_mask[outside_index_left[-1]] = True
-            
-            if len(outside_index_right) > 0:
-                within_range_mask[outside_index_right[0]] = True
-            
-            # Calculate efficiency loss only for bins within analysis range
-            bins_in_range_before = np.sum(temp_histogram.histogram[within_range_mask] * 
-                                        temp_histogram.bin_volumes()[within_range_mask])
-            bins_in_range_after = np.sum(h.histogram[within_range_mask] * 
-                                        h.bin_volumes()[within_range_mask])
-            
-            self.fraction_efficiency_loss = bins_in_range_after / bins_in_range_before
+        
         return h / np.sum(h.histogram * h.bin_volumes())
 
     def _rebin_histogram(self, h_pre):

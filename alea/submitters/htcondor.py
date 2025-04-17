@@ -391,7 +391,7 @@ class SubmitterHTCondor(Submitter):
         """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
         tarballs = []
         tarball_paths = []
-        for package_name in ["alea", "blueice"]:
+        for package_name in ["alea", "blueice", "multihist"]:
             _tarball = Tarball(self.generated_dir, package_name)
             if not Tarball.get_installed_git_repo(package_name):
                 # Packages should not be non-editable user-installed

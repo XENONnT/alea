@@ -92,7 +92,7 @@ SEED=$(echo "$seed" | sed "s/'/\"/g")
 METADATA=$(echo "$metadata" | sed "s/'/\"/g")
 
 # Installing customized packages
-. install.sh alea blueice
+. install.sh alea blueice multihist
 
 # Extract tarballs input
 mkdir -p templates

@@ -388,7 +388,7 @@ class SubmitterHTCondor(Submitter):
         return rc
 
     def make_tarballs(self):
-        """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
+        """Make tarballs of packages if they are in editable user-installed mode."""
         tarballs = []
         tarball_paths = []
         for package_name in ["alea", "blueice", "multihist"]:
@@ -446,6 +446,8 @@ class SubmitterHTCondor(Submitter):
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
+        job.add_profiles(Namespace.CONDOR, "stream_output", "True")
+        job.add_profiles(Namespace.CONDOR, "stream_error", "True")
 
         return job
 

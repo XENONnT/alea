@@ -208,7 +208,7 @@ class CESTemplateSource(HistogramPdfSource):
         right_edges = h.bin_edges[1:]
         outside_index_left = np.where((left_edges < self.min_e))[0]
         outside_index_right = np.where((right_edges > self.max_e))[0]
-        
+
         # Create a copy of histogram for ROI calculation
         h_roi = h.histogram.copy()
 
@@ -248,13 +248,16 @@ class CESTemplateSource(HistogramPdfSource):
                 within_range_mask[outside_index_right[0]] = True
 
             # Calculate efficiency loss only for bins within analysis range
-            bins_in_range_before = np.sum(temp_histogram.histogram[within_range_mask] *
-                                        temp_histogram.bin_volumes()[within_range_mask])
-            bins_in_range_after = np.sum(h.histogram[within_range_mask] *
-                                        h.bin_volumes()[within_range_mask])
+            bins_in_range_before = np.sum(
+                temp_histogram.histogram[within_range_mask]
+                * temp_histogram.bin_volumes()[within_range_mask]
+            )
+            bins_in_range_after = np.sum(
+                h.histogram[within_range_mask] * h.bin_volumes()[within_range_mask]
+            )
 
             self.fraction_efficiency_loss = bins_in_range_after / bins_in_range_before
-        
+
         return h / np.sum(h.histogram * h.bin_volumes())
 
     def _rebin_histogram(self, h_pre):

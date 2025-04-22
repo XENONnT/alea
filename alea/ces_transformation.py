@@ -6,13 +6,13 @@ from copy import deepcopy
 from multihist import Hist1d
 
 
-def energy_res(energy, a=25.8, b=1.429):
+def energy_res(energy, a:float, b: float):
     """Return energy resolution in keV.
 
     Args:
         energy: True energy in keV.
-        a: First resolution parameter. Defaults to 25.8.
-        b: Second resolution parameter. Defaults to 1.429.
+        a: First resolution parameter.
+        b: Second resolution parameter.
 
     Returns:
         Energy resolution in keV.
@@ -129,13 +129,13 @@ def smearing_hist_gaussian(
     return hist_smeared
 
 
-def biasing_hist_arctan(hist: Any, A: float = 0.01977, k: float = 0.01707):
+def biasing_hist_arctan(hist: Any, A: float, k: float):
     """Apply a constant bias to a histogram.
 
     Args:
         hist: The spectrum we want to apply the bias to.
-        A: First bias parameter. Defaults to 0.01977.
-        k: Second bias parameter. Defaults to 0.01707.
+        A: First bias parameter.
+        k: Second bias parameter. 
 
     Returns:
         The spectrum with the bias applied.

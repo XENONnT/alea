@@ -104,6 +104,7 @@ class CESTemplateSource(HistogramPdfSource):
         # Add essential attributes to cache
         config["cache_attributes"] = config.get("cache_attributes", []) + [
             "ces_space",
+            "minimal_energy_resolution",
             "max_e",
             "min_e",
             "fraction_in_range",
@@ -114,6 +115,7 @@ class CESTemplateSource(HistogramPdfSource):
     def _load_inputs(self):
         """Load the inputs needed for a histogram source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
+        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         self.templatename = self.config["template_filename"]
@@ -266,7 +268,7 @@ class CESTemplateSource(HistogramPdfSource):
         inter_bins = np.linspace(
             h_pre.bin_edges[0],
             h_pre.bin_edges[-1],
-            int((h_pre.bin_edges[-1] - h_pre.bin_edges[0]) / MINIMAL_ENERGY_RESOLUTION),
+            int((h_pre.bin_edges[-1] - h_pre.bin_edges[0]) / self.minimal_energy_resolution),
         )
         h = Hist1d(bins=inter_bins)
         h.histogram = np.where(inter_pre(h.bin_centers) < 0, 0, inter_pre(h.bin_centers))
@@ -451,6 +453,7 @@ class CESMonoenergySource(CESTemplateSource):
     def _load_inputs(self):
         """Load needed inputs for a monoenergetic source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
+        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         try:
@@ -460,7 +463,7 @@ class CESMonoenergySource(CESTemplateSource):
 
     def _load_true_histogram(self):
         """Create a fake histogram with a single peak at the peak energy."""
-        number_of_bins = int((self.max_e - self.min_e) / MINIMAL_ENERGY_RESOLUTION)
+        number_of_bins = int((self.max_e - self.min_e) / self.minimal_energy_resolution)
         h = Hist1d(
             data=np.repeat(self.mu, 1),
             bins=number_of_bins,
@@ -503,6 +506,7 @@ class CESFlatSource(CESTemplateSource):
     def _load_inputs(self):
         """Load needed inputs for a flat source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
+        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         self.fraction_in_range = 1.0
@@ -511,10 +515,10 @@ class CESFlatSource(CESTemplateSource):
     def _load_true_histogram(self):
         """Create a histogram for the flat source."""
         # Add padding to account for smearing effects at the edge
-        padded_min = self.min_e - MINIMAL_ENERGY_RESOLUTION
-        padded_max = self.max_e + MINIMAL_ENERGY_RESOLUTION
+        padded_min = self.min_e - self.minimal_energy_resolution
+        padded_max = self.max_e + self.minimal_energy_resolution
         number_of_bins = int(
-            (self.max_e - self.min_e + 2 * MINIMAL_ENERGY_RESOLUTION) / MINIMAL_ENERGY_RESOLUTION
+            (self.max_e - self.min_e + 2 * self.minimal_energy_resolution) / self.minimal_energy_resolution
         )
         # We should NOT extend the hist beyond the analysis range
         # Otherwise the input rate multiplier will be representing the rate in the extended range

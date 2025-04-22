@@ -129,27 +129,57 @@ def smearing_hist_gaussian(
     return hist_smeared
 
 
-def biasing_hist_arctan(hist: Any, A: float, k: float):
-    """Apply a constant bias to a histogram.
+def biasing_hist_arctan(hist, A: float, k: float, B: float):
+    """
+    Apply bias and Jacobian correction to a 1D histogram,
+    and interpolate the corrected spectrum onto measured energy E'.
 
-    Args:
-        hist: The spectrum we want to apply the bias to.
-        A: First bias parameter.
-        k: Second bias parameter. 
+    - Keeps the original bin edges
+    - Returns a new Hist1d object
+    - bin_centers represent measured energy (E')
+    - histogram is interpolated from corrected f(E)
 
-    Returns:
-        The spectrum with the bias applied.
+    Parameters
+    ----------
+    hist : Hist1d
+        Original histogram in true energy domain E
+    A, k, B : float
+        Bias function parameters:
+            (E' - E) / E = A * arctan(kE) + B
 
-    Raises:
-        AssertionError: If hist is not a Hist1d object.
-
+    Returns
+    -------
+    Hist1d
+        New histogram with interpolated and corrected values, x-axis is E'
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
-    true_energy = hist.bin_centers
-    h_bias = deepcopy(hist)
-    bias_derivative = A * k / (1 + k**2 * true_energy**2)
-    h_bias.histogram *= 1 / (1 + bias_derivative)
-    return h_bias
+
+    E = hist.bin_centers
+    f_E = hist.histogram.astype(float)
+
+    # Bias function and Jacobian
+    b_E = A * np.arctan(k * E) + B
+    b_prime_E = A * k / (1 + (k * E) ** 2)
+    jacobian = 1 + b_E + E * b_prime_E
+
+    # E' = E * (1 + b(E))
+    E_prime = E * (1 + b_E)
+
+    # Corrected spectrum: g(E') = f(E) / dE'/dE
+    f_corrected = f_E / jacobian
+
+    # Interpolate onto original bin_centers (which we now reinterpret as measured energy)
+    interp = interp1d(E_prime, f_corrected,
+                      bounds_error=False, fill_value=0, kind='linear')
+
+    E_meas_bins = hist.bin_centers
+    f_interp = interp(E_meas_bins)
+
+    new_hist = Hist1d.from_histogram(
+        histogram=f_interp,
+        bin_edges=hist.bin_edges
+    )
+    return new_hist
 
 
 def efficiency_hist_constant(hist: Any, efficiency_constant: float):

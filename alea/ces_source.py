@@ -115,7 +115,9 @@ class CESTemplateSource(HistogramPdfSource):
     def _load_inputs(self):
         """Load the inputs needed for a histogram source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
-        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
+        self.minimal_energy_resolution = self.config.get(
+            "minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION
+        )
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         self.templatename = self.config["template_filename"]
@@ -453,7 +455,9 @@ class CESMonoenergySource(CESTemplateSource):
     def _load_inputs(self):
         """Load needed inputs for a monoenergetic source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
-        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
+        self.minimal_energy_resolution = self.config.get(
+            "minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION
+        )
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         try:
@@ -506,7 +510,9 @@ class CESFlatSource(CESTemplateSource):
     def _load_inputs(self):
         """Load needed inputs for a flat source from the config."""
         self.ces_space = self.config["analysis_space"][0][1]
-        self.minimal_energy_resolution = self.config.get("minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION)
+        self.minimal_energy_resolution = self.config.get(
+            "minimal_energy_resolution", MINIMAL_ENERGY_RESOLUTION
+        )
         self.max_e = np.max(self.ces_space)
         self.min_e = np.min(self.ces_space)
         self.fraction_in_range = 1.0
@@ -518,7 +524,8 @@ class CESFlatSource(CESTemplateSource):
         padded_min = self.min_e - self.minimal_energy_resolution
         padded_max = self.max_e + self.minimal_energy_resolution
         number_of_bins = int(
-            (self.max_e - self.min_e + 2 * self.minimal_energy_resolution) / self.minimal_energy_resolution
+            (self.max_e - self.min_e + 2 * self.minimal_energy_resolution)
+            / self.minimal_energy_resolution
         )
         # We should NOT extend the hist beyond the analysis range
         # Otherwise the input rate multiplier will be representing the rate in the extended range

@@ -62,7 +62,7 @@ def rebin_interpolate_normalized(hist, new_edges):
     density = hist.histogram / hist.bin_volumes()
 
     # Create interpolation function for the density
-    f = interp1d(
+    histogram_intepolated = interp1d(
         hist.bin_centers,
         density,
         kind="linear",
@@ -74,7 +74,7 @@ def rebin_interpolate_normalized(hist, new_edges):
     new_centers = 0.5 * (new_edges[1:] + new_edges[:-1])
 
     # Interpolate density at new bin centers
-    new_density = f(new_centers)
+    new_density = histogram_intepolated(new_centers)
 
     # Convert back to histogram values
     new_volumes = np.diff(new_edges)

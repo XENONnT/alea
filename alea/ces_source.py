@@ -10,6 +10,7 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_transformation import Transformation
 
+
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
 
@@ -57,10 +58,6 @@ def rebin_interpolate_normalized(hist, new_edges):
         New histogram with desired binning, properly normalized
 
     """
-    from scipy.interpolate import interp1d
-    import numpy as np
-    from copy import deepcopy
-
     # First convert histogram values to density
     density = hist.histogram / hist.bin_volumes()
 

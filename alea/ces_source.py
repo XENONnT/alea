@@ -16,13 +16,13 @@ MINIMAL_ENERGY_RESOLUTION = 0.05
 
 def new_lookup(self, *args):
     if isinstance(self, Hist1d):
-        coordinates = np.asarray(args[0])
-        in_range = (coordinates >= self.bin_edges[0]) & (coordinates <= self.bin_edges[-1])
+        coords = np.asarray(args[0])
+        in_range = (coords >= self.bin_edges[0]) & (coords <= self.bin_edges[-1])
 
         if not in_range.any():
-            return np.zeros_like(coordinates)
+            return np.zeros_like(coords)
 
-        clipped_coords = np.clip(coordinates, self.bin_edges[0], self.bin_edges[-1])
+        clipped_coords = np.clip(coords, self.bin_edges[0], self.bin_edges[-1])
         result = self.original_lookup(clipped_coords)
         result[~in_range] = 0
 

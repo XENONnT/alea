@@ -6,7 +6,7 @@ from copy import deepcopy
 from multihist import Hist1d
 
 
-def energy_res(energy, a:float, b: float):
+def energy_res(energy, a: float, b: float):
     """Return energy resolution in keV.
 
     Args:
@@ -130,9 +130,8 @@ def smearing_hist_gaussian(
 
 
 def biasing_hist_arctan(hist, A: float, k: float, B: float):
-    """
-    Apply bias and Jacobian correction to a 1D histogram,
-    and interpolate the corrected spectrum onto measured energy E'.
+    """Apply bias and Jacobian correction to a 1D histogram, and interpolate the corrected spectrum
+    onto measured energy E'.
 
     - Keeps the original bin edges
     - Returns a new Hist1d object
@@ -151,6 +150,7 @@ def biasing_hist_arctan(hist, A: float, k: float, B: float):
     -------
     Hist1d
         New histogram with interpolated and corrected values, x-axis is E'
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
 
@@ -169,16 +169,12 @@ def biasing_hist_arctan(hist, A: float, k: float, B: float):
     f_corrected = f_E / jacobian
 
     # Interpolate onto original bin_centers (which we now reinterpret as measured energy)
-    interp = interp1d(E_prime, f_corrected,
-                      bounds_error=False, fill_value=0, kind='linear')
+    interp = interp1d(E_prime, f_corrected, bounds_error=False, fill_value=0, kind="linear")
 
     E_meas_bins = hist.bin_centers
     f_interp = interp(E_meas_bins)
 
-    new_hist = Hist1d.from_histogram(
-        histogram=f_interp,
-        bin_edges=hist.bin_edges
-    )
+    new_hist = Hist1d.from_histogram(histogram=f_interp, bin_edges=hist.bin_edges)
     return new_hist
 
 

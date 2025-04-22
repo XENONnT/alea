@@ -44,6 +44,7 @@ def smearing_mono_gaussian(
 
     Raises:
         ValueError: If bins has less than 2 elements.
+
     """
 
     if bins is None:
@@ -103,6 +104,7 @@ def smearing_hist_gaussian(
     Raises:
         AssertionError: If hist is not a Hist1d object.
         ValueError: If bins has less than 2 elements.
+
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:

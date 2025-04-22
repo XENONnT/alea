@@ -95,6 +95,7 @@ likelihood_config:
       likelihood_type: blueice.likelihood.UnbinnedLogLikelihood
       analysis_space:
         - ces: np.arange(0, 500, 1)
+      minimal_energy_resolution: 0.1
       # smearing and efficiency are applied to all of the sources, unless overridden
       apply_efficiency: true
       efficiency_model: constant

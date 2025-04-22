@@ -30,7 +30,7 @@ def smearing_mono_gaussian(
     peak_energy: float,
     bins: Optional[np.ndarray] = None,
 ):
-    """Smear a mono-energetic peak with a Gaussian.
+    """Smear a mono-energetic peak with a Gaussian using CDF difference method.
 
     Args:
         hist: The histogram to smear.
@@ -44,32 +44,42 @@ def smearing_mono_gaussian(
 
     Raises:
         ValueError: If bins has less than 2 elements.
-
     """
 
     if bins is None:
-        # create an emptyzero histogram with the same binning as the input histogram
-        data = stats.norm.pdf(
-            hist.bin_centers,
-            loc=peak_energy,
-            scale=energy_res(peak_energy, smearing_a, smearing_b),
-        )
-        hist_smeared = Hist1d(data=np.zeros_like(data), bins=hist.bin_edges)
-        hist_smeared.histogram = data
+        bins = hist.bin_edges
+        bin_centers = hist.bin_centers
     else:
         # use the bins that set by the user
         bins = np.array(bins)
         if bins.size <= 1:
             raise ValueError("bins must have at least 2 elements")
         bin_centers = 0.5 * (bins[1:] + bins[:-1])
-        data = stats.norm.pdf(
-            bin_centers,
-            loc=peak_energy,
-            scale=energy_res(peak_energy, smearing_a, smearing_b),
+    
+    # Calculate bin widths
+    bin_widths = np.diff(bins)
+    
+    # Create array to hold the result
+    data = np.zeros_like(bin_centers)
+    
+    # Calculate the resolution at the peak energy
+    scale = energy_res(peak_energy, smearing_a, smearing_b)
+    
+    # For each bin, calculate CDF difference
+    for i, center in enumerate(bin_centers):
+        half_width = bin_widths[i] * 0.5
+        upper_edge = center + half_width
+        lower_edge = center - half_width
+        
+        # CDF difference gives probability mass in this bin
+        data[i] = (
+            stats.norm.cdf(upper_edge, loc=peak_energy, scale=scale) - 
+            stats.norm.cdf(lower_edge, loc=peak_energy, scale=scale)
         )
-        # create an empty histogram with the user-defined binning
-        hist_smeared = Hist1d(data=np.zeros_like(data), bins=bins)
-        hist_smeared.histogram = data
+    
+    # Create and populate the histogram
+    hist_smeared = Hist1d(data=np.zeros_like(data), bins=bins)
+    hist_smeared.histogram = data
 
     return hist_smeared
 
@@ -80,7 +90,7 @@ def smearing_hist_gaussian(
     smearing_b: float,
     bins: Optional[np.ndarray] = None,
 ):
-    """Smear a histogram with Gaussian. This allows for non-uniform histogram binning.
+    """Smear a histogram with Gaussian using CDF difference method.
 
     Args:
         hist: The spectrum we want to smear.
@@ -94,7 +104,6 @@ def smearing_hist_gaussian(
     Raises:
         AssertionError: If hist is not a Hist1d object.
         ValueError: If bins has less than 2 elements.
-
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"
     if bins is None:
@@ -110,18 +119,25 @@ def smearing_hist_gaussian(
     rates = rates[mask]
     bin_volumes = bin_volumes[mask]
 
-    e_smeared_s = 0.5 * (bins[1:] + bins[:-1])
+    e_smeared_s = 0.5 * (bins[1:] + bins[:-1])  # Centers of output bins
+    bin_widths = bins[1:] - bins[:-1]  # Widths of output bins
     smeared = np.zeros_like(e_smeared_s)
 
     for idx, e_smeared in enumerate(e_smeared_s):
+        # Calculate bin edges for CDF evaluation
+        half_width = bin_widths[idx] * 0.5
+        upper_edge = e_smeared + half_width
+        lower_edge = e_smeared - half_width
+        
+        # Use CDF difference instead of PDF
+        scales = energy_res(e_true_s, smearing_a, smearing_b)
+        
+        # CDF at upper edge minus CDF at lower edge for each input energy
         probs = (
-            stats.norm.pdf(
-                e_smeared,
-                loc=e_true_s,
-                scale=energy_res(e_true_s, smearing_a, smearing_b),
-            )
-            * bin_volumes
-        )
+            stats.norm.cdf(upper_edge, loc=e_true_s, scale=scales) - 
+            stats.norm.cdf(lower_edge, loc=e_true_s, scale=scales)
+        ) * bin_volumes
+        
         smeared[idx] = np.sum(probs * rates)
 
     hist_smeared = Hist1d.from_histogram(smeared, bins)

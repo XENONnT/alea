@@ -435,3 +435,97 @@ class SpectrumTemplateSource(TemplateSource):
 
         self.set_dtype()
         self.set_pdf_histogram(h)
+
+
+import h5py  # noqa
+
+
+A_Xe = np.asarray([124, 126, 128, 129, 130, 131, 132, 134, 136])
+y_Xe = np.asarray([0.0009, 0.0009, 0.0192, 0.264, 0.0408, 0.212, 0.269, 0.104, 0.0887])
+Z_Xe = 54 * np.ones_like(A_Xe)
+N_Xe = A_Xe - Z_Xe
+alpha = 1 / 137.036
+sin2_theta_w = 0.23857
+g_p = 0.5 - 2 * sin2_theta_w
+g_n = -0.5
+GeV = 1e3 / 197.326  # in fm-1
+GF2 = (1.166379e-5 * GeV ** (-2)) ** 2
+
+
+def light_mediator(m_z, g_z, T):
+    """m_z in MeV."""
+    nominal = np.average((g_p * Z_Xe + g_n * N_Xe) ** 2, weights=y_Xe)
+    proposed = []
+    for Z, N in zip(Z_Xe, N_Xe):
+        M = 0.9315 * (Z + N) * GeV
+        q = np.sqrt(2 * M * T * 1e-6 * GeV)
+        epsilon = g_z**2 / (2**0.5 * GF2**0.5 * (q**2 + (m_z * 1e-3 * GeV) ** 2))
+        proposed.append(((g_p + 3 * epsilon) * Z + (g_n + 3 * epsilon) * N) ** 2)
+    proposed = np.array(proposed).T
+    proposed = np.average(proposed, weights=y_Xe, axis=1)
+    return proposed / nominal
+
+
+def millicharge(q, T):
+    nominal = np.average((g_p * Z_Xe + g_n * N_Xe) ** 2, weights=y_Xe)
+    proposed = []
+    for Z, N in zip(Z_Xe, N_Xe):
+        M = 0.9315 * (Z + N) * GeV
+        q2 = -2 * M * T * 1e-6 * GeV
+        Q_l = 2 * 2**0.5 * np.pi * alpha / (GF2**0.5 * q2) * q
+        proposed.append(((g_p - Q_l) * Z + g_n * N) ** 2)
+    proposed = np.array(proposed).T
+    proposed = np.average(proposed, weights=y_Xe, axis=1)
+    return proposed / nominal
+
+
+class ReweightedTemplateSource(TemplateSource):
+    def build_histogram(self):
+        """Build the histogram of the source."""
+        templatename = self.config["templatename"].format(**self.format_named_parameters)
+
+        with h5py.File(templatename, "r", libver="latest", swmr=True) as opt:
+            normalization = opt["dfluxdT"].attrs["normalization"]
+            histograms = []
+            for histname in np.char.mod("%.3f", opt["Tbinscen"]):
+                h = template_to_multihist(
+                    templatename,
+                    hist_name=histname,
+                )
+                histograms.append(h.histogram)
+            histograms = np.array(histograms)
+
+            if "log10_m_z" in self.config and "log10_g_z" in self.config:
+                ratio = light_mediator(
+                    10 ** self.config["log10_m_z"],
+                    10 ** self.config["log10_g_z"],
+                    opt["Tbinscen"],
+                )
+            elif "q" in self.config:
+                ratio = millicharge(self.config["q"] / 1e8, opt["Tbinscen"])
+            else:
+                raise NotImplementedError
+
+            histograms *= ratio[(...,) + (None,) * (histograms.ndim - 1)]
+            histogram = np.average(histograms, weights=opt["dfluxdT"], axis=0) * normalization
+
+        h = template_to_multihist(templatename, histname)
+        h.histogram = histogram
+
+        if np.min(h.histogram) < 0:
+            raise AssertionError(f"There are bins for source {templatename} with negative entries.")
+
+        if self.config.get("normalise_template", False):
+            h /= h.n
+        if not self.config.get("in_events_per_bin", True):
+            h.histogram *= h.bin_volumes()
+
+        h = self.apply_slice_args(h)
+
+        # Fix the bin sizes
+        if can_check_binning:
+            histogram_info = f"{histname:s} in hdf5 file {templatename:s}"
+            self._check_binning(h, histogram_info)
+
+        self.set_dtype()
+        self.set_pdf_histogram(h)

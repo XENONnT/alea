@@ -90,44 +90,36 @@ parameter_definition:
   A:
     nominal_value: 0.01977
     ptype: shape
-    uncertainty: 0.05
-    relative_uncertainty: true
+    uncertainty: 0.001
+    relative_uncertainty: false
     fittable: false
     blueice_anchors:
-      - 0.01
       - 0.01977
-      - 0.03
-    fit_limits:
-      - 0.01
-      - 0.03
     description: bais shaping parameter
 
   k:
     nominal_value: 0.01707
     ptype: shape
-    uncertainty: 0.05
-    relative_uncertainty: true
+    uncertainty: 0.001
+    relative_uncertainty: false
     fittable: false
     blueice_anchors:
-      - 0.01
       - 0.01707
-      - 0.03
-    fit_limits:
-      - 0.01
-      - 0.03
     description: bias shaping parameter
 
   B:
     nominal_value: 0.0
     ptype: shape
     uncertainty: 0.01
-    relative_uncertainty: true
-    fittable: false
+    relative_uncertainty: false
+    fittable: true
     blueice_anchors:
+      - -0.02
       - 0.0
+      - 0.02
     fit_limits:
-      - -0.01
-      - 0.01
+      - -0.02
+      - 0.02
     description: bias shaping parameter
 
 likelihood_config:
@@ -149,7 +141,12 @@ likelihood_config:
       smearing_parameters:
         - smearing_a
         - smearing_b
-      apply_bias: false
+      apply_bias: true
+      bias_model: arctan
+      bias_parameters:
+        - A
+        - k
+        - B
       livetime_parameter: livetime
       fiducial_mass_parameter: fiducial_mass
       slice_args: {}
@@ -161,6 +158,9 @@ likelihood_config:
           - smearing_a
           - smearing_b
           - efficiency_constant
+          - A
+          - k
+          - B
         template_filename: xe133_template.ii.h5
       - name: test_gaussian
         class: alea.ces_source.CESMonoenergySource
@@ -170,6 +170,9 @@ likelihood_config:
           - smearing_a
           - smearing_b
           - efficiency_constant
+          - A
+          - k
+          - B
       - name: test_flat
         class: alea.ces_source.CESFlatSource
         parameters:

@@ -161,15 +161,15 @@ class CESTemplateSource(HistogramPdfSource):
                 does not overlap with the analysis space ({self.min_e},{self.max_e}) \
                 remove this background please:)"
             )
-            
+
     def _get_transformations(self):
         """Create and return all transformations to be applied."""
         return {
             "smearing": self._create_transformation("smearing"),
             "bias": self._create_transformation("bias"),
-            "efficiency": self._create_transformation("efficiency")
+            "efficiency": self._create_transformation("efficiency"),
         }
-    
+
     def _create_transformation(
         self, transformation_type: Literal["smearing", "bias", "efficiency"]
     ):
@@ -203,7 +203,7 @@ class CESTemplateSource(HistogramPdfSource):
         """Apply the transformations to the histogram."""
         # Get all transformations
         transformations = self._get_transformations()
-        
+
         # Apply smearing and bias transformations
         if transformations["smearing"] is not None:
             h = transformations["smearing"].apply_transformation(h)
@@ -546,11 +546,11 @@ class CESFlatSource(CESTemplateSource):
         )
         h.histogram = np.ones_like(h.histogram, dtype=np.float64)  # Create flat distribution
         return h
-    
+
     def _get_transformations(self):
         """Override to bypass smearing and bias transformations for flat source."""
         return {
             "smearing": None,
             "bias": None,
-            "efficiency": self._create_transformation("efficiency")
+            "efficiency": self._create_transformation("efficiency"),
         }

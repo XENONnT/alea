@@ -89,6 +89,49 @@ parameter_definition:
       - 0.7
       - 0.9
 
+  A:
+    nominal_value: 0.01977
+    ptype: shape
+    uncertainty: 0.05
+    relative_uncertainty: true
+    fittable: false
+    blueice_anchors:
+      - 0.01
+      - 0.01977
+      - 0.03
+    fit_limits:
+      - 0.01
+      - 0.03
+    description: bais shaping parameter
+
+  k:
+    nominal_value: 0.01707
+    ptype: shape
+    uncertainty: 0.05
+    relative_uncertainty: true
+    fittable: false
+    blueice_anchors:
+      - 0.01
+      - 0.01707
+      - 0.03
+    fit_limits:
+      - 0.01
+      - 0.03
+    description: bias shaping parameter
+
+  B:
+    nominal_value: 0.0
+    ptype: shape
+    uncertainty: 0.01
+    relative_uncertainty: true
+    fittable: false
+    blueice_anchors:
+      - 0.0
+    fit_limits:
+      - -0.01
+      - 0.01
+    description: bias shaping parameter
+
 likelihood_config:
   template_folder: null  # will try to find the templates in alea
   likelihood_terms:

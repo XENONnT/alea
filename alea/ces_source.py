@@ -161,7 +161,15 @@ class CESTemplateSource(HistogramPdfSource):
                 does not overlap with the analysis space ({self.min_e},{self.max_e}) \
                 remove this background please:)"
             )
-
+            
+    def _get_transformations(self):
+        """Create and return all transformations to be applied."""
+        return {
+            "smearing": self._create_transformation("smearing"),
+            "bias": self._create_transformation("bias"),
+            "efficiency": self._create_transformation("efficiency")
+        }
+    
     def _create_transformation(
         self, transformation_type: Literal["smearing", "bias", "efficiency"]
     ):
@@ -193,16 +201,14 @@ class CESTemplateSource(HistogramPdfSource):
 
     def _transform_histogram(self, h: Hist1d):
         """Apply the transformations to the histogram."""
-        # Create transformations for efficiency, smearing, and bias
-        smearing_transformation = self._create_transformation("smearing")
-        bias_transformation = self._create_transformation("bias")
-        efficiency_transformation = self._create_transformation("efficiency")
-
-        # Apply the transformations to the histogram
-        if smearing_transformation is not None:
-            h = smearing_transformation.apply_transformation(h)
-        if bias_transformation is not None:
-            h = bias_transformation.apply_transformation(h)
+        # Get all transformations
+        transformations = self._get_transformations()
+        
+        # Apply smearing and bias transformations
+        if transformations["smearing"] is not None:
+            h = transformations["smearing"].apply_transformation(h)
+        if transformations["bias"] is not None:
+            h = transformations["bias"].apply_transformation(h)
 
         # Calculate fraction in range for raw histogram
         left_edges = h.bin_edges[:-1]
@@ -234,9 +240,9 @@ class CESTemplateSource(HistogramPdfSource):
         integration_in_roi = np.sum(h_roi * h.bin_volumes())
         self.fraction_in_range = integration_in_roi / total_integration
 
-        if efficiency_transformation is not None:
+        if transformations["efficiency"] is not None:
             temp_histogram = deepcopy(h)
-            h = efficiency_transformation.apply_transformation(h)
+            h = transformations["efficiency"].apply_transformation(h)
 
             # Create masks for the bins within analysis range
             within_range_mask = (left_edges >= self.min_e) & (right_edges <= self.max_e)
@@ -540,3 +546,11 @@ class CESFlatSource(CESTemplateSource):
         )
         h.histogram = np.ones_like(h.histogram, dtype=np.float64)  # Create flat distribution
         return h
+    
+    def _get_transformations(self):
+        """Override to bypass smearing and bias transformations for flat source."""
+        return {
+            "smearing": None,
+            "bias": None,
+            "efficiency": self._create_transformation("efficiency")
+        }

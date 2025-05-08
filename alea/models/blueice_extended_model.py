@@ -265,6 +265,9 @@ class BlueiceExtendedModel(StatisticalModel):
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
         pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        # Add the likelihood name to the base configuration
+        likelihood_name = config.get("name", "")
+        pdf_base_config["likelihood_name"] = likelihood_name
         pdf_base_config["livetime_days"] = self.parameters[
             pdf_base_config["livetime_parameter"]
         ].nominal_value

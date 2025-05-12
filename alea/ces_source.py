@@ -10,7 +10,6 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_transformation import Transformation
 
-
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
 

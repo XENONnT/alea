@@ -1,4 +1,4 @@
-0.3.2 / 2025-05-13
+0.3.3 / 2025-05-13
 ------------------
 * Add sources and example notebook for 1D CES inference by @yuema137 in https://github.com/XENONnT/alea/pull/161
 * Parse the likelihood name to the base config by @yuema137 in https://github.com/XENONnT/alea/pull/246

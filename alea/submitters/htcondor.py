@@ -179,9 +179,11 @@ class SubmitterHTCondor(Submitter):
         def update_template_filenames(node):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    if key in ["template_filename", "spectrum_name"]:
-                        filename = os.path.basename(value)
-                        node[key] = filename
+                    if key in ["template_filename", "template_filenames", "spectrum_name"]:  # specific keys
+                        if isinstance(value, list):  # list case
+                            node[key] = [os.path.basename(v) for v in value]
+                        else:  # single file case
+                            node[key] = os.path.basename(value)
                     else:
                         update_template_filenames(value)
             elif isinstance(node, list):

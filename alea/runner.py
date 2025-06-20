@@ -182,7 +182,9 @@ class Runner:
             )
         # update poi according to poi_expectation
         if "poi_expectation" in value:
-            value = self.update_poi(self.model, self.poi, value, self.nominal_values, self.poi_is_rate_multiplier)
+            value = self.update_poi(
+                self.model, self.poi, value, self.nominal_values, self.poi_is_rate_multiplier
+            )
         return value
 
     @property
@@ -239,7 +241,11 @@ class Runner:
 
     @staticmethod
     def update_poi(
-        model, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float] = {}, poi_is_rate_multiplier: bool = False,
+        model,
+        poi: str,
+        generate_values: Dict[str, float],
+        nominal_values: Dict[str, float] = {},
+        poi_is_rate_multiplier: bool = False,
     ):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
         provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
@@ -252,8 +258,8 @@ class Runner:
             generate_values (dict): generate values of toydata,
                 it can contain "poi_expectation"
             nominal_values (dict): nominal values of parameters
-            poi_is_rate_multiplier (bool): whether the poi is a rate multiplier, default is False, 
-                False: the input unit is number of events. 
+            poi_is_rate_multiplier (bool): whether the poi is a rate multiplier, default is False,
+                False: the input unit is number of events.
                 True: the input unit is rate multiplier.
 
         Caution:
@@ -273,7 +279,7 @@ class Runner:
                 "the generate_values according to the expectations."
             )
         poi_expectation = generate_values.pop("poi_expectation")
-        
+
         if poi_is_rate_multiplier:
             # Direct assignment: poi_expectation is already the rate_multiplier value
             generate_values[poi] = poi_expectation
@@ -286,7 +292,7 @@ class Runner:
             component = poi.replace("_rate_multiplier", "")
             nominal_expectation = expectation_values[component]
             ratio = poi_expectation / nominal_expectation
-            generate_values[poi] = ratio 
+            generate_values[poi] = ratio
         return generate_values
 
     def _get_parameter_list(self):

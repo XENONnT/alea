@@ -30,7 +30,7 @@ toydata_filename=${18}
 only_toydata=${19}
 output_filename=${20}
 seed=${21}
-metadata=${22} 
+metadata=${22}
 echo "statistical_model: $statistical_model"
 echo "poi: $poi"
 echo "hypotheses: $hypotheses"

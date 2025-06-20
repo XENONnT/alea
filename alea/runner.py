@@ -77,6 +77,7 @@ class Runner:
         self,
         statistical_model: str = "alea.examples.gaussian_model.GaussianModel",
         poi: str = "mu",
+        poi_is_rate_multiplier: bool = False,
         hypotheses: list = ["free"],
         n_mc: int = 1,
         common_hypothesis: Optional[dict] = None,
@@ -99,6 +100,7 @@ class Runner:
     ):
         """Initialize statistical model, parameters list, and generate values list."""
         self.poi = poi
+        self.poi_is_rate_multiplier = poi_is_rate_multiplier
 
         statistical_model_class = StatisticalModel.get_model_from_name(statistical_model)
 
@@ -180,7 +182,9 @@ class Runner:
             )
         # update poi according to poi_expectation
         if "poi_expectation" in value:
-            value = self.update_poi(self.model, self.poi, value, self.nominal_values)
+            value = self.update_poi(
+                self.model, self.poi, value, self.nominal_values, self.poi_is_rate_multiplier
+            )
         return value
 
     @property
@@ -237,7 +241,11 @@ class Runner:
 
     @staticmethod
     def update_poi(
-        model, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float] = {}
+        model,
+        poi: str,
+        generate_values: Dict[str, float],
+        nominal_values: Dict[str, float] = {},
+        poi_is_rate_multiplier: bool = False,
     ):
         """Update the poi according to poi_expectation. First, it will check if poi_expectation is
         provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
@@ -250,6 +258,9 @@ class Runner:
             generate_values (dict): generate values of toydata,
                 it can contain "poi_expectation"
             nominal_values (dict): nominal values of parameters
+            poi_is_rate_multiplier (bool): whether the poi is a rate multiplier, default is False,
+                False: the input unit is number of events.
+                True: the input unit is rate multiplier.
 
         Caution:
             The expectation is evaluated under nominal_values in each batch.
@@ -267,18 +278,21 @@ class Runner:
                 "if poi_expectation is provided, because you want to update "
                 "the generate_values according to the expectations."
             )
-        generate_values_copy = deepcopy(generate_values)
-        generate_values_copy.pop("poi_expectation")
-        expectation_values = model.get_expectation_values(
-            **{**generate_values_copy, **nominal_values}
-        )
-        component = poi.replace("_rate_multiplier", "")
-        nominal_expectation = expectation_values[component]
-        poi_expectation = generate_values["poi_expectation"]
-        ratio = poi_expectation / nominal_expectation
-        # update poi to the correct value
-        generate_values.pop("poi_expectation")
-        generate_values[poi] = ratio
+        poi_expectation = generate_values.pop("poi_expectation")
+
+        if poi_is_rate_multiplier:
+            # Direct assignment: poi_expectation is already the rate_multiplier value
+            generate_values[poi] = poi_expectation
+        else:
+            # Original logic: poi_expectation is number of events, need to normalize
+            generate_values_copy = deepcopy(generate_values)
+            expectation_values = model.get_expectation_values(
+                **{**generate_values_copy, **nominal_values}
+            )
+            component = poi.replace("_rate_multiplier", "")
+            nominal_expectation = expectation_values[component]
+            ratio = poi_expectation / nominal_expectation
+            generate_values[poi] = ratio
         return generate_values
 
     def _get_parameter_list(self):

@@ -3,7 +3,7 @@
 set -e
 
 # Check if number of arguments passed is correct
-if [ $# -ne 22 ]; then
+if [ $# -ne 21 ]; then
     echo "Error: You need to provide required number of arguments."
     exit 1
 fi
@@ -11,26 +11,25 @@ fi
 # Extract the arguments
 statistical_model=$1
 poi=$2
-poi_is_rate_multiplier=$3
-hypotheses=$4
-n_mc=$5
-common_hypothesis=$6
-generate_values=$7
-nominal_values=$8
-statistical_model_config=$9
-parameter_definition=${10}
-statistical_model_args=${11}
-likelihood_config=${12}
-compute_confidence_interval=${13}
-confidence_level=${14}
-confidence_interval_kind=${15}
-fit_strategy=${16}
-toydata_mode=${17}
-toydata_filename=${18}
-only_toydata=${19}
-output_filename=${20}
-seed=${21}
-metadata=${22}
+hypotheses=$3
+n_mc=$4
+common_hypothesis=$5
+generate_values=$6
+nominal_values=$7
+statistical_model_config=$8
+parameter_definition=$9
+statistical_model_args=${10}
+likelihood_config=${11}
+compute_confidence_interval=${12}
+confidence_level=${13}
+confidence_interval_kind=${14}
+fit_strategy=${15}
+toydata_mode=${16}
+toydata_filename=${17}
+only_toydata=${18}
+output_filename=${19}
+seed=${20}
+metadata=${21}
 echo "statistical_model: $statistical_model"
 echo "poi: $poi"
 echo "hypotheses: $hypotheses"
@@ -72,7 +71,6 @@ fi
 # Escaped strings
 STATISTICAL_MODEL=$(echo "$statistical_model" | sed "s/'/\"/g")
 POI=$(echo "$poi" | sed "s/'/\"/g")
-POI_IS_RATE_MULTIPLIER=$(echo "$poi_is_rate_multiplier" | sed "s/'/\"/g")
 HYPOTHESES=$(echo "$hypotheses" | sed "s/'/\"/g")
 N_MC=$(echo "$n_mc" | sed "s/'/\"/g")
 COMMON_HYPOTHESIS=$(echo "$common_hypothesis" | sed "s/'/\"/g")
@@ -118,7 +116,6 @@ ls -lh templates/
 echo "Running command: python alea_run_toymc.py \\
     --statistical_model $STATISTICAL_MODEL \\
     --poi $POI \\
-    --poi_is_rate_multiplier $POI_IS_RATE_MULTIPLIER \\
     --hypotheses $HYPOTHESES \\
     --n_mc $N_MC \\
     --common_hypothesis $COMMON_HYPOTHESIS \\
@@ -143,7 +140,6 @@ echo "Running command: python alea_run_toymc.py \\
 time python alea_run_toymc.py \
     --statistical_model $STATISTICAL_MODEL \
     --poi $POI \
-    --poi_is_rate_multiplier $POI_IS_RATE_MULTIPLIER \
     --hypotheses $HYPOTHESES \
     --n_mc $N_MC \
     --common_hypothesis $COMMON_HYPOTHESIS \

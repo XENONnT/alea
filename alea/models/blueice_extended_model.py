@@ -265,9 +265,17 @@ class BlueiceExtendedModel(StatisticalModel):
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
         pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        # Add the likelihood name to the base configuration
+        likelihood_name = config.get("name", "")
+        pdf_base_config["likelihood_name"] = likelihood_name
         pdf_base_config["livetime_days"] = self.parameters[
             pdf_base_config["livetime_parameter"]
         ].nominal_value
+        pdf_base_config["fiducial_mass"] = (
+            self.parameters[pdf_base_config["fiducial_mass_parameter"]].nominal_value
+            if "fiducial_mass_parameter" in pdf_base_config
+            else 1
+        )
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters
@@ -296,9 +304,16 @@ class BlueiceExtendedModel(StatisticalModel):
         # get blueice likelihood_config if it's given
         likelihood_config = config.get("likelihood_config", None)
 
+        source_wise_interpolation = config.get("source_wise_interpolation", True)
+
+        if source_wise_interpolation and likelihood_config:
+            if likelihood_config.get("morpher") == "IndexMorpher":
+                raise ValueError("Source-wise interpolation is not yet supported for IndexMorpher.")
+
         blueice_config = {
             "pdf_base_config": pdf_base_config,
             "likelihood_config": likelihood_config,
+            "source_wise_interpolation": source_wise_interpolation,
         }
         return blueice_config
 
@@ -335,7 +350,10 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            blueice_config.setdefault("source_wise_interpolation", True)
+            blueice_config["source_wise_interpolation"] = config.get(
+                "source_wise_interpolation", True
+            )
+            print(blueice_config["source_wise_interpolation"])
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:
@@ -379,7 +397,11 @@ class BlueiceExtendedModel(StatisticalModel):
                     # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
-            ll.prepare()
+            n_cores = config.get("n_cores", 1)
+            if n_cores == 1:
+                ll.prepare()
+            else:
+                ll.prepare(n_cores=n_cores)
             lls.append(ll)
 
         # ancillary likelihood
@@ -529,7 +551,14 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
+        allowed_ptypes = [
+            "rate",
+            "shape",
+            "index",
+            "efficiency",
+            "livetime",
+            "needs_reinit",
+        ]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

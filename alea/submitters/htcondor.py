@@ -71,6 +71,11 @@ class SubmitterHTCondor(Submitter):
         self.dagman_maxidle = self.htcondor_configurations.pop("dagman_maxidle", 100_000)
         self.dagman_maxjobs = self.htcondor_configurations.pop("dagman_maxjobs", 100_000)
 
+        # Self-installed packages
+        self.package_names = self.htcondor_configurations.pop(
+            "user_install_package", ["alea", "blueice"]
+        )
+
         super().__init__(*args, **kwargs)
         TEMPLATE_RECORDS.lock()
 
@@ -174,9 +179,15 @@ class SubmitterHTCondor(Submitter):
         def update_template_filenames(node):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    if key in ["template_filename", "spectrum_name"]:
-                        filename = os.path.basename(value)
-                        node[key] = filename
+                    if key in [
+                        "template_filename",
+                        "template_filenames",
+                        "spectrum_name",
+                    ]:  # specific keys
+                        if isinstance(value, list):  # list case
+                            node[key] = [os.path.basename(v) for v in value]
+                        else:  # single file case
+                            node[key] = os.path.basename(value)
                     else:
                         update_template_filenames(value)
             elif isinstance(node, list):
@@ -389,9 +400,10 @@ class SubmitterHTCondor(Submitter):
 
     def make_tarballs(self):
         """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
+        self.user_install_package = []
         tarballs = []
         tarball_paths = []
-        for package_name in ["alea", "blueice"]:
+        for package_name in self.package_names:
             _tarball = Tarball(self.generated_dir, package_name)
             if not Tarball.get_installed_git_repo(package_name):
                 # Packages should not be non-editable user-installed
@@ -407,6 +419,7 @@ class SubmitterHTCondor(Submitter):
                 logger.warning(
                     f"Using tarball of user installed package {package_name} at {tarball_path}."
                 )
+                self.user_install_package.append(package_name)
                 tarballs.append(tarball)
                 tarball_paths.append(tarball_path)
         return tarballs, tarball_paths
@@ -446,6 +459,10 @@ class SubmitterHTCondor(Submitter):
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
+
+        # User installed packages
+        user_install_package = " ".join(self.user_install_package)
+        job.add_profiles(Namespace.ENV, "USER_INSTALL_PACKAGE", user_install_package)
 
         return job
 

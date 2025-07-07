@@ -1,6 +1,6 @@
 # Submitters
 ## HTCondor Submitter Tips
-Contact for tech-support: [Lanqing Yuan](yuanlq@uchicago.edu)
+Contact #osg-computing or #tech-support on XENONnT slack for tech-support.
 
 This submitter will only work on OSG, assuming you are submitting from `ap23`. To use it, you have to be in XENONnT collaboration (since there are several XENON privillaged certificates involved in this submitter), and you should have finished the `ap23` setup [here](https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:guide#for_ci-connect_osg_service). No Grid Certificate (Computing experts only) is required.
 

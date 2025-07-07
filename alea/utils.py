@@ -2,7 +2,6 @@ import os
 import re
 import json
 import yaml
-import importlib_resources
 import itertools
 import blueice
 from glob import glob
@@ -12,6 +11,7 @@ import logging
 from hashlib import sha256
 from base64 import b32encode
 from collections.abc import Mapping
+from importlib.resources import files as _files
 from typing import Any, List, Dict, Tuple, Optional, Union, cast, get_args, get_origin
 from blueice.pdf_morphers import Morpher
 from itertools import product
@@ -168,12 +168,24 @@ def _prefix_file_path(
 
     """
     for key in config.keys():
-        if isinstance(config[key], str) and key not in ignore_keys:
-            try:
-                config[key] = get_file_path(config[key], template_folder_list)
-                TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
-            except RuntimeError:
-                pass
+        if key not in ignore_keys:
+            if isinstance(config[key], str):
+                try:
+                    config[key] = get_file_path(config[key], template_folder_list)
+                    TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(config[key])))
+                except RuntimeError:
+                    pass
+            elif isinstance(config[key], list):
+                try:
+                    config[key] = [
+                        get_file_path(item, template_folder_list) if isinstance(item, str) else item
+                        for item in config[key]
+                    ]
+                    for item in config[key]:
+                        if isinstance(item, str):
+                            TEMPLATE_RECORDS.update(glob(formatted_to_asterisked(item)))
+                except RuntimeError:
+                    pass
 
 
 def adapt_likelihood_config_for_blueice(
@@ -267,7 +279,7 @@ def _get_internal(file_name):
 
 def _package_path(sub_directory):
     """Get the abs path of the requested sub folder."""
-    return importlib_resources.files("alea") / sub_directory
+    return _files("alea") / sub_directory
 
 
 def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):

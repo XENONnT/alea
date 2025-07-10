@@ -37,6 +37,11 @@ def main():
     group.add_argument(
         "--htcondor", action="store_true", help="Write out files for submission to htcondor"
     )
+    group.add_argument(
+        "--spartan",
+        action="store_true",
+        help="Prepare submission for the Spartan cluster (slurm)",
+    )
     # Optional arguments
     parser.add_argument(
         "--debug",
@@ -73,8 +78,11 @@ def main():
         submitter_class = SubmitterSlurm
     elif parsed_args.htcondor:
         from alea.submitters.htcondor import SubmitterHTCondor
-
         submitter_class = SubmitterHTCondor
+        
+    elif parsed_args.spartan:
+        from alea.submitters.spartan_slurm import SubmitterSpartanSlurm
+        submitter_class = SubmitterSpartanSlurm
     else:
         raise ValueError(
             "No submission destination specified. "

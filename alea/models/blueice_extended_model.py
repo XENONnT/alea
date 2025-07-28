@@ -439,7 +439,7 @@ class BlueiceExtendedModel(StatisticalModel):
             else:
                 raise ValueError(f"Unknown pdf_interpolation_method {method}.")
         return data_generators
-
+    
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
         return self._likelihood(livetime_days=livetime_days, **generate_values)
@@ -689,24 +689,30 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         """
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
+        #n_off= 8
         for name, uncertainty in self.parameters.uncertainties.items():
             if isinstance(uncertainty, (float, int)):
                 param = self.parameters[name]
-                if param.relative_uncertainty:
-                    if param.nominal_value is None:
-                        raise ValueError(
-                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
-                            "but nominal value is None. "
-                            "Please provide a nominal value."
-                        )
-                    if param.nominal_value == 0:
-                        warnings.warn(
-                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
-                            "but nominal value is 0. "
-                            "This will result in a relative uncertainty of 0."
-                        )
-                    uncertainty *= param.nominal_value
-                func = stats.norm(central_values[name], uncertainty)
+                if param not in self.parameters.from_sideband:
+                    if param.relative_uncertainty:
+                        if param.nominal_value is None:
+                            raise ValueError(
+                                f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                                "but nominal value is None. "
+                                "Please provide a nominal value."
+                            )
+                        if param.nominal_value == 0:
+                            warnings.warn(
+                                f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                                "but nominal value is 0. "
+                                "This will result in a relative uncertainty of 0."
+                            )
+                        uncertainty *= param.nominal_value
+                    func = stats.norm(central_values[name], uncertainty)
+                else:
+                    central_values[name] = central_values[name]* param.n_sideband
+                    func = stats.gamma(central_values[name] + 1, scale=1/uncertainty)
+                
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(
                     f"Uncertainty of {name} is a string-based uncertainty. "

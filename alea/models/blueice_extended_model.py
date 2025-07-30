@@ -689,7 +689,6 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         """
         central_values = self.parameters(**generate_values)
         constraint_functions = {}
-        #n_off= 8
         for name, uncertainty in self.parameters.uncertainties.items():
             if isinstance(uncertainty, (float, int)):
                 param = self.parameters[name]

@@ -14,6 +14,12 @@ class Parameter:
         fittable (bool, optional (default=True)):
             Indicates if the parameter is fittable or always fixed.
         ptype (str, optional (default=None)): The ptype of the parameter.
+        from_sideband (bool, optional (default=None)):
+            Indicates if the parameter is constrained from sideband.
+        n_sideband (int, optional (default=None)): The number of observed events in case
+            of constraint from sideband.
+            If from_sideband is True, this value is used to set the uncertainty, the uncertainty
+            argument must not be set separately.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.

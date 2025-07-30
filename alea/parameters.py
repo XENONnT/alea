@@ -629,10 +629,8 @@ class Parameters:
                     f"with {new_val})."
                 )
             if (return_fittable and param.fittable) or (not return_fittable):
-                if param in self.from_sideband:
-                    values[name] = new_val if new_val is not None else param.nominal_value
-                else:
-                    values[name] = new_val if new_val is not None else param.nominal_value
+                values[name] = new_val if new_val is not None else param.nominal_value
+                
         if any(i is None for k, i in values.items()):
             emptypars = ", ".join([k for k, i in values.items() if i is None])
             raise AssertionError(

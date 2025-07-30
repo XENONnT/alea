@@ -709,7 +709,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
-                    central_values[name] = central_values[name]* param.n_sideband
+                    central_values[name] = central_values[name] * param.n_sideband
                     func = stats.gamma(central_values[name] + 1, scale=1/uncertainty)
                 
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):

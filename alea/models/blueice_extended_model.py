@@ -439,7 +439,7 @@ class BlueiceExtendedModel(StatisticalModel):
             else:
                 raise ValueError(f"Unknown pdf_interpolation_method {method}.")
         return data_generators
-    
+
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
         return self._likelihood(livetime_days=livetime_days, **generate_values)
@@ -709,9 +709,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
-                    central_values[name] = central_values[name]* param.n_sideband
-                    func = stats.gamma(central_values[name] + 1, scale=1/uncertainty)
-                
+                    central_values[name] = central_values[name] * param.n_sideband
+                    func = stats.gamma(central_values[name] + 1, scale=1 / uncertainty)
+
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(
                     f"Uncertainty of {name} is a string-based uncertainty. "

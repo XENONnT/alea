@@ -113,7 +113,7 @@ class Parameter:
             else:
                 value = self.n_sideband
         self._uncertainty = value
-    
+
     @property
     def n_sideband(self) -> Optional[int]:
         """Return the number of observed events in case of constraint from sideband."""
@@ -548,17 +548,15 @@ class Parameters:
             params.add_parameter(param)
         return params
 
-    @property 
+    @property
     def from_sideband(self):
         """Return parameters that are from sideband."""
-        param_dict = {
-            k: i for k, i in self.parameters.items() if i.from_sideband is True
-        }
+        param_dict = {k: i for k, i in self.parameters.items() if i.from_sideband is True}
         params = Parameters()
         for param in param_dict.values():
             params.add_parameter(param)
         return params
-        
+
     @property
     def nominal_values(self) -> dict:
         """A dict of nominal values for all parameters with a nominal value."""

@@ -500,9 +500,9 @@ class BlueiceExtendedModel(StatisticalModel):
             if not param.from_sideband:
                 parameter_meas = gen.rvs()
             else:
-                parameter_meas = stats.poisson(mu=param.n_sideband*param.nominal_value).rvs() 
-                parameter_meas = parameter_meas/param.n_sideband  
-                
+                parameter_meas = stats.poisson(mu=param.n_sideband * param.nominal_value).rvs()
+                parameter_meas = parameter_meas / param.n_sideband
+
             # correct parameter_meas if out of bounds
             if not param.value_in_fit_limits(parameter_meas):
                 if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:

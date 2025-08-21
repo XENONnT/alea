@@ -300,6 +300,7 @@ class ConditionalParameter:
     def from_sideband(self) -> bool:
         """Return True if the parameter is constrained from sideband (cominal condition)"""
         return self().from_sideband
+    
 
     @property
     def blueice_anchors(self) -> Any:

@@ -11,7 +11,6 @@ from alea.runner import Runner
 
 from .test_gaussian_model import gaussian_model_parameter_definition
 
-
 COMPUTE_CONFIDENCE_INTERVAL = True
 
 

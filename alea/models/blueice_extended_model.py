@@ -353,7 +353,6 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config["source_wise_interpolation"] = config.get(
                 "source_wise_interpolation", True
             )
-            print(blueice_config["source_wise_interpolation"])
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
             if likelihood_class is None:

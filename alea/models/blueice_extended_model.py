@@ -7,7 +7,7 @@ from copy import deepcopy
 from tqdm import tqdm
 import numpy as np
 import scipy.stats as stats
-from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
+from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum, BinnedLogLikelihood
 from inference_interface import dict_to_structured_array, structured_array_to_dict
 
 from alea.model import StatisticalModel
@@ -350,11 +350,18 @@ class BlueiceExtendedModel(StatisticalModel):
         # Iterate through each likelihood term in the configuration
         for config in likelihood_config["likelihood_terms"]:
             blueice_config = self._process_blueice_config(config, template_folder_list)
-            blueice_config["source_wise_interpolation"] = config.get(
-                "source_wise_interpolation", True
-            )
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
+
+            # Auto set source_wise_interpolation to False for binned likelihoods
+            if likelihood_class is BinnedLogLikelihood:
+                if config.get("source_wise_interpolation", False):
+                    raise NotImplementedError(
+                        "Source-wise interpolation not implemented for binned likelihoods"
+                    )
+                else:
+                    blueice_config["source_wise_interpolation"] = False
+
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")
             ll = likelihood_class(**blueice_config)

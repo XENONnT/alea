@@ -6,7 +6,6 @@ from utilix import batchq
 
 from alea.submitter import Submitter
 
-
 # suggested default arguments for utilix.batchq.submit_job
 # for XENONnT collaboration
 BATCHQ_DEFAULT_ARGUMENTS = {

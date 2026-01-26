@@ -143,6 +143,10 @@ class BlueiceDataGenerator:
             if isinstance(ret, float):
                 logging.warning("ERROR, generator kwarg outside range?")
                 logging.warning(kwargs)
+                mus = self.ll.base_model.expected_events()
+                logging.warning("\nExpected events for each source:")
+                for source_name, mu in zip(self.ll.source_name_list, mus):
+                    logging.warning(f"Source {source_name}: expected events = {mu}")
             _, mus, ps_array = ret
             for n, p in zip(self.ll.source_name_list, ps_array):
                 self.source_histograms[n].histogram = p.reshape(self.data_lengths)

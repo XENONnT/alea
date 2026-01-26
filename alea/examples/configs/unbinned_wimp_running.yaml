@@ -63,6 +63,6 @@ slurm_configurations:
 htcondor_configurations:
   template_path: null
   request_memory: "8000Mb"
-  singularity_container: null
+  singularity_image: null
 
 outputfolder: null

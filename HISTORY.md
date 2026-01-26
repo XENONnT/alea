@@ -1,3 +1,11 @@
+0.3.4 / 2025-05-13
+------------------
+* Add sources and example notebook for 1D CES inference by @yuema137 in https://github.com/XENONnT/alea/pull/161
+* Parse the likelihood name to the base config by @yuema137 in https://github.com/XENONnT/alea/pull/246
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.3.2...v0.3.4
+
+
 0.3.2 / 2025-02-03
 ------------------
 * Use `importlib.resources.files` and support python 3.11 by @dachengx in https://github.com/XENONnT/alea/pull/240

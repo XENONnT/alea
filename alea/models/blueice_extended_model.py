@@ -7,7 +7,7 @@ from copy import deepcopy
 from tqdm import tqdm
 import numpy as np
 import scipy.stats as stats
-from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum
+from blueice.likelihood import LogAncillaryLikelihood, LogLikelihoodSum, BinnedLogLikelihood
 from inference_interface import dict_to_structured_array, structured_array_to_dict
 
 from alea.model import StatisticalModel
@@ -265,9 +265,17 @@ class BlueiceExtendedModel(StatisticalModel):
     def _process_blueice_config(self, config, template_folder_list):
         """Process the blueice config from config."""
         pdf_base_config = adapt_likelihood_config_for_blueice(config, template_folder_list)
+        # Add the likelihood name to the base configuration
+        likelihood_name = config.get("name", "")
+        pdf_base_config["likelihood_name"] = likelihood_name
         pdf_base_config["livetime_days"] = self.parameters[
             pdf_base_config["livetime_parameter"]
         ].nominal_value
+        pdf_base_config["fiducial_mass"] = (
+            self.parameters[pdf_base_config["fiducial_mass_parameter"]].nominal_value
+            if "fiducial_mass_parameter" in pdf_base_config
+            else 1
+        )
         for p in self.parameters:
             # adding the nominal rate values will screw things up in blueice!
             # So here we're just adding the nominal values of all other parameters
@@ -344,6 +352,16 @@ class BlueiceExtendedModel(StatisticalModel):
             blueice_config = self._process_blueice_config(config, template_folder_list)
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
+
+            # Auto set source_wise_interpolation to False for binned likelihoods
+            if likelihood_class is BinnedLogLikelihood:
+                if config.get("source_wise_interpolation", False):
+                    raise NotImplementedError(
+                        "Source-wise interpolation not implemented for binned likelihoods"
+                    )
+                else:
+                    blueice_config["source_wise_interpolation"] = False
+
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")
             ll = likelihood_class(**blueice_config)
@@ -385,7 +403,11 @@ class BlueiceExtendedModel(StatisticalModel):
                     # The ancillary term is handled in CustomAncillaryLikelihood
                     ll.add_shape_parameter(p, anchors=anchors, log_prior=None)
 
-            ll.prepare()
+            n_cores = config.get("n_cores", 1)
+            if n_cores == 1:
+                ll.prepare()
+            else:
+                ll.prepare(n_cores=n_cores)
             lls.append(ll)
 
         # ancillary likelihood
@@ -535,7 +557,14 @@ class BlueiceExtendedModel(StatisticalModel):
         If no ptype is specified, set the default ptype "needs_reinit".
 
         """
-        allowed_ptypes = ["rate", "shape", "index", "efficiency", "livetime", "needs_reinit"]
+        allowed_ptypes = [
+            "rate",
+            "shape",
+            "index",
+            "efficiency",
+            "livetime",
+            "needs_reinit",
+        ]
         default_ptype = "needs_reinit"
         for p in self.parameters:
             if p.ptype is None:

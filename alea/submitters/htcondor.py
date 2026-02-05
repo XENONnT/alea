@@ -235,18 +235,22 @@ class SubmitterHTCondor(Submitter):
         # Add profiles to the local site
         local.add_profiles(Namespace.ENV, HOME=os.environ["HOME"])
         local.add_profiles(Namespace.ENV, GLOBUS_LOCATION="")
+        if self.singularity_image == DEFAULT_IMAGE:
+            image_tag = "development"
+        else:
+            image_tag = self.singularity_image.split(":")[-1]
         local.add_profiles(
             Namespace.ENV,
             PATH=(
-                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/bin:"  # noqa
-                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/condabin:/usr/bin:/bin"  # noqa
+                f"/cvmfs/xenon.opensciencegrid.org/releases/nT/{image_tag}/anaconda/envs/XENONnT_{image_tag}/bin:"  # noqa
+                f"/cvmfs/xenon.opensciencegrid.org/releases/nT/{image_tag}/anaconda/condabin:/usr/bin:/bin"  # noqa
             ),
         )
         local.add_profiles(
             Namespace.ENV,
             LD_LIBRARY_PATH=(
-                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib64:"  # noqa
-                "/cvmfs/xenon.opensciencegrid.org/releases/nT/development/anaconda/envs/XENONnT_development/lib"  # noqa
+                f"/cvmfs/xenon.opensciencegrid.org/releases/nT/{image_tag}/anaconda/envs/XENONnT_{image_tag}/lib64:"  # noqa
+                f"/cvmfs/xenon.opensciencegrid.org/releases/nT/{image_tag}/anaconda/envs/XENONnT_{image_tag}/lib"  # noqa
             ),
         )
         local.add_profiles(Namespace.ENV, PEGASUS_SUBMITTING_USER=os.environ["USER"])

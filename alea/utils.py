@@ -24,6 +24,7 @@ import numpy  # noqa: F401
 import numpy as np  # noqa: F401
 from scipy import stats  # noqa: F401
 from scipy.stats import chi2
+from scipy.optimize import brentq
 
 logging.basicConfig(level=logging.INFO)
 
@@ -771,6 +772,65 @@ def signal_multiplier_estimator(
         plt.xlabel("Iteration")
         plt.ylabel("x")
     return x
+
+
+def extremal_root(
+    f,
+    xL,
+    xR,
+    which="left",
+    step=0.01,
+    step_growth=1.0,
+    max_step=None,
+    xtol=1e-12,
+    rtol=4 * np.finfo(float).eps,
+):
+    """Find the left-most or right-most root of f in [xL, xR] using adaptive scanning + brentq
+    refinement."""
+
+    if xR <= xL:
+        raise ValueError("Require xR > xL")
+
+    if which not in {"left", "right"}:
+        raise ValueError('which must be "left" or "right"')
+
+    direction = +1 if which == "left" else -1
+
+    # starting point
+    x = xL if direction > 0 else xR
+    f_prev = f(x)
+
+    if np.isfinite(f_prev) and f_prev == 0.0:
+        return x
+
+    cur_step = step
+
+    while True:
+        x_next = x + direction * cur_step
+
+        # stop if we leave interval
+        if direction > 0 and x_next > xR:
+            break
+        if direction < 0 and x_next < xL:
+            break
+
+        f_next = f(x_next)
+
+        if np.isfinite(f_prev) and np.isfinite(f_next):
+            if f_prev * f_next < 0:
+                # ensure correct ordering for brentq
+                a, b = sorted((x, x_next))
+                return brentq(f, a, b, xtol=xtol, rtol=rtol)
+
+        # advance
+        x, f_prev = x_next, f_next
+
+        # grow step
+        cur_step *= step_growth
+        if max_step is not None:
+            cur_step = min(cur_step, max_step)
+
+    raise RuntimeError("No root found in interval")
 
 
 class IndexMorpher(Morpher):

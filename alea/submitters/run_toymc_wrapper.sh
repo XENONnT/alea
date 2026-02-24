@@ -3,7 +3,7 @@
 set -e
 
 # Check if number of arguments passed is correct
-if [ $# -ne 21 ]; then
+if [ $# -ne 22 ]; then
     echo "Error: You need to provide required number of arguments."
     exit 1
 fi

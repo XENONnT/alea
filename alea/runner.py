@@ -63,6 +63,7 @@ class Runner:
             kind of confidence interval, choice from 'central', 'upper' or 'lower'
         confidence_interval_root_find (str, optional (default='brentq')):
             root finding algorithm of confidence interval
+            supported options: "brentq" and "extremal"
         fit_strategy (dict, optional (default=None)): fit strategy dictionary.
             If None, the default fit strategy of the model will be used.
         toydata_mode (str, optional (default='generate_and_store')):

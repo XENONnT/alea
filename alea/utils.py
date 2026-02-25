@@ -785,14 +785,38 @@ def extremal_root(
     xtol=1e-12,
     rtol=4 * np.finfo(float).eps,
 ):
-    """Find the left-most or right-most root of f in [xL, xR] using adaptive scanning + brentq
-    refinement."""
+    """Return the left-most or right-most root of `f` in [xL, xR].
+
+    The interval is scanned adaptively to detect a sign change, and the root
+    is refined using `scipy.optimize.brentq`.
+
+    Args:
+        f (Callable[[float], float]): Scalar function.
+        xL (float): Left boundary (must satisfy xR > xL).
+        xR (float): Right boundary.
+        which (str, optional): "left" or "right". Default is "left".
+        step (float, optional): Initial scan step (>0).
+        step_growth (float, optional): Step multiplier (>=1).
+        max_step (float | None, optional): Maximum scan step.
+        xtol (float, optional): Absolute tolerance for `brentq`.
+        rtol (float, optional): Relative tolerance for `brentq`.
+
+    Returns:
+        float: Extremal root in the interval.
+
+    """
 
     if xR <= xL:
         raise ValueError("Require xR > xL")
 
     if which not in {"left", "right"}:
         raise ValueError('which must be "left" or "right"')
+
+    if step <= 0:
+        raise ValueError("step must be larger than 0")
+
+    if step_growth < 1.0:
+        raise ValueError("step_growth must be larger than 1")
 
     direction = +1 if which == "left" else -1
 

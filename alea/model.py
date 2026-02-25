@@ -75,6 +75,7 @@ class StatisticalModel:
             threshold for confidence interval
         confidence_interval_root_find (str, optional (default="brentq")):
             root finding algorithm of confidence interval
+            supported options: "brentq" and "extremal"
         data (dict or list, optional (default=None)): pre-set data of the model
         fit_strategy (dict, optional (default=None)): strategy for the fit,
             see _DEFAULT_FIT_STRATEGY for possible settings
@@ -503,6 +504,7 @@ class StatisticalModel:
                 kind of confidence interval to compute
             confidence_interval_root_find (str, optional (default=None)):
                 root finding algorithm of confidence interval
+                supported options: "brentq" and "extremal"
 
         Returns:
             Tuple[str, Callable[[float], float], str, Tuple[float, float]]:
@@ -608,6 +610,7 @@ class StatisticalModel:
                 If None, the default kind of the model is used.
             confidence_interval_root_find (str, optional (default=None)):
                 root finding algorithm of confidence interval
+                supported options: "brentq" and "extremal"
             confidence_interval_args (dict, optional (default=None)): Parameters that will be fixed
                 in the profile likelihood computation. If None, all fittable parameters
                 will be profiled except the poi.

@@ -822,8 +822,10 @@ def extremal_root(
     fraction = [1e-6, 0.1]
     if step < fraction[0] * (xR - xL) or step > fraction[1] * (xR - xL):
         warnings.warn(
-            f"The step {step} is either too small or too larger "
-            f"comparing to the given boundary [{xL}, {xR}]."
+            f"The step size {step}'s fraction is either "
+            f"too small (smaller than {fraction[0]}) or "
+            f"too large (larger than {fraction[1]}) "
+            f"comparing to the given boundary [{xL}, {xR}]. "
             "Consider to redefine parameter_interval_bounds?"
         )
 

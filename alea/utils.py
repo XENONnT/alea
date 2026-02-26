@@ -4,6 +4,7 @@ import json
 import yaml
 import itertools
 import blueice
+import warnings
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
@@ -817,6 +818,14 @@ def extremal_root(
 
     if step_growth < 1.0:
         raise ValueError("step_growth must be larger than 1")
+
+    fraction = [1e-6, 0.1]
+    if step < fraction[0] * (xR - xL) or step > fraction[1] * (xR - xL):
+        warnings.warn(
+            f"The step {step} is either too small or too larger "
+            f"comparing to the given boundary [{xL}, {xR}]."
+            "Consider to redefine parameter_interval_bounds?"
+        )
 
     direction = +1 if which == "left" else -1
 

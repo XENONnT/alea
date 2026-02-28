@@ -73,7 +73,7 @@ class SubmitterHTCondor(Submitter):
 
         # Self-installed packages
         self.package_names = self.htcondor_configurations.pop(
-            "user_install_package", ["alea", "blueice"]
+            "user_install_package", ["alea", "blueice", "multihist"]
         )
 
         super().__init__(*args, **kwargs)
@@ -403,7 +403,7 @@ class SubmitterHTCondor(Submitter):
         return rc
 
     def make_tarballs(self):
-        """Make tarballs of Ax-based packages if they are in editable user-installed mode."""
+        """Make tarballs of packages if they are in editable user-installed mode."""
         self.user_install_package = []
         tarballs = []
         tarball_paths = []
@@ -463,6 +463,8 @@ class SubmitterHTCondor(Submitter):
         )
         job.add_profiles(Namespace.CONDOR, "request_disk", disk_str)
         job.add_profiles(Namespace.CONDOR, "request_memory", memory_str)
+        job.add_profiles(Namespace.CONDOR, "stream_output", "True")
+        job.add_profiles(Namespace.CONDOR, "stream_error", "True")
 
         # User installed packages
         user_install_package = " ".join(self.user_install_package)

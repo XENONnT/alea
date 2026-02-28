@@ -182,11 +182,23 @@ class TemplateSource(HistogramPdfSource):
         if any("slice_axis" not in sa for sa in slice_args):
             raise ValueError("slice_axis must be specified in slice_args")
 
+        if not all(isinstance(sa["slice_axis"], str) for sa in slice_args):
+            raise ValueError("slice_axis must be a string")
+
+        if set(sa["slice_axis"] for sa in slice_args) - set(h.axis_names):
+            raise ValueError(
+                f"slice_axis {set(sa['slice_axis'] for sa in slice_args)} "
+                f"not a subset of histogram {h.axis_names}"
+            )
+
         for sa in slice_args:
             # read slice_axis, sum_axis, and slice_axis_limits from slice_args
             slice_axis = sa["slice_axis"]
             sum_axis = sa.get("sum_axis", False)
-            bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
+            if isinstance(h, Hist1d):
+                bin_edges = h.bin_edges
+            else:
+                bin_edges = h.bin_edges[h.get_axis_number(slice_axis)]
             slice_axis_limits = sa.get("slice_axis_limits", [bin_edges[0], bin_edges[-1]])
 
             # slice and/or sum over axis

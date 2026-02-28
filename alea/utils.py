@@ -4,6 +4,7 @@ import json
 import yaml
 import itertools
 import blueice
+import warnings
 from glob import glob
 from copy import deepcopy
 from pydoc import locate
@@ -24,6 +25,7 @@ import numpy  # noqa: F401
 import numpy as np  # noqa: F401
 from scipy import stats  # noqa: F401
 from scipy.stats import chi2
+from scipy.optimize import brentq
 
 logging.basicConfig(level=logging.INFO)
 
@@ -771,6 +773,99 @@ def signal_multiplier_estimator(
         plt.xlabel("Iteration")
         plt.ylabel("x")
     return x
+
+
+def extremal_root(
+    f,
+    xL,
+    xR,
+    which="left",
+    step=0.01,
+    step_growth=1.0,
+    max_step=None,
+    xtol=1e-12,
+    rtol=4 * np.finfo(float).eps,
+):
+    """Return the left-most or right-most root of `f` in [xL, xR].
+
+    The interval is scanned adaptively to detect a sign change, and the root
+    is refined using `scipy.optimize.brentq`.
+
+    Args:
+        f (Callable[[float], float]): Scalar function.
+        xL (float): Left boundary (must satisfy xR > xL).
+        xR (float): Right boundary.
+        which (str, optional): "left" or "right". Default is "left".
+        step (float, optional): Initial scan step (>0).
+        step_growth (float, optional): Step multiplier (>=1).
+        max_step (float | None, optional): Maximum scan step.
+        xtol (float, optional): Absolute tolerance for `brentq`.
+        rtol (float, optional): Relative tolerance for `brentq`.
+
+    Returns:
+        float: Extremal root in the interval.
+
+    """
+
+    if xR <= xL:
+        raise ValueError("Require xR > xL")
+
+    if which not in {"left", "right"}:
+        raise ValueError('which must be "left" or "right"')
+
+    if step <= 0:
+        raise ValueError("step must be larger than 0")
+
+    if step_growth < 1.0:
+        raise ValueError("step_growth must be larger than 1")
+
+    fraction = [1e-6, 0.1]
+    if step < fraction[0] * (xR - xL) or step > fraction[1] * (xR - xL):
+        warnings.warn(
+            f"The step size {step}'s fraction is either "
+            f"too small (smaller than {fraction[0]}) or "
+            f"too large (larger than {fraction[1]}) "
+            f"comparing to the given boundary [{xL}, {xR}]. "
+            "Consider to redefine parameter_interval_bounds?"
+        )
+
+    direction = +1 if which == "left" else -1
+
+    # starting point
+    x = xL if direction > 0 else xR
+    f_prev = f(x)
+
+    if np.isfinite(f_prev) and f_prev == 0.0:
+        return x
+
+    cur_step = step
+
+    while True:
+        x_next = x + direction * cur_step
+
+        # stop if we leave interval
+        if direction > 0 and x_next > xR:
+            break
+        if direction < 0 and x_next < xL:
+            break
+
+        f_next = f(x_next)
+
+        if np.isfinite(f_prev) and np.isfinite(f_next):
+            if f_prev * f_next < 0:
+                # ensure correct ordering for brentq
+                a, b = sorted((x, x_next))
+                return brentq(f, a, b, xtol=xtol, rtol=rtol)
+
+        # advance
+        x, f_prev = x_next, f_next
+
+        # grow step
+        cur_step *= step_growth
+        if max_step is not None:
+            cur_step = min(cur_step, max_step)
+
+    raise RuntimeError("No root found in interval")
 
 
 class IndexMorpher(Morpher):

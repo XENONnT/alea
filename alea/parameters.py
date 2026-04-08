@@ -297,7 +297,7 @@ class ConditionalParameter:
         return self().uncertainty
 
     @property
-    def from_sideband(self) -> bool:
+    def from_sideband(self) -> Optional[bool]:
         """Return True if the parameter is constrained from sideband (cominal condition)"""
         return self().from_sideband
 

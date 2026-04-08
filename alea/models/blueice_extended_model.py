@@ -720,6 +720,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
+                    assert param.n_sideband is not None, (
+                        f"n_sideband must be set for sideband parameter {name}"
+                        )
                     central_values[name] = central_values[name] * param.n_sideband
                     func = stats.gamma(central_values[name] + 1, scale=1 / uncertainty)
 

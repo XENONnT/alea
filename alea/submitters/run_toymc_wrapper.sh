@@ -3,7 +3,7 @@
 set -e
 
 # Check if number of arguments passed is correct
-if [ $# -ne 21 ]; then
+if [ $# -ne 22 ]; then
     echo "Error: You need to provide required number of arguments."
     exit 1
 fi
@@ -23,13 +23,14 @@ likelihood_config=${11}
 compute_confidence_interval=${12}
 confidence_level=${13}
 confidence_interval_kind=${14}
-fit_strategy=${15}
-toydata_mode=${16}
-toydata_filename=${17}
-only_toydata=${18}
-output_filename=${19}
-seed=${20}
-metadata=${21}
+confidence_interval_root_find=${15}
+fit_strategy=${16}
+toydata_mode=${17}
+toydata_filename=${18}
+only_toydata=${19}
+output_filename=${20}
+seed=${21}
+metadata=${22}
 echo "statistical_model: $statistical_model"
 echo "poi: $poi"
 echo "hypotheses: $hypotheses"
@@ -44,6 +45,7 @@ echo "likelihood_config: $likelihood_config"
 echo "compute_confidence_interval: $compute_confidence_interval"
 echo "confidence_level: $confidence_level"
 echo "confidence_interval_kind: $confidence_interval_kind"
+echo "confidence_interval_root_find: $confidence_interval_root_find"
 echo "fit_strategy: $fit_strategy"
 echo "toydata_mode: $toydata_mode"
 echo "toydata_filename: $toydata_filename"
@@ -83,6 +85,7 @@ LIKELIHOOD_CONFIG=$(echo "$likelihood_config" | sed "s/'/\"/g")
 COMPUTE_CONFIDENCE_INTERVAL=$(echo "$compute_confidence_interval" | sed "s/'/\"/g")
 CONFIDENCE_LEVEL=$(echo "$confidence_level" | sed "s/'/\"/g")
 CONFIDENCE_INTERVAL_KIND=$(echo "$confidence_interval_kind" | sed "s/'/\"/g")
+CONFIDENCE_INTERVAL_ROOT_FIND=$(echo "$confidence_interval_root_find" | sed "s/'/\"/g")
 FIT_STRATEGY=$(echo "$fit_strategy" | sed "s/'/\"/g")
 TOYDATA_MODE=$(echo "$toydata_mode" | sed "s/'/\"/g")
 TOYDATA_FILENAME=$(echo "$toydata_filename" | sed "s/'/\"/g")
@@ -128,6 +131,7 @@ echo "Running command: python alea_run_toymc.py \\
     --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \\
     --confidence_level $CONFIDENCE_LEVEL \\
     --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \\
+    --confidence_interval_root_find $CONFIDENCE_INTERVAL_ROOT_FIND \\
     --fit_strategy $FIT_STRATEGY \\
     --toydata_mode $TOYDATA_MODE \\
     --toydata_filename $TOYDATA_FILENAME \\
@@ -152,6 +156,7 @@ time python alea_run_toymc.py \
     --compute_confidence_interval $COMPUTE_CONFIDENCE_INTERVAL \
     --confidence_level $CONFIDENCE_LEVEL \
     --confidence_interval_kind $CONFIDENCE_INTERVAL_KIND \
+    --confidence_interval_root_find $CONFIDENCE_INTERVAL_ROOT_FIND \
     --fit_strategy $FIT_STRATEGY \
     --toydata_mode $TOYDATA_MODE \
     --toydata_filename $TOYDATA_FILENAME \

@@ -209,7 +209,7 @@ class BlueiceExtendedModel(StatisticalModel):
             # sum over sources with same names of all likelihood terms
             ret = {
                 n: sum([ret[ll_name].get(n, 0.0) for ll_name in ret.keys()])  # type: ignore
-                for n in self.all_source_names
+                for n in self.all_sorted_source_names
             }
 
         return ret

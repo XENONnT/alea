@@ -72,13 +72,13 @@ class TestBlueiceExtendedModel(TestCase):
             expectation_values.append(this_expectation_dict)
         return expectation_values
 
-    def test_all_source_names(self):
-        """Test of the all_source_names method."""
+    def test_all_sorted_source_names(self):
+        """Test of the all_sorted_source_names method."""
         for config, model in zip(self.configs, self.models):
             _source_names = set()
             for ll_t in config["likelihood_config"]["likelihood_terms"]:
                 _source_names.update([s["name"] for s in ll_t["sources"]])
-            source_names = model.all_source_names
+            source_names = model.all_sorted_source_names
             self.assertEqual(source_names, sorted(_source_names))
 
     def test_expectation_values(self):

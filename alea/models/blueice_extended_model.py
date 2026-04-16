@@ -142,8 +142,8 @@ class BlueiceExtendedModel(StatisticalModel):
         return self.likelihood_list[ll_index].source_name_list
 
     @property
-    def all_source_names(self) -> list:
-        """Return a set of possible source names from all likelihood terms.
+    def all_sorted_source_names(self) -> list:
+        """Return a set alphabetically sorted of possible source names from all likelihood terms.
 
         Args:
             likelihood_name (str): Name of the likelihood.

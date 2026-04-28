@@ -95,6 +95,48 @@ def rebin_interpolate_normalized(hist, new_edges):
 
 
 class CESTemplateSource(HistogramPdfSource):
+    """Histogram-based PDF source in combined energy scale (CES).
+
+    Loads a 1D energy template, applies smearing / bias / efficiency
+    transformations, and normalizes to a PDF over the analysis ROI.
+
+    Required config keys
+    --------------------
+    analysis_space : list
+        Blueice analysis space, e.g. ``[("ces", np.linspace(...))]``.
+        Only 1D CES axes are supported. Energy units: keV.
+    template_filename : str
+        Path to the template file readable by ``template_to_multihist``.
+    histname : str
+        Name of the histogram to load from ``template_filename``.
+    rate_multiplier : float
+        Source rate, in **events / (ton * year)**.
+    fiducial_mass : float
+        Fiducial mass, in **ton**.
+    livetime_days : float
+        Exposure time, in **days**.
+    smearing_model, bias_model, efficiency_model : str
+        Names of transformation models (see ``alea.ces_transformation``).
+        Prefix ``mono_`` is added automatically for monoenergetic sources.
+    smearing_parameters, bias_parameters, efficiency_parameters : list[str]
+        Names of config keys whose values feed the corresponding model.
+
+    Optional config keys
+    --------------------
+    minimal_energy_resolution : float, default 0.05
+        Re-binning resolution after transformations. Units: keV.
+    apply_smearing, apply_bias, apply_efficiency : bool, default True
+        Toggle each transformation off without changing the model.
+    pdf_interpolation_method : {"piecewise", "linear"}, default "piecewise"
+        Overrides the blueice default.
+    zero_filling_for_outlier : bool, default False
+        If True, re-grid the raw template to ``[0, max_e]`` and zero-fill
+        outside the original support before transformations.
+    peak_energy : float
+        Required when any model is monoenergetic (``mono_*``) and for
+        ``CESMonoenergySource``. Energy units: keV.
+    """
+
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
         # override the default interpolation method

@@ -426,7 +426,22 @@ class CESTemplateSource(HistogramPdfSource):
         Source.compute_pdf(self)
 
     def pdf(self, *args):
-        """Interpolate the PDF of the source to return a function."""
+        """Evaluate the source PDF at the given CES coordinates.
+
+        Parameters
+        ----------
+        *args
+            CES energy coordinate(s) (keV) at which to evaluate the PDF.
+            Typically a single 1D array of energies. Calling with no
+            arguments is not supported and will raise.
+
+        Returns
+        -------
+        np.ndarray
+            PDF values at the given coordinates. Out-of-range coordinates
+            return 0 (``piecewise``) or the clipped boundary value
+            (``linear``).
+        """
         # override the default interpolation method in blueice (RegularGridInterpolator)
         if not self.pdf_has_been_computed:
             raise PDFNotComputedException(

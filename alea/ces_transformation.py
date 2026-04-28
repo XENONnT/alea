@@ -230,7 +230,7 @@ MODELS: Dict[str, Dict[str, Callable]] = {
 
 # input: model name, parameters, transformation mode
 class Transformation(BaseModel):
-    parameters: Dict[str, float]
+    parameters: Dict[str, Union[float, int, bool, str]]
     action: Literal["bias", "smearing", "efficiency"]
     model: str
 

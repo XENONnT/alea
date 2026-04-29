@@ -477,6 +477,31 @@ class CESTemplateSource(HistogramPdfSource):
         ]
 
     def get_pmf_grid(self):
+        r"""Return the source PMF projected onto the shared analysis-space binning.
+
+        A *PMF* (probability mass function) is the discrete counterpart of a
+        PDF: instead of probability *density* (per keV), it gives the
+        probability *mass* contained in each bin, i.e. the integral of the
+        PDF over the bin. For a histogram with bin widths :math:`\Delta_i`,
+        ``pmf[i] = pdf[i] * Delta_i`` and ``sum(pmf) == 1`` over the full
+        support. Binned likelihoods consume PMFs (not PDFs) because they
+        compare expected counts per bin against observed counts per bin.
+
+        This method overrides the blueice default because each CES source's
+        internal ``_pdf_histogram`` is rebinned to
+        ``minimal_energy_resolution``, which differs from ``self.ces_space``.
+        Blueice's binned likelihood requires all sources reported on the
+        same grid, so we interpolate back onto ``self.ces_space`` here.
+
+        Returns
+        -------
+        pmf_grid : np.ndarray
+            Probability mass per bin on ``self.ces_space``
+            (PDF value times bin width).
+        n_events_per_bin : np.ndarray
+            Placeholder array of zeros; CES sources are template-based, not
+            density-estimating, so per-bin event counts are not tracked.
+        """
         # note that each source may have different binning.
         # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space

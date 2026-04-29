@@ -421,7 +421,28 @@ class CESTemplateSource(HistogramPdfSource):
         return ret
 
     def compute_pdf(self):
-        """Compute the PDF of the source."""
+        """Build and cache the source histogram (one-time setup).
+
+        Lifecycle hook called once by ``Source.__init__`` when the source
+        is **not** loaded from cache. It does *not* evaluate the PDF at a
+        point (that's :meth:`pdf`). Instead it:
+
+        1. Calls :meth:`build_histogram` to construct ``_pdf_histogram``
+           (and the related bookkeeping attributes).
+        2. Chains to ``Source.compute_pdf`` to mark the source as computed
+           and persist the cache, so later runs skip step 1 entirely.
+
+        On subsequent loads where the cache is hit, this method is not
+        called at all and the histogram is restored from disk.
+
+        Notes
+        -----
+        This override is currently identical in body to
+        ``blueice.HistogramPdfSource.compute_pdf`` (the immediate parent),
+        so removing it would not change behavior. It is kept for now to
+        make the lifecycle explicit on the CES class; revisit whether
+        to drop it next time this area is touched.
+        """
         self.build_histogram()
         Source.compute_pdf(self)
 

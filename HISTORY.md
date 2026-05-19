@@ -1,3 +1,14 @@
+0.3.5 / 2026-03-02
+------------------
+* Use lib of tagged container in local jobs by @dachengx in https://github.com/XENONnT/alea/pull/260
+* Remove meaningless extra print during template loading by @dachengx in https://github.com/XENONnT/alea/pull/263
+* Auto set `source_wise_interpolation` to False for binned likelihoods by @dachengx in https://github.com/XENONnT/alea/pull/264
+* Add argument `confidence_interval_root_find` indicating root finding method by @dachengx in https://github.com/XENONnT/alea/pull/265
+* Validate `slice_axis` and be compatible with `Hist1d` by @dachengx in https://github.com/XENONnT/alea/pull/244
+
+**Full Changelog**: https://github.com/XENONnT/alea/compare/v0.3.4...v0.3.5
+
+
 0.3.4 / 2025-05-13
 ------------------
 * Add sources and example notebook for 1D CES inference by @yuema137 in https://github.com/XENONnT/alea/pull/161

@@ -38,6 +38,7 @@ class TestRunner(TestCase):
             nominal_values={"sigma": 1.0},
             parameter_definition=gaussian_model_parameter_definition,
             compute_confidence_interval=COMPUTE_CONFIDENCE_INTERVAL,
+            confidence_interval_root_find="extremal",
             toydata_mode=toydata_mode,
             toydata_filename=self.toydata_filename,
             output_filename=self.output_filename,

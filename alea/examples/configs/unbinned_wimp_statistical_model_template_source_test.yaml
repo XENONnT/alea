@@ -105,7 +105,7 @@ likelihood_config:
       in_events_per_bin: true
       livetime_parameter: livetime_sr3
       slice_args:
-      - slice_axis: 1
+      - slice_axis: cs2
         sum_axis: true
       sources:
       - name: er

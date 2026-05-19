@@ -4,7 +4,7 @@ import tempfile
 import datetime
 
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 from utilix import batchq
 
 from alea.submitter import Submitter

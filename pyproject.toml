@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "alea-inference"
-version = "0.3.4"
+version = "0.3.5"
 description = "A tool to perform toyMC-based inference constructions"
 readme = "README.md"
 authors = [
@@ -37,7 +37,7 @@ inference-interface = "*"
 iminuit = ">=2.21.0"
 matplotlib = "*"
 mergedeep = "*"
-multihist = "*"
+multihist = ">=0.6.6"
 numpy = "*"
 PyYAML = "*"
 scipy = "*"

@@ -12,7 +12,13 @@ from blueice.likelihood import _needs_data
 from inference_interface import toydata_to_file
 
 from alea.parameters import Parameters
-from alea.utils import within_limits, clip_limits, asymptotic_critical_value, ReadOnlyDict
+from alea.utils import (
+    within_limits,
+    clip_limits,
+    asymptotic_critical_value,
+    ReadOnlyDict,
+    extremal_root,
+)
 
 _DEFAULT_FIT_STRATEGY = {
     "disable_index_fitting": False,
@@ -67,6 +73,9 @@ class StatisticalModel:
             kind of confidence interval to compute
         confidence_interval_threshold (Callable[[float], float], optional (default=None)):
             threshold for confidence interval
+        confidence_interval_root_find (str, optional (default="brentq")):
+            root finding algorithm of confidence interval
+            supported options: "brentq" and "extremal"
         data (dict or list, optional (default=None)): pre-set data of the model
         fit_strategy (dict, optional (default=None)): strategy for the fit,
             see _DEFAULT_FIT_STRATEGY for possible settings
@@ -81,8 +90,9 @@ class StatisticalModel:
         self,
         parameter_definition: Optional[Union[dict, list]] = None,
         confidence_level: float = 0.9,
-        confidence_interval_kind: str = "central",  # one of central, upper, lower
+        confidence_interval_kind: str = "central",  # one of central, upper, and lower
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        confidence_interval_root_find: str = "brentq",  # one of brentq and extremal
         asymptotic_dof: Optional[int] = 1,
         data: Optional[Union[dict, list]] = None,
         fit_strategy: Optional[dict] = None,
@@ -103,9 +113,12 @@ class StatisticalModel:
             self.data = data
         self._confidence_level = confidence_level
         if confidence_interval_kind not in {"central", "upper", "lower"}:
-            raise ValueError("confidence_interval_kind must be one of central, upper, lower")
+            raise ValueError("confidence_interval_kind must be one of central, upper, and lower")
         self._confidence_interval_kind = confidence_interval_kind
         self.confidence_interval_threshold = confidence_interval_threshold
+        if confidence_interval_root_find not in {"brentq", "extremal"}:
+            raise ValueError("confidence_interval_root_find must be one of brentq and extremal")
+        self._confidence_interval_root_find = confidence_interval_root_find
         self.asymptotic_dof = asymptotic_dof
         self._fit_strategy = _DEFAULT_FIT_STRATEGY
         if fit_strategy is not None:
@@ -475,9 +488,10 @@ class StatisticalModel:
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        confidence_interval_root_find: Optional[str] = None,
         asymptotic_dof: Optional[int] = None,
         **kwargs,
-    ) -> Tuple[str, Callable[[float], float], Tuple[float, float]]:
+    ) -> Tuple[str, Callable[[float], float], str, Tuple[float, float]]:
         """Helper function for confidence_interval that does the input checks and return bounds.
 
         Args:
@@ -488,9 +502,12 @@ class StatisticalModel:
                 confidence level for confidence intervals
             confidence_interval_kind (str, optional (default=None)):
                 kind of confidence interval to compute
+            confidence_interval_root_find (str, optional (default=None)):
+                root finding algorithm of confidence interval
+                supported options: "brentq" and "extremal"
 
         Returns:
-            Tuple[str, Callable[[float], float], Tuple[float, float]]:
+            Tuple[str, Callable[[float], float], str, Tuple[float, float]]:
                 confidence interval kind, confidence interval threshold, parameter interval bounds
 
         """
@@ -498,6 +515,8 @@ class StatisticalModel:
             confidence_level = self._confidence_level
         if confidence_interval_kind is None:
             confidence_interval_kind = self._confidence_interval_kind
+        if confidence_interval_root_find is None:
+            confidence_interval_root_find = self._confidence_interval_root_find
 
         if (confidence_level < 0) or (confidence_level > 1):
             raise ValueError("confidence_level must be between 0 and 1")
@@ -551,7 +570,12 @@ class StatisticalModel:
         if not callable(confidence_interval_threshold):
             raise ValueError("confidence_interval_threshold must be a callable")
 
-        return confidence_interval_kind, confidence_interval_threshold, parameter_interval_bounds
+        return (
+            confidence_interval_kind,
+            confidence_interval_threshold,
+            confidence_interval_root_find,
+            parameter_interval_bounds,
+        )
 
     def confidence_interval(
         self,
@@ -560,6 +584,7 @@ class StatisticalModel:
         confidence_level: Optional[float] = None,
         confidence_interval_kind: Optional[str] = None,
         confidence_interval_threshold: Optional[Callable[[float], float]] = None,
+        confidence_interval_root_find: Optional[str] = None,
         confidence_interval_args: Optional[dict] = None,
         best_fit_args: Optional[dict] = None,
         asymptotic_dof: Optional[int] = None,
@@ -583,6 +608,9 @@ class StatisticalModel:
             confidence_interval_kind (str, optional (default=None)):
                 kind of confidence interval to compute.
                 If None, the default kind of the model is used.
+            confidence_interval_root_find (str, optional (default=None)):
+                root finding algorithm of confidence interval
+                supported options: "brentq" and "extremal"
             confidence_interval_args (dict, optional (default=None)): Parameters that will be fixed
                 in the profile likelihood computation. If None, all fittable parameters
                 will be profiled except the poi.
@@ -606,12 +634,14 @@ class StatisticalModel:
             confidence_level,
             confidence_interval_kind,
             confidence_interval_threshold,
+            confidence_interval_root_find,
             asymptotic_dof,
             **confidence_interval_args,
         )
         (
             confidence_interval_kind,
             confidence_interval_threshold,
+            confidence_interval_root_find,
             parameter_interval_bounds,
         ) = ci_objects
 
@@ -650,7 +680,12 @@ class StatisticalModel:
 
         if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
-                ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+                if confidence_interval_root_find == "brentq":
+                    ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+                elif confidence_interval_root_find == "extremal":
+                    ul = extremal_root(
+                        t, best_parameter, parameter_interval_bounds[1], which="left"
+                    )
             else:
                 ul = np.inf
         else:
@@ -658,7 +693,12 @@ class StatisticalModel:
 
         if confidence_interval_kind in {"lower", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[0]) > 0:
-                dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+                if confidence_interval_root_find == "brentq":
+                    dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+                elif confidence_interval_root_find == "extremal":
+                    dl = extremal_root(
+                        t, parameter_interval_bounds[0], best_parameter, which="right"
+                    )
             else:
                 dl = -1 * np.inf
         else:

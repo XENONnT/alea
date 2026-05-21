@@ -34,7 +34,7 @@ def main():
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--local", action="store_true", help="Executes the defined jobs locally")
     group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
-    group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
+    group.add_argument("--rcc_slurm", action="store_true", help="Prepare submission for RCC slurm")
     group.add_argument(
         "--htcondor", action="store_true", help="Write out files for submission to htcondor"
     )

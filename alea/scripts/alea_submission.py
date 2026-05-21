@@ -34,6 +34,7 @@ def main():
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--local", action="store_true", help="Executes the defined jobs locally")
     group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
+    group.add_argument("--slurm", action="store_true", help="Prepare submission for slurm")
     group.add_argument(
         "--htcondor", action="store_true", help="Write out files for submission to htcondor"
     )
@@ -71,6 +72,10 @@ def main():
         from alea.submitters.slurm import SubmitterSlurm
 
         submitter_class = SubmitterSlurm
+    elif parsed_args.rcc_slurm:
+        from alea.submitters.rcc_slurm import SubmitterRCCSlurm
+
+        submitter_class = SubmitterRCCSlurm
     elif parsed_args.htcondor:
         from alea.submitters.htcondor import SubmitterHTCondor
 

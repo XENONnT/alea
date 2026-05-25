@@ -29,7 +29,6 @@ from alea.runner import Runner
 from alea.submitter import Submitter
 from alea.utils import TEMPLATE_RECORDS, load_yaml, dump_yaml
 
-
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = f"/scratch/{getpass.getuser()}/workflows"
 TOP_DIR = Path(__file__).resolve().parents[2]

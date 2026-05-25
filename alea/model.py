@@ -169,8 +169,9 @@ class StatisticalModel:
 
     @_needs_data
     def ll(self, **kwargs) -> float:
-        """Likelihod function, returns the loglikelihood for the given parameters. The parameters
-        are passed as keyword arguments, positional arguments are not possible. If a parameter is
+        """Likelihod function, returns the loglikelihood for the given parameters.
+
+        The parameters are passed as keyword arguments, positional arguments are not possible. If a parameter is
         not given, the default value is used.
 
         Keyword Args:
@@ -184,8 +185,9 @@ class StatisticalModel:
         return self._ll(**parameters)
 
     def generate_data(self, **kwargs) -> Union[dict, list]:
-        """Generate data for the given parameters. The parameters are passed as keyword arguments,
-        positional arguments are not possible. If a parameter is not given, the default value is
+        """Generate data for the given parameters.
+
+        The parameters are passed as keyword arguments, positional arguments are not possible. If a parameter is not given, the default value is
         used.
 
         Raises:
@@ -337,8 +339,9 @@ class StatisticalModel:
     def fit(
         self, verbose: Optional[bool] = False, fit_strategy: Optional[dict] = None, **kwargs
     ) -> Tuple[dict, float]:
-        """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
-        values of each parameter, and the value of the likelihood evaluated there. While the
+        """Fit the model to the data by maximizing the likelihood.
+
+        Return a dict containing best-fit values of each parameter, and the value of the likelihood evaluated there. While the
         optimization is a minimization, the likelihood returned is the __maximum__ of the
         likelihood.
 
@@ -590,8 +593,9 @@ class StatisticalModel:
         asymptotic_dof: Optional[int] = None,
         fit_strategy: Optional[dict] = None,
     ) -> Tuple[float, float]:
-        """Uses self.fit to compute confidence intervals for a certain named parameter. If the
-        parameter is a rate parameter, and the model has expectation values implemented, the bounds
+        """Uses self.fit to compute confidence intervals for a certain named parameter.
+
+        If the parameter is a rate parameter, and the model has expectation values implemented, the bounds
         will be interpreted as bounds on the expectation value, so that the range in the fit is
         parameter_interval_bounds/mus. Otherwise the bound is taken as-is.
 
@@ -720,8 +724,9 @@ class StatisticalModel:
 
 
 class MinuitWrap:
-    """Wrapper for functions to be called by Minuit. Initialized with a function f and a Parameters
-    instance.
+    """Wrapper for functions to be called by Minuit.
+
+    Initialized with a function f and a Parameters instance.
 
     Attributes:
         func: function wrapped

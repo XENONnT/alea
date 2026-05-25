@@ -205,8 +205,9 @@ class Parameter:
 
 
 class ConditionalParameter:
-    """This class is used to define a parameter that depends on another parameter. It has the same
-    attributes as the Parameter class but each of them can be a dictionary with keys being the
+    """This class is used to define a parameter that depends on another parameter.
+
+    It has the same attributes as the Parameter class but each of them can be a dictionary with keys being the
     values of the conditioning parameter and values being the corresponding values of the
     conditional parameter. Calling the object with the conditioning parameter value as an argument
     will return a corresponding Parameter object with the correct values.
@@ -389,8 +390,9 @@ class Parameters:
 
     @classmethod
     def from_list(cls, names: List[str]):
-        """Creates a Parameters object from a list of parameter names. Everything else is set to
-        default values.
+        """Creates a Parameters object from a list of parameter names.
+
+        Everything else is set to default values.
 
         Args:
             names (List[str]): List of parameter names.

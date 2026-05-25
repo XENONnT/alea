@@ -443,8 +443,9 @@ class NeymanConstructor(SubmitterLocal):
         limit_threshold_interpolation,
         asymptotic_dof: Optional[int] = 1,
     ):
-        """Get confidence interval threshold function from limit_threshold file. If the
-        limit_threshold file does not contain the threshold, it will interpolate the threshold from
+        """Get confidence interval threshold function from limit_threshold file.
+
+        If the limit_threshold file does not contain the threshold, it will interpolate the threshold from
         the existing threshold, using the RegularGridInterpolator, so in this case the threshold is
         not exact.
 
@@ -461,7 +462,6 @@ class NeymanConstructor(SubmitterLocal):
                 degrees of freedom for asymptotic critical value
 
         """
-
         if limit_threshold is None:
             return [None] * len(hypotheses_values)
 

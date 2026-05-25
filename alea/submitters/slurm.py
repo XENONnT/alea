@@ -9,7 +9,6 @@ from utilix import batchq
 
 from alea.submitter import Submitter
 
-
 BATCHQ_DEFAULT_ARGUMENTS = {
     "hours": 1,  # in the unit of hours
     "mem_per_cpu": 2000,  # in the unit of Mb
@@ -171,8 +170,9 @@ class SubmitterSlurm(Submitter):
             print(f"An error occurred while submitting the job: {str(e)}")
 
     def submit(self, **kwargs):
-        """Submits job to batch queue which actually runs the analysis. Overwrite the
-        BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
+        """Submits job to batch queue which actually runs the analysis.
+
+        Overwrite the BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
 
         Keyword Args:
             jobname (str): The name of the job.

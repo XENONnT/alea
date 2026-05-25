@@ -46,7 +46,6 @@ def smearing_mono_gaussian(
         ValueError: If bins has less than 2 elements.
 
     """
-
     if bins is None:
         bins = hist.bin_edges
         bin_centers = hist.bin_centers

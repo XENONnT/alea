@@ -7,8 +7,9 @@ from alea.model import StatisticalModel
 
 
 class GaussianModel(StatisticalModel):
-    """A model of a gaussian measurement, where the model has parameters mu and sigma. For
-    illustration, we show how required nominal parameters can be added to the init sigma is fixed in
+    """A model of a gaussian measurement, where the model has parameters mu and sigma.
+
+    For illustration, we show how required nominal parameters can be added to the init sigma is fixed in
     this example.
 
     Args:

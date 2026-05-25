@@ -10,7 +10,6 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_transformation import Transformation
 
-
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
 
@@ -156,11 +155,9 @@ class CESTemplateSource(HistogramPdfSource):
         histogram_max = np.max(h.bin_edges)
         histogram_min = np.min(h.bin_edges)
         if self.min_e > histogram_max or self.max_e < histogram_min:
-            raise ValueError(
-                f"The histogram edge ({histogram_min},{histogram_max}) \
+            raise ValueError(f"The histogram edge ({histogram_min},{histogram_max}) \
                 does not overlap with the analysis space ({self.min_e},{self.max_e}) \
-                remove this background please:)"
-            )
+                remove this background please:)")
 
     def _get_transformations(self):
         """Create and return all transformations to be applied."""

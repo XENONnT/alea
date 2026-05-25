@@ -6,7 +6,6 @@ from utilix import batchq
 
 from alea.submitter import Submitter
 
-
 # suggested default arguments for utilix.batchq.submit_job
 # for XENONnT collaboration
 BATCHQ_DEFAULT_ARGUMENTS = {
@@ -21,8 +20,9 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 
 
 class SubmitterRCCSlurm(Submitter):
-    """Submitter for RCC slurm cluster, using utilix.batchq.submit_job. The default batchq arguments
-    are defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
+    """Submitter for RCC slurm cluster, using utilix.batchq.submit_job.
+
+    The default batchq arguments are defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
     configuration file.
 
     Keyword Args:
@@ -83,8 +83,9 @@ class SubmitterRCCSlurm(Submitter):
             )
 
     def submit(self, **kwargs):
-        """Submits job to batch queue which actually runs the analysis. Overwrite the
-        BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
+        """Submits job to batch queue which actually runs the analysis.
+
+        Overwrite the BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
 
         Keyword Args:
             jobname (str): The name of the job.

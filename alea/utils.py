@@ -203,7 +203,6 @@ def adapt_likelihood_config_for_blueice(
         dict: adapted likelihood config
 
     """
-
     likelihood_config_copy = deepcopy(likelihood_config)
 
     likelihood_config_copy["analysis_space"] = get_analysis_space(
@@ -458,8 +457,9 @@ def clip_limits(value) -> Tuple[float, float]:
 
 
 def can_assign_to_typing(value_type, target_type) -> bool:
-    """Check if value_type can be assigned to target_type. This is useful when converting Runner's
-    argument into strings.
+    """Check if value_type can be assigned to target_type.
+
+    This is useful when converting Runner's argument into strings.
 
     Args:
         value_type: type of the value, might be float, int, etc.
@@ -485,8 +485,9 @@ def add_i_batch(filename: str) -> str:
 
 
 def search_filename_pattern(filename: str) -> str:
-    """Return pattern for a given existing filename. This is needed because sometimes the filename
-    is not appended by "_{i_batch:d}". We need to distinguish between the two cases and return the
+    """Return pattern for a given existing filename.
+
+    This is needed because sometimes the filename is not appended by "_{i_batch:d}". We need to distinguish between the two cases and return the
     correct pattern.
 
     Returns:
@@ -530,7 +531,6 @@ def can_expand_grid(variations: dict) -> bool:
         True
 
     """
-
     # check if all values are lists or no values is list
     is_list = [isinstance(value, list) for value in variations.values()]
     if {True, False}.issubset(is_list):
@@ -563,7 +563,6 @@ def expand_grid_dict(variations: List[Union[dict, str]]) -> List[Union[dict, str
         ]
 
     """
-
     result = cast(List[Union[dict, str]], [])
     for v in variations:
         # convert str to list first
@@ -588,7 +587,6 @@ def convert_variations(variations: dict, iteration) -> list:
         list: a list of dict
 
     """
-
     # evaluate numpy and scipy expression in variations
     variations = evaluate_numpy_scipy_expression_in_dict(variations)
 
@@ -627,8 +625,9 @@ def convert_to_vary(to_vary: Dict[str, List]) -> List[Dict[str, Any]]:
 
 
 def convert_to_in_common(in_common: Dict[str, Any]) -> Dict[str, Any]:
-    """Expand the values in in_common, according to the itertools.product method, if necessary. This
-    usually happens to the hypotheses.
+    """Expand the values in in_common, according to the itertools.product method, if necessary.
+
+    This usually happens to the hypotheses.
 
     Example:
         >>> convert_to_in_common({'hypotheses': ['free', {'a': [1, 2], 'b': [3, 4]}]})
@@ -655,8 +654,9 @@ def convert_to_in_common(in_common: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compute_variations(to_zip, to_vary, in_common) -> list:
-    """Compute variations of Runner from to_zip, to_vary and in_common. By priority, the order is
-    to_zip, to_vary, in_common. The values in to_zip will overwrite the keys in to_vary and
+    """Compute variations of Runner from to_zip, to_vary and in_common.
+
+    By priority, the order is to_zip, to_vary, in_common. The values in to_zip will overwrite the keys in to_vary and
     in_common. The values in to_vary will overwrite the keys in in_common.
 
     Args:
@@ -730,8 +730,9 @@ def signal_multiplier_estimator(
     iteration=100,
     diagnostic=False,
 ) -> float:
-    """Estimate the best-fit signal multiplier using perturbation theory. The method tries to solve
-    the critial point of the likelihood function by perturbation theory, where the likelihood
+    """Estimate the best-fit signal multiplier using perturbation theory.
+
+    The method tries to solve the critial point of the likelihood function by perturbation theory, where the likelihood
     function is defined as the binned Poisson likelihood function, given signal, background models
     and data.
 
@@ -806,7 +807,6 @@ def extremal_root(
         float: Extremal root in the interval.
 
     """
-
     if xR <= xL:
         raise ValueError("Require xR > xL")
 

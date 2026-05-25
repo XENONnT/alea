@@ -6,7 +6,6 @@ import inference_interface
 
 from alea.examples import GaussianModel
 
-
 gaussian_model_parameter_definition = {
     "mu": {
         "fit_guess": 0.0,

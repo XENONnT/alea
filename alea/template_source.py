@@ -14,8 +14,10 @@ can_check_binning = True
 
 
 class TemplateSource(HistogramPdfSource):
-    """A source defined with a template histogram. The parameters are set in self.config.
-    "templatename", "histname", "analysis_space" must be in self.config.
+    """A source defined with a template histogram.
+
+    The parameters are set in self.config; "templatename", "histname", and
+    "analysis_space" must be present in self.config.
 
     Attributes:
         config (dict): The configuration of the source.
@@ -164,7 +166,6 @@ class TemplateSource(HistogramPdfSource):
                 The sum_axis, slice_axis, and slice_axis_limits are supported.
 
         """
-
         # if slice_args is not specified, use the one in the config
         if slice_args is None:
             slice_args = self.config.get("slice_args", [{}])
@@ -285,9 +286,11 @@ class TemplateSource(HistogramPdfSource):
 
 
 class CombinedSource(TemplateSource):
-    """Source that is a weighted sums of histograms. Useful e.g. for safeguard. The first histogram
-    is the base histogram, and the rest are added to it with weights. The weights can be set as
-    shape parameters in the config.
+    """Source that is a weighted sum of histograms.
+
+    Useful for example for safeguard. The first histogram is the base histogram
+    and the rest are added to it with weights, which can be set as shape parameters
+    in the config.
 
     Args:
         weights: Weights of the 2nd to the last histograms.
@@ -376,8 +379,9 @@ class CombinedSource(TemplateSource):
 
 
 class SpectrumTemplateSource(TemplateSource):
-    """Reweighted template source by 1D spectrum. The first axis of the template is assumed to be
-    reweighted.
+    """Reweighted template source by a 1D spectrum.
+
+    The first axis of the template is assumed to be the one being reweighted.
 
     Args:
         spectrum_name:

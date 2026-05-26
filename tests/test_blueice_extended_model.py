@@ -83,7 +83,6 @@ class TestBlueiceExtendedModel(TestCase):
 
     def test_expectation_values(self):
         """Test of the expectation_values method."""
-
         self.set_new_models()
         naive_expectation_values = self.get_expectation_values()
         for model, naive_vals in zip(self.models, naive_expectation_values):

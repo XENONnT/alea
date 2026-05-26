@@ -29,7 +29,6 @@ from alea.runner import Runner
 from alea.submitter import Submitter
 from alea.utils import TEMPLATE_RECORDS, load_yaml, dump_yaml
 
-
 DEFAULT_IMAGE = "/cvmfs/singularity.opensciencegrid.org/xenonnt/base-environment:latest"
 WORK_DIR = f"/scratch/{getpass.getuser()}/workflows"
 TOP_DIR = Path(__file__).resolve().parents[2]
@@ -334,10 +333,12 @@ class SubmitterHTCondor(Submitter):
     def _generate_rc(self):
         """Generate the ReplicaCatalog for the workflow.
 
-        1. The input files for the job, which are the templates in tarball,
-            the yaml files, toydata files, alea_run_toymc.py and install.sh.
-        2. The output files for the job, which are the toydata and the output files.
-        Since the outputs are not known in advance, we will add them in the job definition.
+        Contains two categories of files:
+
+            1. Input files for each job: templates tarball, yaml config files,
+               alea_run_toymc.py, and install.sh.
+            2. Output files for each job: toydata and result files.
+               Since outputs are not known in advance, they are added in the job definition.
 
         """
         rc = ReplicaCatalog()
@@ -436,9 +437,9 @@ class SubmitterHTCondor(Submitter):
         disk=1_000,
         run_on_submit_node=False,
     ):
-        """Initilize a Pegasus job, also sets resource profiles.
+        """Initialize a Pegasus job and set resource profiles.
 
-        Memory and disk in unit of MB.
+        Memory and disk are specified in MB.
 
         """
         job = Job(name)
@@ -525,9 +526,9 @@ class SubmitterHTCondor(Submitter):
         return args_dict
 
     def _reorganize_script(self, script):
-        """Extract executable and arguments from the naked scripts.
+        """Extract the executable and arguments from a raw script.
 
-        Correct the paths on the fly.
+        Corrects the paths in the arguments on the fly.
 
         """
         executable = os.path.basename(script.split()[1])
@@ -536,11 +537,12 @@ class SubmitterHTCondor(Submitter):
         return executable, args_dict
 
     def _generate_workflow(self, name="run_toymc_wrapper"):
-        """Generate the workflow.
+        """Generate the Pegasus workflow.
 
-        1. Define catalogs
-        2. Generate jobs by iterating over the path-modified tickets
-        3. Add jobs to the workflow
+        Steps:
+            1. Define catalogs.
+            2. Generate jobs by iterating over the path-modified tickets.
+            3. Add jobs to the workflow.
 
         """
         if self.combine_n_jobs != 1:

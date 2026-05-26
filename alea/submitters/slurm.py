@@ -9,7 +9,6 @@ from utilix import batchq
 
 from alea.submitter import Submitter
 
-
 BATCHQ_DEFAULT_ARGUMENTS = {
     "hours": 1,  # in the unit of hours
     "mem_per_cpu": 2000,  # in the unit of Mb
@@ -17,11 +16,10 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 
 
 class SubmitterSlurm(Submitter):
-    """Submitter for slurm cluster,
+    """Submitter for slurm cluster using utilix.batchq.submit_job.
 
-    using utilix.batchq.submit_job. The default batchq arguments are
-    defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
-    configuration file.
+    Default batchq arguments are defined in BATCHQ_DEFAULT_ARGUMENTS and can be
+    overwritten by passing them inside the configuration file.
 
     Keyword Args:
         slurm_configurations (dict): The configurations for utilix.batchq.submit_job.
@@ -93,7 +91,8 @@ class SubmitterSlurm(Submitter):
         constraint: Optional[str] = None,
     ) -> None:
         """Submit a job to the SLURM queue.
-        adapted from https://github.com/XENONnT/utilix/blob/master/utilix/batchq.py
+
+        Adapted from https://github.com/XENONnT/utilix/blob/master/utilix/batchq.py
 
         Args:
             jobstring (str): The command to execute.
@@ -112,7 +111,6 @@ class SubmitterSlurm(Submitter):
             verbose (bool): Print the sbatch command before submitting. Default is False.
             bypass_validation (List[str]): List of parameters to bypass validation for.
                 Default is None.
-
 
         """
         if partition is not None or container is not None or bind is not None:
@@ -171,8 +169,10 @@ class SubmitterSlurm(Submitter):
             print(f"An error occurred while submitting the job: {str(e)}")
 
     def submit(self, **kwargs):
-        """Submits job to batch queue which actually runs the analysis. Overwrite the
-        BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
+        """Submit jobs to the batch queue, respecting the maximum job count.
+
+        Overwrites BATCHQ_DEFAULT_ARGUMENTS with values from the configuration file.
+        If debug is True, only the first job is submitted.
 
         Keyword Args:
             jobname (str): The name of the job.

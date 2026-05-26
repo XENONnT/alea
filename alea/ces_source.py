@@ -10,7 +10,6 @@ from blueice.exceptions import PDFNotComputedException
 from multihist import Hist1d
 from alea.ces_transformation import Transformation
 
-
 MINIMAL_ENERGY_RESOLUTION = 0.05
 
 
@@ -36,7 +35,7 @@ def new_lookup(self, *args):
 
 
 def safe_lookup(hist_obj):
-    "A Wrapper to make sure the lookup function returns 0 for out-of-range values"
+    """Wrap a histogram's lookup function to return 0 for out-of-range values."""
     hist_obj.original_lookup = hist_obj.lookup
     hist_obj.lookup = new_lookup.__get__(hist_obj)
     return hist_obj
@@ -45,17 +44,12 @@ def safe_lookup(hist_obj):
 def rebin_interpolate_normalized(hist, new_edges):
     """Rebin a normalized histogram using interpolation, preserving normalization.
 
-    Parameters:
-    -----------
-    hist : Hist1d
-        Input histogram (assumed to be normalized)
-    new_edges : array-like
-        New bin edges
+    Args:
+        hist (Hist1d): Input histogram, assumed to be normalized.
+        new_edges (array-like): New bin edges.
 
     Returns:
-    --------
-    Hist1d
-        New histogram with desired binning, properly normalized
+        Hist1d: New histogram with the desired binning, properly normalized.
 
     """
     # First convert histogram values to density
@@ -156,11 +150,9 @@ class CESTemplateSource(HistogramPdfSource):
         histogram_max = np.max(h.bin_edges)
         histogram_min = np.min(h.bin_edges)
         if self.min_e > histogram_max or self.max_e < histogram_min:
-            raise ValueError(
-                f"The histogram edge ({histogram_min},{histogram_max}) \
+            raise ValueError(f"The histogram edge ({histogram_min},{histogram_max}) \
                 does not overlap with the analysis space ({self.min_e},{self.max_e}) \
-                remove this background please:)"
-            )
+                remove this background please:)")
 
     def _get_transformations(self):
         """Create and return all transformations to be applied."""
@@ -348,7 +340,7 @@ class CESTemplateSource(HistogramPdfSource):
     def build_histogram(self):
         """Build the histogram of the source.
 
-        It's always called during the initialization of the source. So the attributes are set here.
+        Always called during source initialization, so all attributes are set here.
 
         """
         # print("Building histogram")
@@ -488,8 +480,12 @@ class CESMonoenergySource(CESTemplateSource):
         return h
 
     def _normalize_histogram(self, h: Hist1d):
-        """For mono-energetic source, fraction_in_range is simply 1 or 0 depending on whether the
-        peak energy is within ROI."""
+        """Normalize the histogram for a mono-energetic source.
+
+        The fraction_in_range is set to 1 or 0 depending on whether the peak energy is within the
+        ROI.
+
+        """
         # Check if peak energy is in ROI
         if self.min_e <= self.mu <= self.max_e:
             self.fraction_in_range = 1.0

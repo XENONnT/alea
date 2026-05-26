@@ -30,13 +30,13 @@ _DEFAULT_FIT_STRATEGY = {
 
 
 class StatisticalModel:
-    """Class that defines a statistical model.
+    """Base class for defining a statistical model with a likelihood and data generation method.
 
-    - The statisical model contains two parts that you must define yourself:
+    - The statistical model contains two parts that you must define yourself:
         - a likelihood function
             ll(self, parameter_1, parameter_2... parameter_n):
             A function of a set of named parameters which
-            return a float expressing the loglikelihood for observed data given these parameters.
+            return a float expressing the log-likelihood for observed data given these parameters.
         - a data generation function
             generate_data(self, parameter_1, parameter_2... parameter_n):
             A function of the same set of named parameters return a full data set.
@@ -154,7 +154,7 @@ class StatisticalModel:
             raise AssertionError("ll and generate_data must have the same signature (parameters)")
 
     def _ll(self, **kwargs) -> float:
-        """Likelihood function, return the loglikelihood for the given parameters."""
+        """Likelihood function, return the log-likelihood for the given parameters."""
         raise NotImplementedError(
             "You must write a likelihood function (_ll) for your statistical model"
             " or use a subclass where it is written for you"
@@ -169,9 +169,10 @@ class StatisticalModel:
 
     @_needs_data
     def ll(self, **kwargs) -> float:
-        """Likelihod function, returns the loglikelihood for the given parameters. The parameters
-        are passed as keyword arguments, positional arguments are not possible. If a parameter is
-        not given, the default value is used.
+        """Return the log-likelihood for the given parameters.
+
+        Parameters are passed as keyword arguments; positional arguments are not supported.
+        If a parameter is not given, the default value is used.
 
         Keyword Args:
             kwargs: keyword arguments for the parameters
@@ -184,9 +185,10 @@ class StatisticalModel:
         return self._ll(**parameters)
 
     def generate_data(self, **kwargs) -> Union[dict, list]:
-        """Generate data for the given parameters. The parameters are passed as keyword arguments,
-        positional arguments are not possible. If a parameter is not given, the default value is
-        used.
+        """Generate data for the given parameters.
+
+        Parameters are passed as keyword arguments; positional arguments are not supported.
+        If a parameter is not given, the default value is used.
 
         Raises:
             ValueError: If the parameters are not within the fit limits
@@ -205,10 +207,10 @@ class StatisticalModel:
 
     @property
     def data(self):
-        """Simple getter for a data-set-- mainly here so it can be over-ridden for special needs.
+        """Return the dataset, overridable for special needs.
 
-        Data-sets are expected to be in the form of a list of one or more structured arrays,
-        representing the data-sets of one or more likelihood terms.
+        Datasets are expected to be in the form of a list of one or more structured arrays,
+        representing the datasets of one or more likelihood terms.
 
         """
         if self._data is None:
@@ -228,10 +230,9 @@ class StatisticalModel:
         data_name_list: Optional[List[str]] = None,
         metadata: Optional[dict] = None,
     ):
-        """
-        Store a list of datasets.
-        (each on the form of a list of one or more structured arrays or dicts)
-        Using inference_interface, but included here to allow over-writing.
+        """Store a list of datasets to a file using inference_interface.
+
+        Each dataset is in the form of a list of one or more structured arrays or dicts.
         The structure would be: ``[[datasets1], [datasets2], ..., [datasetsn]]``,
         where each of datasets is a list of structured arrays.
         If you specify, it is set, if not it will read from ``self.get_likelihood_term_names``.
@@ -244,6 +245,7 @@ class StatisticalModel:
                 If None, it will be read from self.get_likelihood_term_names
             metadata (dict, optional (default=None)): metadata to store with the data.
                 If None, no metadata is stored.
+
         """
         if all([isinstance(d, dict) for d in data_list]) or all(
             [isinstance(d, ReadOnlyDict) for d in data_list]
@@ -337,10 +339,11 @@ class StatisticalModel:
     def fit(
         self, verbose: Optional[bool] = False, fit_strategy: Optional[dict] = None, **kwargs
     ) -> Tuple[dict, float]:
-        """Fit the model to the data by maximizing the likelihood. Return a dict containing best-fit
-        values of each parameter, and the value of the likelihood evaluated there. While the
-        optimization is a minimization, the likelihood returned is the __maximum__ of the
-        likelihood.
+        """Fit the model to the data by maximizing the likelihood.
+
+        Returns a dict of best-fit parameter values and the maximum log-likelihood value.
+        While the optimization is a minimization internally, the likelihood returned
+        is the maximum.
 
         Args:
             verbose (bool): if True, print the Minuit object
@@ -590,10 +593,13 @@ class StatisticalModel:
         asymptotic_dof: Optional[int] = None,
         fit_strategy: Optional[dict] = None,
     ) -> Tuple[float, float]:
-        """Uses self.fit to compute confidence intervals for a certain named parameter. If the
-        parameter is a rate parameter, and the model has expectation values implemented, the bounds
-        will be interpreted as bounds on the expectation value, so that the range in the fit is
-        parameter_interval_bounds/mus. Otherwise the bound is taken as-is.
+        """Compute confidence intervals for the parameter of interest (POI).
+
+        Finds the intersection between the profile log-likelihood curve and the
+        critical value curve to determine the confidence interval edges.
+        If the parameter is a rate parameter and the model has expectation values implemented,
+        the bounds will be interpreted as bounds on the expectation value, so that the range
+        in the fit is parameter_interval_bounds/mus. Otherwise the bound is taken as-is.
 
         Args:
             poi_name (str): name of the parameter of interest
@@ -720,8 +726,9 @@ class StatisticalModel:
 
 
 class MinuitWrap:
-    """Wrapper for functions to be called by Minuit. Initialized with a function f and a Parameters
-    instance.
+    """Wrapper for functions to be called by Minuit.
+
+    Initialized with a function f and a Parameters instance.
 
     Attributes:
         func: function wrapped

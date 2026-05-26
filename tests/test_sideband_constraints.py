@@ -78,7 +78,7 @@ class TestSidebandConstraintConfig(TestCase):
         self.assertNotIn("er_rate_multiplier", from_sideband_params.names)
 
     def test_from_sideband_parameters_have_n_sideband_set(self):
-        """The from_sideband parameters should have n_sideband and uncertaintyset according to the
+        """The from_sideband parameters should have n_sideband and uncertainty set according to the
         config."""
         if self.params is None:
             self.skipTest("Skipping: config failed to load")

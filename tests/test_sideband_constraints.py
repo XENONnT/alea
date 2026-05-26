@@ -51,8 +51,8 @@ class TestSidebandConstraintConfig(TestCase):
         self.parameter_config = load_yaml(filename)["parameter_definition"]
         try:
             self.params = Parameters.from_config(self.parameter_config)
-        except Exception:
-            pass
+        except Exception as e:
+            self.fail(f"Failed to create Parameters from config: {e}")
 
     def test_config_loads_successfully(self):
         """The config file should load without errors and produce a Parameters object."""

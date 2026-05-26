@@ -16,7 +16,8 @@ can_check_binning = True
 class TemplateSource(HistogramPdfSource):
     """A source defined with a template histogram.
 
-    The parameters are set in self.config. "templatename", "histname", "analysis_space" must be in self.config.
+    The parameters are set in self.config; "templatename", "histname", and
+    "analysis_space" must be present in self.config.
 
     Attributes:
         config (dict): The configuration of the source.
@@ -285,10 +286,11 @@ class TemplateSource(HistogramPdfSource):
 
 
 class CombinedSource(TemplateSource):
-    """Source that is a weighted sums of histograms.
+    """Source that is a weighted sum of histograms.
 
-    Useful e.g. for safeguard. The first histogram is the base histogram, and the rest are added to it with weights. The weights can be set as
-    shape parameters in the config.
+    Useful for example for safeguard. The first histogram is the base histogram
+    and the rest are added to it with weights, which can be set as shape parameters
+    in the config.
 
     Args:
         weights: Weights of the 2nd to the last histograms.
@@ -377,9 +379,9 @@ class CombinedSource(TemplateSource):
 
 
 class SpectrumTemplateSource(TemplateSource):
-    """Reweighted template source by 1D spectrum.
+    """Reweighted template source by a 1D spectrum.
 
-    The first axis of the template is assumed to be reweighted.
+    The first axis of the template is assumed to be the one being reweighted.
 
     Args:
         spectrum_name:

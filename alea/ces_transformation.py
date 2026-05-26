@@ -154,18 +154,14 @@ def biasing_hist_arctan(hist, A: float, k: float, B: float):
     - bin_centers represent measured energy (E')
     - histogram is interpolated from corrected f(E)
 
-    Parameters
-    ----------
-    hist : Hist1d
-        Original histogram in true energy domain E
-    A, k, B : float
-        Bias function parameters:
-            (E' - E) / E = A * arctan(kE) + B
+    Args:
+        hist (Hist1d): Original histogram in true energy domain E.
+        A (float): Bias function parameter A, in (E' - E) / E = A * arctan(kE) + B.
+        k (float): Bias function parameter k.
+        B (float): Bias function parameter B.
 
-    Returns
-    -------
-    Hist1d
-        New histogram with interpolated and corrected values, x-axis is E'
+    Returns:
+        Hist1d: New histogram with interpolated and corrected values, x-axis is E'.
 
     """
     assert isinstance(hist, Hist1d), "Only Hist1d object is supported"

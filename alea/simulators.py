@@ -124,12 +124,15 @@ class BlueiceDataGenerator:
         return r_data
 
     def compute_pdfs_and_mus(self, filter_kwargs=True, **kwargs) -> None:
-        """Compute PDFs of the sources for the given parameters.
+        """Compute PDFs and expected event counts for all sources given the parameters.
+
+        Results are cached; recomputation is skipped if kwargs are unchanged
+        from the previous call.
 
         Args:
             filter_kwargs (bool, optional (default=True)): If True,
-                only parameters of the ll object are accepted as kwargs. Defaults to True.
-            kwargs: The parameters pasted to the likelihood function.
+                only parameters of the ll object are accepted as kwargs.
+            kwargs: The parameters passed to the likelihood function.
 
         """
         if filter_kwargs:

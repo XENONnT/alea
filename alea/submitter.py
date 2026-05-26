@@ -24,8 +24,8 @@ from alea.utils import (
 class Submitter:
     """Submitter base class that generate the submission script from the configuration.
 
-    It is initialized by the configuration file, and the configuration file should contain the arguments
-    of __init__ method of the Submitter.
+    Initialized from a configuration file whose contents map to the arguments of the
+    __init__ method of the Submitter.
 
     Attributes:
         statistical_model (str): the name of the statistical model
@@ -138,13 +138,13 @@ class Submitter:
 
     @classmethod
     def from_config(cls, config_file_path: str, **kwargs) -> "Submitter":
-        """Initializes the submitter from a yaml config file.
+        """Initialize the submitter from a yaml config file.
 
         Args:
             config_file_path (str): Path to the yaml config file.
 
         Returns:
-            BlueiceExtendedModel: Statistical model.
+            Submitter: The initialized Submitter instance.
 
         """
         config = load_yaml(config_file_path)
@@ -324,16 +324,14 @@ class Submitter:
         return needed_kwargs
 
     def computation_tickets_generator(self):
-        """Get the submission script for the current configuration.
+        """Generate submission scripts for each combination of the computation options.
 
-        It generates the submission script for each combination of the computation options.
-
-        For Runner from to_zip, to_vary and in_common:
+        For each Runner argument set derived from to_zip, to_vary and in_common:
             - First, generate the combined computational options directly.
             - Second, update the input and output folder of the options.
-            - Thrid, collect the non-fittable(settable) parameters into nominal_values.
+            - Third, collect the non-fittable (settable) parameters into nominal_values.
             - Then, collect the fittable parameters into generate_values.
-            - Finally, it generates the submission script for each combination.
+            - Finally, generate the submission script for each combination.
 
         Yields:
             (str, str): the submission script and name output_filename
@@ -457,7 +455,8 @@ class Submitter:
     ):
         """Update the runner arguments' generate_values and nominal_values.
 
-        If the argument is fittable, it will be added to generate_values, otherwise it will be added to nominal_values.
+        Fittable parameters are added to generate_values; non-fittable parameters
+        are added to nominal_values.
 
         Args:
             runner_args (dict): the arguments of Runner

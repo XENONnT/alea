@@ -284,8 +284,10 @@ def _package_path(sub_directory):
 
 
 def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]] = None):
-    """Convert formatted string to asterisk Sometimes a parameter(usually shape parameter) is not
-    specified in formatted string, this function replace the parameter with asterisk.
+    """Convert a formatted string to an asterisked string.
+
+    When a parameter (usually a shape parameter) is not specified in the formatted
+    string, this function replaces the parameter with an asterisk.
 
     Args:
         formatted (str): formatted string
@@ -325,7 +327,9 @@ def formatted_to_asterisked(formatted, wildcards: Optional[Union[str, List[str]]
 
 
 def get_file_path(fname, folder_list: Optional[List[str]] = None):
-    """Find the full path to the resource file Try 5 methods in the following order.
+    """Find the full path to the resource file.
+
+    The following methods are tried in order:
 
     #. fname begin with '/', return absolute path
     #. folder begin with '/', return folder + name
@@ -444,8 +448,8 @@ def within_limits(value, limits):
 
 
 def clip_limits(value) -> Tuple[float, float]:
-    """Clip limits to be within [-MAX_FLOAT, MAX_FLOAT] by converting None to -MAX_FLOAT and
-    MAX_FLOAT."""
+    """Clip limits to [-MAX_FLOAT, MAX_FLOAT] by replacing None with the respective bound."""
+
     if value is None:
         value = [-MAX_FLOAT, MAX_FLOAT]
     else:
@@ -485,10 +489,10 @@ def add_i_batch(filename: str) -> str:
 
 
 def search_filename_pattern(filename: str) -> str:
-    """Return pattern for a given existing filename.
+    """Return the glob pattern for a given existing filename.
 
-    This is needed because sometimes the filename is not appended by "_{i_batch:d}". We need to distinguish between the two cases and return the
-    correct pattern.
+    This is needed because sometimes the filename is not appended by "_{i_batch:d}".
+    The function distinguishes between the two cases and returns the correct pattern.
 
     Returns:
         str: existing pattern for filename, either filename or filename w/ inserted "_*"
@@ -654,10 +658,10 @@ def convert_to_in_common(in_common: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compute_variations(to_zip, to_vary, in_common) -> list:
-    """Compute variations of Runner from to_zip, to_vary and in_common.
+    """Compute all Runner argument combinations from to_zip, to_vary and in_common.
 
-    By priority, the order is to_zip, to_vary, in_common. The values in to_zip will overwrite the keys in to_vary and
-    in_common. The values in to_vary will overwrite the keys in in_common.
+    By priority the order is to_zip > to_vary > in_common: values in to_zip overwrite
+    those in to_vary and in_common, and values in to_vary overwrite those in in_common.
 
     Args:
         to_zip (dict): variations to be zipped
@@ -732,9 +736,9 @@ def signal_multiplier_estimator(
 ) -> float:
     """Estimate the best-fit signal multiplier using perturbation theory.
 
-    The method tries to solve the critial point of the likelihood function by perturbation theory, where the likelihood
-    function is defined as the binned Poisson likelihood function, given signal, background models
-    and data.
+    Solves the critical point of the binned Poisson likelihood function
+    iteratively via perturbation theory, given signal and background models
+    and observed data.
 
     Args:
         signal (np.ndarray): signal model

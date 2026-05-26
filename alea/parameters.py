@@ -205,12 +205,12 @@ class Parameter:
 
 
 class ConditionalParameter:
-    """This class is used to define a parameter that depends on another parameter.
+    """A parameter whose properties depend on the value of another (conditioning) parameter.
 
-    It has the same attributes as the Parameter class but each of them can be a dictionary with keys being the
-    values of the conditioning parameter and values being the corresponding values of the
-    conditional parameter. Calling the object with the conditioning parameter value as an argument
-    will return a corresponding Parameter object with the correct values.
+    Each attribute can be a dictionary mapping conditioning parameter values to the
+    corresponding values of the conditional parameter. Calling the object with the
+    conditioning parameter value as an argument returns a Parameter object with the
+    correct values.
 
     Attributes:
         name (str): The name of the parameter.
@@ -255,27 +255,27 @@ class ConditionalParameter:
 
     @property
     def uncertainty(self) -> Any:
-        """Return the uncertainty of the parameter (cominal condition)"""
+        """Return the uncertainty of the parameter (nominal condition)"""
         return self().uncertainty
 
     @property
     def blueice_anchors(self) -> Any:
-        """Return the blueice_anchors of the parameter (cominal condition)"""
+        """Return the blueice_anchors of the parameter (nominal condition)"""
         return self().blueice_anchors
 
     @property
     def fit_guess(self) -> Optional[float]:
-        """Return the initial guess for fitting the parameter (cominal condition)"""
+        """Return the initial guess for fitting the parameter (nominal condition)"""
         return self().fit_guess
 
     @property
     def parameter_interval_bounds(self) -> Optional[Tuple[float, float]]:
-        """Return the parameter_interval_bounds of the parameter (cominal condition)"""
+        """Return the parameter_interval_bounds of the parameter (nominal condition)"""
         return self().parameter_interval_bounds
 
     @property
     def nominal_value(self) -> Optional[float]:
-        """Return the nominal value of the parameter (cominal condition)"""
+        """Return the nominal value of the parameter (nominal condition)"""
         return self().nominal_value
 
     @property
@@ -285,22 +285,22 @@ class ConditionalParameter:
 
     @property
     def fittable(self) -> bool:
-        """Return the fittable attribute of the parameter (cominal condition)"""
+        """Return the fittable attribute of the parameter (nominal condition)"""
         return self().fittable
 
     @property
     def ptype(self) -> Optional[str]:
-        """Return the ptype of the parameter (cominal condition)"""
+        """Return the ptype of the parameter (nominal condition)"""
         return self().ptype
 
     @property
     def relative_uncertainty(self) -> Optional[bool]:
-        """Return the relative_uncertainty of the parameter (cominal condition)"""
+        """Return the relative_uncertainty of the parameter (nominal condition)"""
         return self().relative_uncertainty
 
     @property
     def fit_limits(self) -> Optional[Tuple[float, float]]:
-        """Return the fit_limits of the parameter (cominal condition)"""
+        """Return the fit_limits of the parameter (nominal condition)"""
         return self().fit_limits
 
     def __eq__(self, other: object) -> bool:
@@ -310,7 +310,7 @@ class ConditionalParameter:
         return False
 
     def value_in_fit_limits(self, value: float) -> bool:
-        """Returns True if value under cominal condition is within fit_limits."""
+        """Returns True if value under nominal condition is within fit_limits."""
         return self().value_in_fit_limits(value)
 
     def __call__(self, **kwargs) -> Parameter:
@@ -546,8 +546,7 @@ class Parameters:
     def __call__(
         self, return_fittable: Optional[bool] = False, **kwargs: Optional[Dict]
     ) -> Dict[str, float]:
-        """Return a dictionary of parameter values, optionally filtered to return only fittable
-        parameters.
+        """Return a dictionary of parameter values, optionally filtered to fittable parameters only.
 
         Args:
             return_fittable (bool, optional (default=False)):

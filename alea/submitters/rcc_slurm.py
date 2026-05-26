@@ -22,8 +22,8 @@ BATCHQ_DEFAULT_ARGUMENTS = {
 class SubmitterRCCSlurm(Submitter):
     """Submitter for RCC slurm cluster, using utilix.batchq.submit_job.
 
-    The default batchq arguments are defined in BATCHQ_DEFAULT_ARGUMENTS. You can also overwrite them by passing them inside
-    configuration file.
+    Default batchq arguments are defined in BATCHQ_DEFAULT_ARGUMENTS and can be
+    overwritten via the configuration file.
 
     Keyword Args:
         slurm_configurations (dict): The configurations for utilix.batchq.submit_job.
@@ -83,9 +83,10 @@ class SubmitterRCCSlurm(Submitter):
             )
 
     def submit(self, **kwargs):
-        """Submits job to batch queue which actually runs the analysis.
+        """Submit jobs to the batch queue, respecting the maximum job count.
 
-        Overwrite the BATCHQ_DEFAULT_ARGUMENTS by configuration file. If debug is True, only submit the first job.
+        Overwrites BATCHQ_DEFAULT_ARGUMENTS with values from the configuration file.
+        If debug is True, only the first job is submitted.
 
         Keyword Args:
             jobname (str): The name of the job.

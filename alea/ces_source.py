@@ -482,8 +482,8 @@ class CESMonoenergySource(CESTemplateSource):
     def _normalize_histogram(self, h: Hist1d):
         """Normalize the histogram for a mono-energetic source.
 
-        The fraction_in_range is set to 1 or 0 depending on whether the peak energy
-        is within the ROI.
+        The fraction_in_range is set to 1 or 0 depending on whether the peak energy is within the
+        ROI.
 
         """
         # Check if peak energy is in ROI

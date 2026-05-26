@@ -112,7 +112,6 @@ class SubmitterSlurm(Submitter):
             bypass_validation (List[str]): List of parameters to bypass validation for.
                 Default is None.
 
-
         """
         if partition is not None or container is not None or bind is not None:
             print(partition, container, bind)

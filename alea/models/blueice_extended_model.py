@@ -500,6 +500,8 @@ class BlueiceExtendedModel(StatisticalModel):
             if not param.from_sideband:
                 parameter_meas = gen.rvs()
             else:
+                # Do not use the constraint function but the underlying Poisson distribution
+                # to generate the measurement for parameters that are constrained from sideband.
                 parameter_meas = stats.poisson(mu=param.n_sideband * param.nominal_value).rvs()
                 parameter_meas = parameter_meas / param.n_sideband
 

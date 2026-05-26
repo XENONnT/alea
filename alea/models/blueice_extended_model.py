@@ -44,7 +44,7 @@ class BlueiceExtendedModel(StatisticalModel):
     """
 
     def __init__(self, parameter_definition: dict, likelihood_config: dict, **kwargs):
-        """Initializes the statistical model.
+        """Initialize the statistical model from parameter and likelihood config dicts.
 
         Args:
             parameter_definition (dict): A dictionary defining the model parameters.
@@ -66,7 +66,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     @classmethod
     def from_config(cls, config_file_path: str, **kwargs) -> "BlueiceExtendedModel":
-        """Initializes the statistical model from a yaml config file.
+        """Initialize the statistical model from a yaml config file.
 
         Args:
             config_file_path (str): Path to the yaml config file.
@@ -85,9 +85,10 @@ class BlueiceExtendedModel(StatisticalModel):
 
     @data.setter
     def data(self, data: Union[dict, list]):
-        """Overrides default setter. Will also set the data of the blueice ll. Data-sets are
-        expected to be in the form of a list of one or more structured arrays representing the data-
-        sets of one or more likelihood terms.
+        """Set data on the model and propagate it to the blueice likelihood.
+
+        Overrides the default setter. Datasets are expected to be in the form of a list
+        of one or more structured arrays representing the datasets of one or more likelihood terms.
 
         Args:
             data (dict or list): Data of the statistical model.
@@ -127,9 +128,10 @@ class BlueiceExtendedModel(StatisticalModel):
         self.is_data_set = True
 
     def get_source_name_list(self, likelihood_name: str) -> list:
-        """Return a list of source names for a given likelihood term. The order is the same as used
-        in the ``source`` column of the data, so this can be used to map the indices provided in the
-        data to a source name.
+        """Return a list of source names for a given likelihood term.
+
+        The order matches the ``source`` column of the data, so this can be used to map
+        indices in the data to a source name.
 
         Args:
             likelihood_name (str): Name of the likelihood.
@@ -143,14 +145,7 @@ class BlueiceExtendedModel(StatisticalModel):
 
     @property
     def all_source_names(self) -> list:
-        """Return a set of possible source names from all likelihood terms.
-
-        Args:
-            likelihood_name (str): Name of the likelihood.
-        Returns:
-            set: set of source names.
-
-        """
+        """Return a sorted list of all source names across all likelihood terms."""
         source_names = set(
             itertools.chain.from_iterable([ll.source_name_list for ll in self.likelihood_list[:-1]])
         )
@@ -167,12 +162,11 @@ class BlueiceExtendedModel(StatisticalModel):
         return self._likelihood.likelihood_parameters
 
     def get_expectation_values(self, per_likelihood_term=False, **kwargs) -> dict:
-        """Return total expectation values (summed over all likelihood terms with the same name)
-        given a number of named parameters (kwargs)
+        """Return total expectation values summed over all likelihood terms with the same name.
 
         Args:
-            per_likelihood_term (bool): If True, return expectation values
-                per likelihood term. Otherwise, sum each source over all likelihood terms.
+            per_likelihood_term (bool): If True, return expectation values per likelihood term.
+                Otherwise, sum each source over all likelihood terms.
             kwargs: Named parameters
 
         Returns:
@@ -180,7 +174,7 @@ class BlueiceExtendedModel(StatisticalModel):
                 has the form {likelihood_name: {source_name: expectation_value, ...}, ...}.
 
         Todo:
-            Make a self.likelihood_temrs dict with the likelihood names as keys and
+            Make a self.likelihood_terms dict with the likelihood names as keys and
             the corresponding likelihood terms as values.
 
         """
@@ -617,8 +611,9 @@ class BlueiceExtendedModel(StatisticalModel):
 
 
 class CustomAncillaryLikelihood(LogAncillaryLikelihood):
-    """Custom ancillary likelihood that can be used to add constraint terms for parameters of the
-    likelihood.
+    """Ancillary likelihood providing constraint terms for nuisance parameters.
+
+    Can be used to add constraint terms for parameters of the likelihood.
 
     Attributes:
         parameters (Parameters): Parameters object containing the parameters to be constrained.
@@ -644,8 +639,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
     @property
     def constraint_terms(self) -> dict:
-        """Dict of all constraint terms (logpdf of constraint functions) of the ancillary
-        likelihood.
+        """Return a dict of all constraint terms (logpdf callables) of the ancillary likelihood.
 
         Returns:
             dict: Dict of all constraint terms function.

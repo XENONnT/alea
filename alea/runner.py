@@ -14,14 +14,16 @@ from alea.utils import load_yaml
 
 
 class Runner:
-    """Runner manipulates statistical model and toydata.
+    """Manages toy Monte Carlo simulation and fitting for a statistical model.
 
+    Responsibilities:
         - initialize the statistical model
-        - generate or reads toy data
+        - generate or read toy data
         - save toy data if needed
         - fit fittable parameters
         - write the output file
-    One toyfile can contain multiple toydata, but all of them are from the same generate_values.
+
+    One toyfile can contain multiple toydata, but all of them share the same generate_values.
 
     Attributes:
         model (StatisticalModel): statistical model instance
@@ -244,11 +246,11 @@ class Runner:
     def update_poi(
         model, poi: str, generate_values: Dict[str, float], nominal_values: Dict[str, float] = {}
     ):
-        """Update the poi according to poi_expectation. First, it will check if poi_expectation is
-        provided, if not so, it will do nothing. Second, it will check if poi is provided, if so, it
-        will raise error. Third, it will check if poi ends with _rate_multiplier, if not so, it will
-        raise error. Finally, it will update poi to the correct value according to poi_expectation
-        using the get_expectation_values method of model, under specified nominal_values.
+        """Update the poi in generate_values according to poi_expectation.
+
+        Checks that poi_expectation is provided, that poi is not already set, and that
+        poi ends with _rate_multiplier. Then updates the poi to the correct value using
+        the get_expectation_values method of the model under the specified nominal_values.
 
         Args:
             poi (str): parameter of interest
@@ -465,13 +467,15 @@ class Runner:
         all(tqdm(self.data_generator(), total=self._n_mc))
 
     def simulate_and_fit(self):
-        """
-        For each Monte Carlo:
-            - run toy simulation a specified toydata mode and generate values.
-            - loop over hypotheses.
+        """Run toy simulations, perform fits for different hypotheses, and collect results.
+
+        For each Monte Carlo iteration, runs the toy simulation under the specified
+        toydata mode and generate values, then fits the model to the generated toydata for each
+        hypothesis, and collects the fit results and confidence intervals if needed.
 
         Todo:
             Implement per-hypothesis switching on whether to compute confidence intervals
+
         """
         results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):

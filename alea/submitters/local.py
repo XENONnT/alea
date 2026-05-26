@@ -108,9 +108,9 @@ class NeymanConstructor(SubmitterLocal):
         true_name: str = "true",
         confidence_levels: List[float] = [0.6827, 0.8, 0.9, 0.95],
     ):
-        """Read the likelihood ratio from the output files and calculate the Neyman threshold. The
-        threshold will be saved into a json file. The threshold will be sorted based on the elements
-        of poi.
+        """Read the likelihood ratio from output files and calculate the Neyman threshold.
+
+        The threshold is saved into a json file and sorted based on the elements of poi.
 
         Args:
             free_name: the name of the free hypothesis
@@ -304,8 +304,11 @@ class NeymanConstructor(SubmitterLocal):
         return metadata
 
     def _read_poi(self, metadata, **kwargs):
-        """Read poi and poi_expectation from the metadata, and check if the poi_expectation is
-        consistent with the poi_expectation from the model."""
+        """Read poi and poi_expectation from metadata.
+
+        Checks that the poi_expectation is consistent with the value derived from the model.
+
+        """
         poi_expectation = kwargs.pop("poi_expectation", None)
         poi_value = kwargs.get(self.poi, None)
         if poi_value is None:
@@ -443,10 +446,11 @@ class NeymanConstructor(SubmitterLocal):
         limit_threshold_interpolation,
         asymptotic_dof: Optional[int] = 1,
     ):
-        """Get confidence interval threshold function from limit_threshold file. If the
-        limit_threshold file does not contain the threshold, it will interpolate the threshold from
-        the existing threshold, using the RegularGridInterpolator, so in this case the threshold is
-        not exact.
+        """Get confidence interval threshold functions from a limit_threshold file.
+
+        If the threshold for a given hypothesis is not found directly, it will be interpolated
+        from existing thresholds using RegularGridInterpolator, in which case the threshold
+        is approximate.
 
         Args:
             poi (str): parameter of interest
@@ -461,7 +465,6 @@ class NeymanConstructor(SubmitterLocal):
                 degrees of freedom for asymptotic critical value
 
         """
-
         if limit_threshold is None:
             return [None] * len(hypotheses_values)
 

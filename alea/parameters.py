@@ -222,7 +222,7 @@ class ConditionalParameter:
         self.name = name
         self.conditioning_name = conditioning_parameter_name
         self.conditions_dict = self._unpack_conditions(kwargs)
-        self.conditioning_param = None
+        self.conditioning_param: Optional[Parameter] = None
 
     def __repr__(self) -> str:
         parameter_str = ", ".join([f"{k}={v}" for k, v in self.__dict__.items() if v is not None])
@@ -545,7 +545,7 @@ class Parameters:
 
     def __call__(
         self, return_fittable: Optional[bool] = False, **kwargs: Optional[Dict]
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """Return a dictionary of parameter values, optionally filtered to fittable parameters only.
 
         Args:

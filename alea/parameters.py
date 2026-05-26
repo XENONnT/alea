@@ -389,6 +389,7 @@ class Parameters:
         uncertainties (Dict[str, float or Any]): A dictionary of parameter uncertainties.
         with_uncertainty (Parameters): A Parameters object with parameters with
             a not-NaN uncertainty.
+        from_sideband (Parameters): A Parameters object with parameters that are from sideband.
         nominal_values (Dict[str, float]): A dictionary of parameter nominal values.
         parameters (Dict[str, Parameter]): A dictionary to store the parameters,
             with parameter name as key.
@@ -556,7 +557,7 @@ class Parameters:
         return params
 
     @property
-    def from_sideband(self):
+    def from_sideband(self) -> "Parameters":
         """Return parameters that are from sideband."""
         param_dict = {k: i for k, i in self.parameters.items() if i.from_sideband is True}
         params = Parameters()

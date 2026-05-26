@@ -299,7 +299,7 @@ class ConditionalParameter:
 
     @property
     def from_sideband(self) -> Optional[bool]:
-        """Return True if the parameter is constrained from sideband (cominal condition)"""
+        """Return True if the parameter is constrained from sideband (nominal condition)"""
         return self().from_sideband
 
     @property

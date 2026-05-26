@@ -449,7 +449,6 @@ def within_limits(value, limits):
 
 def clip_limits(value) -> Tuple[float, float]:
     """Clip limits to [-MAX_FLOAT, MAX_FLOAT] by replacing None with the respective bound."""
-
     if value is None:
         value = [-MAX_FLOAT, MAX_FLOAT]
     else:

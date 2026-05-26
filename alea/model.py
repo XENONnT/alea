@@ -245,6 +245,7 @@ class StatisticalModel:
                 If None, it will be read from self.get_likelihood_term_names
             metadata (dict, optional (default=None)): metadata to store with the data.
                 If None, no metadata is stored.
+
         """
         if all([isinstance(d, dict) for d in data_list]) or all(
             [isinstance(d, ReadOnlyDict) for d in data_list]

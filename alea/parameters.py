@@ -87,6 +87,12 @@ class Parameter:
         """
         if isinstance(self._uncertainty, str):
             return evaluate_numpy_scipy_expression(self._uncertainty)
+        elif self.from_sideband:
+            if self.n_sideband is None:
+                raise ValueError(
+                    f"n_sideband must be set for sideband parameter {self.name} to get uncertainty."
+                )
+            return self.n_sideband
         else:
             return self._uncertainty
 
@@ -110,8 +116,6 @@ class Parameter:
                     "uncertainty should not be provided. The uncertainty"
                     "is set from n_sideband."
                 )
-            else:
-                value = self.n_sideband
         self._uncertainty = value
 
     @property

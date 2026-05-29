@@ -82,28 +82,28 @@ Here is a more complete example from the alea test suite:
 
     statistical_model: alea.models.BlueiceExtendedModel
     statistical_model_config: statistical_model.yaml
-    
+
     poi: wimp_rate_multiplier
-    
+
     n_mc: 1000
     hypotheses:
       - free
       - zero
       - {"wimp_rate_multiplier": 15}
-    
+
     compute_confidence_interval: true
     confidence_level: 0.9
     confidence_interval_kind: central
-    
+
     generate_values:
       wimp_mass: 50
       poi_expectation: 10
-    
+
     toydata_mode: generate_and_store
     toydata_filename: toys_wimp_mass_50.ii.h5
-    
+
     output_filename: results_wimp_mass_50.ii.h5
-    
+
     nominal_values:
       wimp_mass: 50
       efficiency_factor: 1.0

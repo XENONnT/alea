@@ -43,7 +43,7 @@ Initialize from a configuration file:
 .. code-block:: python
 
     from alea.models.blueice_extended_model import BlueiceExtendedModel
-    
+
     model = BlueiceExtendedModel.from_config(
         "model_config.yaml",
         template_path="/path/to/templates"
@@ -55,14 +55,14 @@ Generate toy data and fit:
 
     # Generate toy data
     toy_data = model.generate_data()
-    
+
     # Set the data
     model.data = toy_data
-    
+
     # Fit the model
     fit_result = model.fit()
     print(f"Best-fit POI: {fit_result['poi_name']}")
-    
+
     # Compute confidence interval
     ci = model.compute_confidence_interval(
         "poi_name",

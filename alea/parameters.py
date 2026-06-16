@@ -62,6 +62,10 @@ class Parameter:
         self.ptype = ptype
         self.from_sideband = from_sideband
         self.n_sideband = n_sideband
+        if self.from_sideband and self.n_sideband is None:
+            raise ValueError(
+                f"n_sideband must be set when from_sideband is True for parameter {self.name}."
+            )
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
@@ -134,8 +138,8 @@ class Parameter:
         if value is not None:
             if not isinstance(value, int):
                 raise ValueError(f"n_obs should be an integer, not {value}.")
-            if value < 0:
-                raise ValueError(f"n_sideband should be non-negative, not {value}.")
+            if value <= 0:
+                raise ValueError(f"n_sideband should be a positive integer, not {value}.")
         self._n_sideband = value
 
     @property

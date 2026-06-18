@@ -17,10 +17,11 @@ class TestSidebandConstraintConstruction(TestCase):
         self.assertIsNone(p.from_sideband)
         self.assertIsNone(p.n_sideband)
 
-    def test_n_sideband_must_be_non_negative(self):
-        """A negative n_sideband should raise a ValueError."""
-        with self.assertRaisesRegex(ValueError, "n_sideband should be non-negative"):
-            Parameter(name="tau", nominal_value=1.0, from_sideband=True, n_sideband=-1)
+    def test_n_sideband_must_be_positive(self):
+        """A non-positive n_sideband should raise a ValueError."""
+        for invalid in (-1, 0):
+            with self.assertRaisesRegex(ValueError, "n_sideband should be a positive integer"):
+                Parameter(name="tau", nominal_value=1.0, from_sideband=True, n_sideband=invalid)
 
     def test_n_sideband_must_be_integer(self):
         """A non-integer n_sideband should raise a ValueError."""

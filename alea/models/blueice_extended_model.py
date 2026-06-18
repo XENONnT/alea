@@ -725,7 +725,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     # Rate-scaled Gamma: the Poisson posterior for the rate given an expected
                     # sideband count central_value * n_sideband. Support starts at 0 (vanishes
                     # at 0, respecting the rate boundary), and the width follows Poisson
-                    # statistics (absolute width ~ sqrt(rate/n_sideband)). uncertainty == n_sideband.
+                    # statistics (absolute width ~ sqrt(rate/n_sideband)).
                     central_values[name] = central_values[name] * param.n_sideband
                     func = stats.gamma(central_values[name] + 1, scale=1 / uncertainty)
 

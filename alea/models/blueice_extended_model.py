@@ -502,7 +502,13 @@ class BlueiceExtendedModel(StatisticalModel):
             else:
                 # Do not use the constraint function but the underlying Poisson distribution
                 # to generate the measurement for parameters that are constrained from sideband.
-                parameter_meas = stats.poisson(mu=param.n_sideband * param.nominal_value).rvs()
+                # The sideband is a counting measurement: draw an integer count from
+                # Poisson(n_sideband * rate) so the toy measurement is discrete (spacing
+                # 1/n_sideband) and its spread follows Poisson statistics. Use the injected rate
+                # from generate_values (falling back to nominal_value) so the measurement tracks
+                # the scanned rate, consistent with the constraint function below.
+                mu_true = generate_values.get(name, param.nominal_value)
+                parameter_meas = stats.poisson(mu=param.n_sideband * mu_true).rvs()
                 parameter_meas = parameter_meas / param.n_sideband
 
             # correct parameter_meas if out of bounds
@@ -716,6 +722,10 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
+                    # Rate-scaled Gamma: the Poisson posterior for the rate given an expected
+                    # sideband count central_value * n_sideband. Support starts at 0 (vanishes
+                    # at 0, respecting the rate boundary), and the width follows Poisson
+                    # statistics (absolute width ~ sqrt(rate/n_sideband)). uncertainty == n_sideband.
                     central_values[name] = central_values[name] * param.n_sideband
                     func = stats.gamma(central_values[name] + 1, scale=1 / uncertainty)
 

@@ -16,10 +16,13 @@ class Parameter:
         ptype (str, optional (default=None)): The ptype of the parameter.
         from_sideband (bool, optional (default=None)):
             Indicates if the parameter is constrained from sideband.
-        n_sideband (int, optional (default=None)): The number of observed events in case
-            of constraint from sideband.
-            If from_sideband is True, this value is used to set the uncertainty, the uncertainty
-            argument must not be set separately.
+        n_sideband (int, optional (default=None)): The expected sideband counts at
+            rate multiplier = 1. If from_sideband is True, this sets a Poisson (Gamma)
+            constraint instead of a Gaussian one; the uncertainty argument must not be set.
+            The constraint is built assuming a fixed ratio n_roi / n_sideband (the transfer
+            factor), so its relative width is 1 / sqrt(rate * n_sideband) and therefore
+            changes with the scanned rate. To keep the width fixed across a scan, or after
+            rescaling the template normalization, adjust n_sideband proportionally.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.

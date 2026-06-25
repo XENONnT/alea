@@ -38,9 +38,6 @@ parameter_definition:
     uncertainty: null
     relative_uncertainty: false
     from_sideband: true
-    # Expected sideband counts at rate multiplier = 1. Sets a Poisson (Gamma) constraint
-    # with relative width 1/sqrt(rate * n_sideband), so the width changes with the scanned
-    # rate; adjust n_sideband to keep it fixed or after rescaling the template normalization.
     n_sideband: 5
     fit_guess: 1.0
     fittable: true

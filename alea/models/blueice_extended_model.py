@@ -500,16 +500,19 @@ class BlueiceExtendedModel(StatisticalModel):
             if not param.from_sideband:
                 parameter_meas = gen.rvs()
             else:
-                # Do not use the constraint function but the underlying Poisson distribution
-                # to generate the measurement for parameters that are constrained from sideband.
-                # The sideband is a counting measurement: draw an integer count from
-                # Poisson(n_sideband * rate) so the toy measurement is discrete (spacing
-                # 1/n_sideband) and its spread follows Poisson statistics. Use the injected rate
-                # from generate_values (falling back to nominal_value) so the measurement tracks
-                # the scanned rate, consistent with the constraint function below.
+                # Sideband (Poisson) constraint: generate the measurement from the underlying
+                # Poisson counting process rather than from the constraint function. n_sideband
+                # is the expected sideband count at the nominal rate, so the Poisson mean is
+                # n_sideband * (rate / nominal_value): at the nominal rate this is
+                # Poisson(n_sideband), and it scales with the injected rate from generate_values
+                # (falling back to nominal_value). The measurement is that count expressed as a
+                # rate multiplier, k * nominal_value / n_sideband. Normalizing the rate by
+                # nominal_value makes the constraint independent of how the rate is split between
+                # the template normalization and nominal_value, while keeping the generator and
+                # the constraint function below an exact Poisson<->Gamma conjugate pair.
                 mu_true = generate_values.get(name, param.nominal_value)
-                parameter_meas = stats.poisson(mu=param.n_sideband * mu_true).rvs()
-                parameter_meas = parameter_meas / param.n_sideband
+                k = stats.poisson(mu=param.n_sideband * mu_true / param.nominal_value).rvs()
+                parameter_meas = k * param.nominal_value / param.n_sideband
 
             # correct parameter_meas if out of bounds
             if not param.value_in_fit_limits(parameter_meas):
@@ -722,12 +725,16 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
-                    # Rate-scaled Gamma: the Poisson posterior for the rate given an expected
-                    # sideband count central_value * n_sideband. Support starts at 0 (vanishes
-                    # at 0, respecting the rate boundary), and the width follows Poisson
-                    # statistics (absolute width ~ sqrt(rate/n_sideband)).
-                    central_values[name] = central_values[name] * param.n_sideband
-                    func = stats.gamma(central_values[name] + 1, scale=1 / uncertainty)
+                    # Sideband (Poisson) constraint: the Gamma posterior conjugate to the Poisson
+                    # counting process used to generate the measurement above. Recover the count
+                    # k = measurement * n_sideband / nominal_value and build
+                    # Gamma(k + 1, scale=nominal_value / n_sideband). The support starts at 0
+                    # (vanishes at 0, respecting the rate boundary), the mode sits at the
+                    # measurement, and the relative width follows Poisson statistics
+                    # (~1 / sqrt(count)). Normalizing by nominal_value keeps the constraint
+                    # independent of the template/nominal_value split.
+                    k = central_values[name] * param.n_sideband / param.nominal_value
+                    func = stats.gamma(k + 1, scale=param.nominal_value / param.n_sideband)
 
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(

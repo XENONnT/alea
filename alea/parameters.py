@@ -16,13 +16,15 @@ class Parameter:
         ptype (str, optional (default=None)): The ptype of the parameter.
         from_sideband (bool, optional (default=None)):
             Indicates if the parameter is constrained from sideband.
-        n_sideband (int, optional (default=None)): The expected sideband counts at
-            rate multiplier = 1. If from_sideband is True, this sets a Poisson (Gamma)
-            constraint instead of a Gaussian one; the uncertainty argument must not be set.
-            The constraint is built assuming a fixed ratio n_roi / n_sideband (the transfer
-            factor), so its relative width is 1 / sqrt(rate * n_sideband) and therefore
-            changes with the scanned rate. To keep the width fixed across a scan, or after
-            rescaling the template normalization, adjust n_sideband proportionally.
+        n_sideband (int, optional (default=None)): The expected sideband counts at the
+            nominal rate. If from_sideband is True, this sets a Poisson (Gamma) constraint
+            instead of a Gaussian one; the uncertainty argument must not be set. The
+            constraint is the Gamma posterior of a Poisson sideband measurement: at the
+            nominal rate the count is Poisson(n_sideband), so the relative width is
+            ~1 / sqrt(n_sideband), and it scales with the injected rate as
+            1 / sqrt(n_sideband * rate / nominal_value) (more rate -> more counts -> tighter).
+            Because the rate is normalized by nominal_value, the constraint is independent of
+            how the rate is split between the template normalization and nominal_value.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.
@@ -127,12 +129,12 @@ class Parameter:
 
     @property
     def n_sideband(self) -> Optional[int]:
-        """Return the number of observed events in case of constraint from sideband."""
+        """Return the expected sideband counts at the nominal rate (constraint from sideband)."""
         return self._n_sideband
 
     @n_sideband.setter
     def n_sideband(self, value: Optional[int]) -> None:
-        """Set the number of observed events in case of constraint from sideband."""
+        """Set the expected sideband counts at the nominal rate (constraint from sideband)."""
         if value is not None and not self.from_sideband:
             raise ValueError(
                 f"n_sideband should only be set when from_sideband is True, "
@@ -400,7 +402,7 @@ class Parameters:
         uncertainties (Dict[str, float or Any]): A dictionary of parameter uncertainties.
         with_uncertainty (Parameters): A Parameters object with parameters with
             a not-NaN uncertainty.
-        from_sideband (Parameters): A Parameters object with parameters that are from sideband.
+        from_sideband (Parameters): Parameters object with parameters that are from sideband.
         nominal_values (Dict[str, float]): A dictionary of parameter nominal values.
         parameters (Dict[str, Parameter]): A dictionary to store the parameters,
             with parameter name as key.

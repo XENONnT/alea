@@ -730,7 +730,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     if n_sideband is None or nominal_value is None:
                         raise ValueError(
                             f"Sideband parameter {name} needs both n_sideband and nominal_value "
-                            f"to be set, got n_sideband={n_sideband}, nominal_value={nominal_value}."
+                            f"but got n_sideband={n_sideband}, nominal_value={nominal_value}."
                         )
                     # Sideband (Poisson) constraint: the Gamma posterior conjugate to the Poisson
                     # counting process used to generate the measurement above. Recover the count

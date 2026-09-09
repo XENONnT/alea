@@ -741,7 +741,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     # (~1 / sqrt(count)). Normalizing by nominal_value keeps the constraint
                     # independent of the template/nominal_value split.
                     k = central_values[name] * n_sideband / nominal_value
-                    func = stats.gamma(k + 1, scale=nominal_value / n_sideband)    
+                    func = stats.gamma(k + 1, scale=nominal_value / n_sideband)
 
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(

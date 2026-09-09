@@ -725,6 +725,13 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                         uncertainty *= param.nominal_value
                     func = stats.norm(central_values[name], uncertainty)
                 else:
+                    n_sideband = param.n_sideband
+                    nominal_value = param.nominal_value
+                    if n_sideband is None or nominal_value is None:
+                        raise ValueError(
+                            f"Sideband parameter {name} needs both n_sideband and nominal_value "
+                            f"to be set, got n_sideband={n_sideband}, nominal_value={nominal_value}."
+                        )
                     # Sideband (Poisson) constraint: the Gamma posterior conjugate to the Poisson
                     # counting process used to generate the measurement above. Recover the count
                     # k = measurement * n_sideband / nominal_value and build
@@ -733,8 +740,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
                     # measurement, and the relative width follows Poisson statistics
                     # (~1 / sqrt(count)). Normalizing by nominal_value keeps the constraint
                     # independent of the template/nominal_value split.
-                    k = central_values[name] * param.n_sideband / param.nominal_value
-                    func = stats.gamma(k + 1, scale=param.nominal_value / param.n_sideband)
+                    k = central_values[name] * n_sideband / nominal_value
+                    func = stats.gamma(k + 1, scale=nominal_value / n_sideband)    
 
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(

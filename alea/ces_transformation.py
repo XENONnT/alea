@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator
-from typing import Dict, Optional, Any, Literal, Callable
+from typing import Dict, Optional, Any, Literal, Callable, Union
 import numpy as np
 from scipy import stats
 from multihist import Hist1d
@@ -225,7 +225,7 @@ MODELS: Dict[str, Dict[str, Callable]] = {
 
 # input: model name, parameters, transformation mode
 class Transformation(BaseModel):
-    parameters: Dict[str, float]
+    parameters: Dict[str, Union[float, int, bool, str]]
     action: Literal["bias", "smearing", "efficiency"]
     model: str
 

@@ -550,3 +550,13 @@ class CESFlatSource(CESTemplateSource):
             "bias": None,
             "efficiency": self._create_transformation("efficiency"),
         }
+
+
+class CESTemplateWithoutDetectorResponse(CESTemplateSource):
+    def _get_transformations(self):
+        """Override detector response functions."""
+        return {
+            "smearing": None,
+            "bias": None,
+            "efficiency": None,
+        }

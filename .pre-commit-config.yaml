@@ -10,7 +10,7 @@ repos:
     -   id: check-added-large-files
 
 -   repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 26.5.1
+    rev: 26.10.0
     hooks:
     -   id: black
         args: [--safe, --line-length=100]
@@ -26,7 +26,7 @@ repos:
         args: [--config, pyproject.toml]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.0
     hooks:
     -   id: mypy
         additional_dependencies: [types-PyYAML, types-tqdm]
@@ -39,7 +39,7 @@ repos:
         args: [--ignore, D001]
 
 -   repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
+    rev: 7.4.1
     hooks:
     -   id: flake8
 

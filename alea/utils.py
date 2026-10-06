@@ -3,7 +3,6 @@ import re
 import json
 import yaml
 import itertools
-import blueice
 import warnings
 from glob import glob
 from copy import deepcopy
@@ -882,4 +881,6 @@ class IndexMorpher(Morpher):
         return lambda z: f(anchor_models[tuple(z)])
 
 
-blueice.pdf_morphers.MORPHERS["IndexMorpher"] = IndexMorpher
+from blueice.likelihood import MORPHERS  # noqa: E402
+
+MORPHERS["IndexMorpher"] = IndexMorpher

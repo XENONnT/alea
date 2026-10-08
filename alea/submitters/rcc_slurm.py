@@ -39,6 +39,7 @@ class SubmitterRCCSlurm(Submitter):
         self.slurm_configurations = kwargs.get("slurm_configurations", {})
         self.template_path = self.slurm_configurations.pop("template_path", None)
         self.combine_n_jobs = self.slurm_configurations.pop("combine_n_jobs", 1)
+        self.script_preamble = self.slurm_configurations.pop("script_preamble", "")
         self.batchq_arguments = {**BATCHQ_DEFAULT_ARGUMENTS, **self.slurm_configurations}
         self._check_batchq_arguments()
         super().__init__(*args, **kwargs)
@@ -54,6 +55,8 @@ class SubmitterRCCSlurm(Submitter):
             log (str): The path to the log file.
 
         """
+        if self.script_preamble:
+            job = self.script_preamble + "\n" + job
         jobname = kwargs.pop("jobname", None)
         if jobname is None:
             jobname = self.name

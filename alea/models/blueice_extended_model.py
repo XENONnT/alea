@@ -496,9 +496,25 @@ class BlueiceExtendedModel(StatisticalModel):
         anc_ll = self.likelihood_list[-1]
         ancillary_generators = anc_ll._get_constraint_functions(**generate_values)
         for name, gen in ancillary_generators.items():
-            parameter_meas = gen.rvs()
-            # correct parameter_meas if out of bounds
             param = self.parameters[name]
+            if not param.from_sideband:
+                parameter_meas = gen.rvs()
+            else:
+                # Sideband (Poisson) constraint: generate the measurement from the underlying
+                # Poisson counting process rather than from the constraint function. n_sideband
+                # is the expected sideband count at the nominal rate, so the Poisson mean is
+                # n_sideband * (rate / nominal_value): at the nominal rate this is
+                # Poisson(n_sideband), and it scales with the injected rate from generate_values
+                # (falling back to nominal_value). The measurement is that count expressed as a
+                # rate multiplier, k * nominal_value / n_sideband. Normalizing the rate by
+                # nominal_value makes the constraint independent of how the rate is split between
+                # the template normalization and nominal_value, while keeping the generator and
+                # the constraint function below an exact Poisson<->Gamma conjugate pair.
+                mu_true = generate_values.get(name, param.nominal_value)
+                k = stats.poisson(mu=param.n_sideband * mu_true / param.nominal_value).rvs()
+                parameter_meas = k * param.nominal_value / param.n_sideband
+
+            # correct parameter_meas if out of bounds
             if not param.value_in_fit_limits(parameter_meas):
                 if param.fit_limits[0] is not None and parameter_meas < param.fit_limits[0]:
                     parameter_meas = param.fit_limits[0]
@@ -692,21 +708,41 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         for name, uncertainty in self.parameters.uncertainties.items():
             if isinstance(uncertainty, (float, int)):
                 param = self.parameters[name]
-                if param.relative_uncertainty:
-                    if param.nominal_value is None:
+                if param not in self.parameters.from_sideband:
+                    if param.relative_uncertainty:
+                        if param.nominal_value is None:
+                            raise ValueError(
+                                f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                                "but nominal value is None. "
+                                "Please provide a nominal value."
+                            )
+                        if param.nominal_value == 0:
+                            warnings.warn(
+                                f"Relative uncertainty of parameter {name} is set to {uncertainty} "
+                                "but nominal value is 0. "
+                                "This will result in a relative uncertainty of 0."
+                            )
+                        uncertainty *= param.nominal_value
+                    func = stats.norm(central_values[name], uncertainty)
+                else:
+                    n_sideband = param.n_sideband
+                    nominal_value = param.nominal_value
+                    if n_sideband is None or nominal_value is None:
                         raise ValueError(
-                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
-                            "but nominal value is None. "
-                            "Please provide a nominal value."
+                            f"Sideband parameter {name} needs both n_sideband and nominal_value "
+                            f"but got n_sideband={n_sideband}, nominal_value={nominal_value}."
                         )
-                    if param.nominal_value == 0:
-                        warnings.warn(
-                            f"Relative uncertainty of parameter {name} is set to {uncertainty} "
-                            "but nominal value is 0. "
-                            "This will result in a relative uncertainty of 0."
-                        )
-                    uncertainty *= param.nominal_value
-                func = stats.norm(central_values[name], uncertainty)
+                    # Sideband (Poisson) constraint: the Gamma posterior conjugate to the Poisson
+                    # counting process used to generate the measurement above. Recover the count
+                    # k = measurement * n_sideband / nominal_value and build
+                    # Gamma(k + 1, scale=nominal_value / n_sideband). The support starts at 0
+                    # (vanishes at 0, respecting the rate boundary), the mode sits at the
+                    # measurement, and the relative width follows Poisson statistics
+                    # (~1 / sqrt(count)). Normalizing by nominal_value keeps the constraint
+                    # independent of the template/nominal_value split.
+                    k = central_values[name] * n_sideband / nominal_value
+                    func = stats.gamma(k + 1, scale=nominal_value / n_sideband)
+
             elif hasattr(uncertainty, "logpdf") and hasattr(uncertainty, "rvs"):
                 warnings.warn(
                     f"Uncertainty of {name} is a string-based uncertainty. "

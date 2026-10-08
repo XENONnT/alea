@@ -14,6 +14,17 @@ class Parameter:
         fittable (bool, optional (default=True)):
             Indicates if the parameter is fittable or always fixed.
         ptype (str, optional (default=None)): The ptype of the parameter.
+        from_sideband (bool, optional (default=None)):
+            Indicates if the parameter is constrained from sideband.
+        n_sideband (int, optional (default=None)): The expected sideband counts at the
+            nominal rate. If from_sideband is True, this sets a Poisson (Gamma) constraint
+            instead of a Gaussian one; the uncertainty argument must not be set. The
+            constraint is the Gamma posterior of a Poisson sideband measurement: at the
+            nominal rate the count is Poisson(n_sideband), so the relative width is
+            ~1 / sqrt(n_sideband), and it scales with the injected rate as
+            1 / sqrt(n_sideband * rate / nominal_value) (more rate -> more counts -> tighter).
+            Because the rate is normalized by nominal_value, the constraint is independent of
+            how the rate is split between the template normalization and nominal_value.
         uncertainty (float or str, optional (default=None)): The uncertainty of the parameter.
             If a string, it can be evaluated as a numpy or
             scipy function to define non-gaussian constraints.
@@ -39,6 +50,8 @@ class Parameter:
         nominal_value: Optional[float] = None,
         fittable: bool = True,
         ptype: Optional[str] = None,
+        from_sideband: Optional[bool] = None,
+        n_sideband: Optional[int] = None,
         uncertainty: Optional[Union[float, str]] = None,
         relative_uncertainty: Optional[bool] = None,
         blueice_anchors: Optional[Union[list, str]] = None,
@@ -52,6 +65,12 @@ class Parameter:
         self._nominal_value = nominal_value
         self.fittable = fittable
         self.ptype = ptype
+        self.from_sideband = from_sideband
+        self.n_sideband = n_sideband
+        if self.from_sideband and self.n_sideband is None:
+            raise ValueError(
+                f"n_sideband must be set when from_sideband is True for parameter {self.name}."
+            )
         self.relative_uncertainty = relative_uncertainty
         self.uncertainty = uncertainty
         self.blueice_anchors = blueice_anchors
@@ -77,6 +96,12 @@ class Parameter:
         """
         if isinstance(self._uncertainty, str):
             return evaluate_numpy_scipy_expression(self._uncertainty)
+        elif self.from_sideband:
+            if self.n_sideband is None:
+                raise ValueError(
+                    f"n_sideband must be set for sideband parameter {self.name} to get uncertainty."
+                )
+            return self.n_sideband
         else:
             return self._uncertainty
 
@@ -93,7 +118,34 @@ class Parameter:
                     f"When relative_uncertainty of {self.name} is True, "
                     "nominal_value should be set."
                 )
+        if self.from_sideband:
+            if value is not None:
+                raise ValueError(
+                    f"When from_sideband of {self.name} is True, "
+                    "uncertainty should not be provided. The uncertainty"
+                    "is set from n_sideband."
+                )
         self._uncertainty = value
+
+    @property
+    def n_sideband(self) -> Optional[int]:
+        """Return the expected sideband counts at the nominal rate (constraint from sideband)."""
+        return self._n_sideband
+
+    @n_sideband.setter
+    def n_sideband(self, value: Optional[int]) -> None:
+        """Set the expected sideband counts at the nominal rate (constraint from sideband)."""
+        if value is not None and not self.from_sideband:
+            raise ValueError(
+                f"n_sideband should only be set when from_sideband is True, "
+                f"but from_sideband is {self.from_sideband}."
+            )
+        if value is not None:
+            if not isinstance(value, int):
+                raise ValueError(f"n_obs should be an integer, not {value}.")
+            if value <= 0:
+                raise ValueError(f"n_sideband should be a positive integer, not {value}.")
+        self._n_sideband = value
 
     @property
     def blueice_anchors(self) -> Any:
@@ -259,6 +311,11 @@ class ConditionalParameter:
         return self().uncertainty
 
     @property
+    def from_sideband(self) -> Optional[bool]:
+        """Return True if the parameter is constrained from sideband (nominal condition)"""
+        return self().from_sideband
+
+    @property
     def blueice_anchors(self) -> Any:
         """Return the blueice_anchors of the parameter (nominal condition)"""
         return self().blueice_anchors
@@ -345,6 +402,7 @@ class Parameters:
         uncertainties (Dict[str, float or Any]): A dictionary of parameter uncertainties.
         with_uncertainty (Parameters): A Parameters object with parameters with
             a not-NaN uncertainty.
+        from_sideband (Parameters): Parameters object with parameters that are from sideband.
         nominal_values (Dict[str, float]): A dictionary of parameter nominal values.
         parameters (Dict[str, Parameter]): A dictionary to store the parameters,
             with parameter name as key.
@@ -512,6 +570,15 @@ class Parameters:
         return params
 
     @property
+    def from_sideband(self) -> "Parameters":
+        """Return parameters that are from sideband."""
+        param_dict = {k: i for k, i in self.parameters.items() if i.from_sideband is True}
+        params = Parameters()
+        for param in param_dict.values():
+            params.add_parameter(param)
+        return params
+
+    @property
     def nominal_values(self) -> dict:
         """A dict of nominal values for all parameters with a nominal value."""
         return {
@@ -581,6 +648,7 @@ class Parameters:
                 )
             if (return_fittable and param.fittable) or (not return_fittable):
                 values[name] = new_val if new_val is not None else param.nominal_value
+
         if any(i is None for k, i in values.items()):
             emptypars = ", ".join([k for k, i in values.items() if i is None])
             raise AssertionError(

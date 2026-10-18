@@ -89,6 +89,48 @@ def rebin_interpolate_normalized(hist, new_edges):
 
 
 class CESTemplateSource(HistogramPdfSource):
+    """Histogram-based PDF source in combined energy scale (CES).
+
+    Loads a 1D energy template, applies smearing / bias / efficiency
+    transformations, and normalizes to a PDF over the analysis ROI.
+
+    Required config keys
+    --------------------
+    analysis_space : list
+        Blueice analysis space, e.g. ``[("ces", np.linspace(...))]``.
+        Only 1D CES axes are supported. Energy units: keV.
+    template_filename : str
+        Path to the template file readable by ``template_to_multihist``.
+    histname : str
+        Name of the histogram to load from ``template_filename``.
+    rate_multiplier : float
+        Source rate, in **events / (ton * year)**.
+    fiducial_mass : float
+        Fiducial mass, in **ton**.
+    livetime_days : float
+        Exposure time, in **days**.
+    smearing_model, bias_model, efficiency_model : str
+        Names of transformation models (see ``alea.ces_transformation``).
+        Prefix ``mono_`` is added automatically for monoenergetic sources.
+    smearing_parameters, bias_parameters, efficiency_parameters : list[str]
+        Names of config keys whose values feed the corresponding model.
+
+    Optional config keys
+    --------------------
+    minimal_energy_resolution : float, default 0.05
+        Re-binning resolution after transformations. Units: keV.
+    apply_smearing, apply_bias, apply_efficiency : bool, default True
+        Toggle each transformation off without changing the model.
+    pdf_interpolation_method : {"piecewise", "linear"}, default "piecewise"
+        Overrides the blueice default.
+    zero_filling_for_outlier : bool, default False
+        If True, re-grid the raw template to ``[0, max_e]`` and zero-fill
+        outside the original support before transformations.
+    peak_energy : float
+        Required when any model is monoenergetic (``mono_*``) and for
+        ``CESMonoenergySource``. Energy units: keV.
+    """
+
     def __init__(self, config: Dict, *args, **kwargs):
         """Initialize the TemplateSource."""
         # override the default interpolation method
@@ -332,7 +374,7 @@ class CESTemplateSource(HistogramPdfSource):
         # Calculate events per year and day, before ROI and transformation
         # Input rate multiplier should be in events per year per ton
         self.events_per_year = self.config["rate_multiplier"] * self.config["fiducial_mass"]
-        self.events_per_day = self.events_per_year / 365
+        self.events_per_day = self.events_per_year / 365.25
 
         # Normalize final histogram
         return h / integration_after_transformation_in_roi
@@ -371,12 +413,48 @@ class CESTemplateSource(HistogramPdfSource):
         return ret
 
     def compute_pdf(self):
-        """Compute the PDF of the source."""
+        """Build and cache the source histogram (one-time setup).
+
+        Lifecycle hook called once by ``Source.__init__`` when the source
+        is **not** loaded from cache. It does *not* evaluate the PDF at a
+        point (that's :meth:`pdf`). Instead it:
+
+        1. Calls :meth:`build_histogram` to construct ``_pdf_histogram``
+           (and the related bookkeeping attributes).
+        2. Chains to ``Source.compute_pdf`` to mark the source as computed
+           and persist the cache, so later runs skip step 1 entirely.
+
+        On subsequent loads where the cache is hit, this method is not
+        called at all and the histogram is restored from disk.
+
+        Notes
+        -----
+        This override is currently identical in body to
+        ``blueice.HistogramPdfSource.compute_pdf`` (the immediate parent),
+        so removing it would not change behavior. It is kept for now to
+        make the lifecycle explicit on the CES class; revisit whether
+        to drop it next time this area is touched.
+        """
         self.build_histogram()
         Source.compute_pdf(self)
 
     def pdf(self, *args):
-        """Interpolate the PDF of the source to return a function."""
+        """Evaluate the source PDF at the given CES coordinates.
+
+        Parameters
+        ----------
+        *args
+            CES energy coordinate(s) (keV) at which to evaluate the PDF.
+            Typically a single 1D array of energies. Calling with no
+            arguments is not supported and will raise.
+
+        Returns
+        -------
+        np.ndarray
+            PDF values at the given coordinates. Out-of-range coordinates
+            return 0 (``piecewise``) or the clipped boundary value
+            (``linear``).
+        """
         # override the default interpolation method in blueice (RegularGridInterpolator)
         if not self.pdf_has_been_computed:
             raise PDFNotComputedException(
@@ -412,6 +490,31 @@ class CESTemplateSource(HistogramPdfSource):
         ]
 
     def get_pmf_grid(self):
+        r"""Return the source PMF projected onto the shared analysis-space binning.
+
+        A *PMF* (probability mass function) is the discrete counterpart of a
+        PDF: instead of probability *density* (per keV), it gives the
+        probability *mass* contained in each bin, i.e. the integral of the
+        PDF over the bin. For a histogram with bin widths :math:`\Delta_i`,
+        ``pmf[i] = pdf[i] * Delta_i`` and ``sum(pmf) == 1`` over the full
+        support. Binned likelihoods consume PMFs (not PDFs) because they
+        compare expected counts per bin against observed counts per bin.
+
+        This method overrides the blueice default because each CES source's
+        internal ``_pdf_histogram`` is rebinned to
+        ``minimal_energy_resolution``, which differs from ``self.ces_space``.
+        Blueice's binned likelihood requires all sources reported on the
+        same grid, so we interpolate back onto ``self.ces_space`` here.
+
+        Returns
+        -------
+        pmf_grid : np.ndarray
+            Probability mass per bin on ``self.ces_space``
+            (PDF value times bin width).
+        n_events_per_bin : np.ndarray
+            Placeholder array of zeros; CES sources are template-based, not
+            density-estimating, so per-bin event counts are not tracked.
+        """
         # note that each source may have different binning.
         # Here we want to make sure that the binning is always self.ces_space
         # So we need to interpolate the histogram to the self.ces_space
@@ -507,7 +610,7 @@ class CESMonoenergySource(CESTemplateSource):
 
         # Calculate events per year and day, before ROI and transformation
         self.events_per_year = self.config["rate_multiplier"] * self.config["fiducial_mass"]
-        self.events_per_day = self.events_per_year / 365
+        self.events_per_day = self.events_per_year / 365.25
 
         return h
 

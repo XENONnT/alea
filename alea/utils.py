@@ -245,6 +245,91 @@ def load_yaml(file_name: str):
     return data
 
 
+def merge_statistical_model_configs(config_a, config_b, prefer: str = "a"):
+    """Merge two statistical model configs (dict or path) into one.
+
+    Rules:
+    - `config_a` and `config_b` may be dicts or file paths (strings).
+    - The resulting config contains the union of `parameter_definition` entries.
+      If a parameter exists in both configs and differs, the one chosen is
+      determined by `prefer` (either "a" or "b"); a warning is emitted.
+    - The `likelihood_terms` from both `likelihood_config`s are concatenated.
+      If likelihood term names collide, terms from the second config are
+      renamed by appending a suffix `_bN` to ensure unique names.
+    - Top-level keys in `likelihood_config` present in both configs are kept
+      from `config_a`; differing values in `config_b` will emit a warning.
+
+    Returns a dict with keys `parameter_definition` and `likelihood_config`.
+    """
+    # load if file paths provided
+    if isinstance(config_a, str):
+        config_a = load_yaml(config_a)
+    if isinstance(config_b, str):
+        config_b = load_yaml(config_b)
+
+    pa = deepcopy(config_a.get("parameter_definition", {}))
+    pb = deepcopy(config_b.get("parameter_definition", {}))
+
+    # merge parameters
+    merged_params = deepcopy(pa)
+    for name, definition in pb.items():
+        if name in merged_params:
+            if merged_params[name] != definition:
+                if prefer == "b":
+                    merged_params[name] = definition
+                    warnings.warn(f"Parameter {name} differs; using config_b definition.")
+                else:
+                    warnings.warn(f"Parameter {name} differs; keeping config_a definition.")
+        else:
+            merged_params[name] = definition
+
+    # merge likelihood configs
+    la = deepcopy(config_a.get("likelihood_config", {}))
+    lb = deepcopy(config_b.get("likelihood_config", {}))
+
+    terms_a = la.get("likelihood_terms", [])
+    terms_b = lb.get("likelihood_terms", [])
+
+    # ensure unique likelihood term names
+    existing_names = {t.get("name") for t in terms_a}
+    new_terms_b = []
+    counter = 0
+    for t in terms_b:
+        name = t.get("name")
+        if name in existing_names:
+            counter += 1
+            new_name = f"{name}_b{counter}"
+            warnings.warn(f"Likelihood term name collision: renaming {name} -> {new_name}")
+            t = deepcopy(t)
+            t["name"] = new_name
+        new_terms_b.append(t)
+
+    merged_terms = terms_a + new_terms_b
+
+    merged_ll = deepcopy(la)
+    merged_ll["likelihood_terms"] = merged_terms
+
+    # merge likelihood_weights if present
+    wa = la.get("likelihood_weights")
+    wb = lb.get("likelihood_weights")
+    if wa is not None or wb is not None:
+        wa_list = list(wa) if wa is not None else [None] * len(terms_a)
+        wb_list = list(wb) if wb is not None else [None] * len(terms_b)
+        merged_ll["likelihood_weights"] = wa_list + wb_list
+
+    # copy other top-level keys from lb only if they are not present in la
+    for k, v in lb.items():
+        if k == "likelihood_terms" or k == "likelihood_weights":
+            continue
+        if k not in merged_ll:
+            merged_ll[k] = deepcopy(v)
+        else:
+            if merged_ll[k] != v:
+                warnings.warn(f"Differing likelihood_config key '{k}' kept from first config.")
+
+    return {"parameter_definition": merged_params, "likelihood_config": merged_ll}
+
+
 def load_json(file_name: str):
     """Load data from json file."""
     with open(get_file_path(file_name), "r") as file:

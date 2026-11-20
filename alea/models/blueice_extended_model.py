@@ -649,6 +649,40 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self.pdf_base_config["name"] = "ancillary"
 
     @property
+    def constraint_functions(self) -> dict:
+        """Dict of (frozen scipy.stats) constraint distributions for all ancillary parameters."""
+        return self._constraint_functions
+
+    @constraint_functions.setter
+    def constraint_functions(self, constraint_functions: dict):
+        """Set the constraint distributions and cache the Gaussian ones as arrays.
+
+        Gaussian terms (frozen ``scipy.stats.norm``) are evaluated in closed form, vectorized,
+        in ``ancillary_sum``; evaluating a frozen distribution's logpdf costs ~100 us per call,
+        which dominated the likelihood evaluation time. All other terms keep their logpdf.
+
+        """
+        self._constraint_functions = constraint_functions
+        gauss_names, locs, scales = [], [], []
+        self._other_constraint_terms = {}
+        for name, func in constraint_functions.items():
+            dist = getattr(func, "dist", None)
+            if getattr(dist, "name", None) == "norm":
+                loc, scale = float(func.mean()), float(func.std())
+                gauss_names.append(name)
+                locs.append(loc)
+                scales.append(scale)
+            else:
+                self._other_constraint_terms[name] = func.logpdf
+        self._gauss_names = gauss_names
+        self._gauss_locs = np.asarray(locs, dtype=float)
+        self._gauss_scales = np.asarray(scales, dtype=float)
+        # normalisation: sum of -log(sigma * sqrt(2 pi)), same convention as norm.logpdf
+        self._gauss_lognorm = -np.sum(np.log(self._gauss_scales)) - 0.5 * len(
+            gauss_names
+        ) * np.log(2 * np.pi)
+
+    @property
     def constraint_terms(self) -> dict:
         """Return a dict of all constraint terms (logpdf callables) of the ancillary likelihood.
 
@@ -685,10 +719,14 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             float: Sum of all constraint terms.
 
         """
-        evaluated_constraint_terms = [
-            term(evaluate_at[name]) for name, term in self.constraint_terms.items()
-        ]
-        return np.sum(evaluated_constraint_terms)
+        result = 0.0
+        if self._gauss_names:
+            x = np.array([evaluate_at[name] for name in self._gauss_names], dtype=float)
+            z = (x - self._gauss_locs) / self._gauss_scales
+            result += self._gauss_lognorm - 0.5 * np.dot(z, z)
+        for name, term in self._other_constraint_terms.items():
+            result += term(evaluate_at[name])
+        return result
 
     def _get_constraint_functions(self, **generate_values) -> dict:
         """Get callable constraint functions for all ancillary parameters.

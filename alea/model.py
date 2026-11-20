@@ -26,6 +26,7 @@ _DEFAULT_FIT_STRATEGY = {
     "minimizer_routine": "migrad",
     "minuit_strategy": 1,
     "refit_invalid": True,
+    "warm_start_profile": True,
 }
 
 
@@ -120,7 +121,8 @@ class StatisticalModel:
             raise ValueError("confidence_interval_root_find must be one of brentq and extremal")
         self._confidence_interval_root_find = confidence_interval_root_find
         self.asymptotic_dof = asymptotic_dof
-        self._fit_strategy = _DEFAULT_FIT_STRATEGY
+        # copy, so that overrides of one model do not change the module-level defaults
+        self._fit_strategy = dict(_DEFAULT_FIT_STRATEGY)
         if fit_strategy is not None:
             self._fit_strategy.update(fit_strategy)
         nominal_values = kwargs.get("nominal_values", None)
@@ -337,7 +339,12 @@ class StatisticalModel:
 
     @_needs_data
     def fit(
-        self, verbose: Optional[bool] = False, fit_strategy: Optional[dict] = None, **kwargs
+        self,
+        verbose: Optional[bool] = False,
+        fit_strategy: Optional[dict] = None,
+        initial_values: Optional[dict] = None,
+        initial_errors: Optional[dict] = None,
+        **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood.
 
@@ -358,6 +365,18 @@ class StatisticalModel:
                 - disable_index_fitting (bool): if True, disable the index fitting
                     even if the model has index parameters.
                 - max_index_fitting_iter (int): maximum number of iterations for index fitting
+                - warm_start_profile (bool): if True, confidence_interval starts each
+                    profile fit from the nuisance values of the nearest hypothesis already fitted
+                    instead of from the fit guesses, reuses the global fit, caches the
+                    profile per hypothesis value and runs brentq with rtol=1e-6.
+                    If False, confidence_interval behaves as before.
+            initial_values (dict, optional (default=None)): starting values for the fitted
+                parameters, overriding their fit_guess. Entries for fixed (passed as kwargs) or
+                non-fittable parameters are ignored.
+            initial_errors (dict, optional (default=None)): initial step sizes (Minuit errors)
+                for the fitted parameters, e.g. the errors of a previous fit. Minuit's default is
+                1% of the start value, which is a poor (or zero) step for values near 0.
+                Entries for fixed parameters and non-positive or non-finite values are ignored.
 
         Returns:
             dict, float: best-fit values of each parameter,
@@ -367,6 +386,15 @@ class StatisticalModel:
         fit_strategy = self._get_fit_strategy(fit_strategy)
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
+        if initial_values is not None:
+            fittable = set(self.parameters.fittable)
+            guesses.update(
+                {
+                    k: v
+                    for k, v in initial_values.items()
+                    if k in fittable and k not in fixed_parameters
+                }
+            )
         guesses.update(kwargs)
         if not self.parameters.values_in_fit_limits(**guesses):
             raise ValueError("Initial guesses are not within fit limits")
@@ -382,6 +410,10 @@ class StatisticalModel:
         fixed_params += self.parameters.not_fittable
         for par in fixed_params:
             m.fixed[par] = True
+        if initial_errors is not None:
+            for par, error in initial_errors.items():
+                if par in m.parameters and not m.fixed[par] and np.isfinite(error) and error > 0:
+                    m.errors[par] = error
 
         # Get the index parameters, which could have problem if simply using migrad
         index_parameters = [
@@ -407,6 +439,11 @@ class StatisticalModel:
             print(m)
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
+
+    def _minuit_errors(self) -> dict:
+        """Parameter errors of the last fit (self.minuit_object), by parameter name."""
+        m = self.minuit_object
+        return dict(zip(m.parameters, m.errors))
 
     def _get_fit_strategy(self, fit_strategy) -> dict:
         # override the default fit strategy
@@ -651,11 +688,18 @@ class StatisticalModel:
             parameter_interval_bounds,
         ) = ci_objects
 
+        warm_start = self._get_fit_strategy(fit_strategy)["warm_start_profile"]
         # best_fit_args only provides the best-fit likelihood
-        _, best_ll = self.fit(**best_fit_args, fit_strategy=fit_strategy)
+        best_fit_result, best_ll = self.fit(**best_fit_args, fit_strategy=fit_strategy)
+        best_fit_errors = self._minuit_errors()
         # the optimization of profile-likelihood under
         # confidence_interval_args provides the best_parameter
-        best_result, _ = self.fit(**confidence_interval_args, fit_strategy=fit_strategy)
+        if warm_start and best_fit_args == confidence_interval_args:
+            # identical fit, no need to repeat it
+            best_result, best_errors = best_fit_result, best_fit_errors
+        else:
+            best_result, _ = self.fit(**confidence_interval_args, fit_strategy=fit_strategy)
+            best_errors = self._minuit_errors()
         best_parameter = best_result[poi_name]
         mask = within_limits(best_parameter, parameter_interval_bounds)
         if not mask:
@@ -664,18 +708,45 @@ class StatisticalModel:
                 f"search limits in parameter_interval_bounds {parameter_interval_bounds}."
             )
 
+        # profile fits done so far, as (hypothesis_value, best-fit values, errors); with
+        # warm_start, each new profile fit starts from the nuisance values (and uses the errors
+        # as step sizes) of the nearest hypothesis
+        fitted_profiles = [(best_parameter, best_result, best_errors)]
+        # with warm_start, t is cached per hypothesis value: the root finders evaluate the
+        # bracket ends again, and a re-fit from a different start would add noise
+        t_cache = {}
+        if warm_start and best_fit_args == confidence_interval_args:
+            # the profile fit at the best-fit POI is the global fit itself: 2 * (best_ll - ll) = 0
+            t_cache[best_parameter] = -confidence_interval_threshold(best_parameter)
+        # brentq's default tolerance (2e-12) is far below the precision of the profile fits;
+        # with warm starts t(hypothesis) is only smooth to about the fit tolerance
+        brentq_kwargs = {"rtol": 1e-6} if warm_start else {}
+
         # define intersection between likelihood ratio curve and the critical curve:
         def t(hypothesis_value):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
+            if warm_start and hypothesis_value in t_cache:
+                return t_cache[hypothesis_value]
             _confidence_interval_args = deepcopy(confidence_interval_args)
             _confidence_interval_args[poi_name] = hypothesis_value
-            _, ll = self.fit(
-                **_confidence_interval_args, fit_strategy=fit_strategy
+            initial_values, initial_errors = None, None
+            if warm_start:
+                nearest = min(fitted_profiles, key=lambda p: abs(p[0] - hypothesis_value))
+                _, initial_values, initial_errors = nearest
+            result, ll = self.fit(
+                **_confidence_interval_args,
+                initial_values=initial_values,
+                initial_errors=initial_errors,
+                fit_strategy=fit_strategy,
             )  # ll is + log-likelihood here
+            fitted_profiles.append((hypothesis_value, result, self._minuit_errors()))
             ret = 2.0 * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded
-            return ret - confidence_interval_threshold(hypothesis_value)
+            ret = ret - confidence_interval_threshold(hypothesis_value)
+            if warm_start:
+                t_cache[hypothesis_value] = ret
+            return ret
 
         t_best_parameter = t(best_parameter)
 
@@ -687,7 +758,7 @@ class StatisticalModel:
         if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
                 if confidence_interval_root_find == "brentq":
-                    ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+                    ul = brentq(t, best_parameter, parameter_interval_bounds[1], **brentq_kwargs)
                 elif confidence_interval_root_find == "extremal":
                     ul = extremal_root(
                         t, best_parameter, parameter_interval_bounds[1], which="left"
@@ -700,7 +771,7 @@ class StatisticalModel:
         if confidence_interval_kind in {"lower", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[0]) > 0:
                 if confidence_interval_root_find == "brentq":
-                    dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+                    dl = brentq(t, parameter_interval_bounds[0], best_parameter, **brentq_kwargs)
                 elif confidence_interval_root_find == "extremal":
                     dl = extremal_root(
                         t, parameter_interval_bounds[0], best_parameter, which="right"

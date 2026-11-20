@@ -27,6 +27,8 @@ _DEFAULT_FIT_STRATEGY = {
     "minuit_strategy": 1,
     "refit_invalid": True,
     "warm_start_profile": True,
+    "use_gradient": True,
+    "minuit_tol": None,
 }
 
 
@@ -186,6 +188,27 @@ class StatisticalModel:
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
 
+    def ll_and_grad(self, **kwargs) -> Tuple[float, dict]:
+        """Return the log-likelihood and its gradient (dict by parameter name).
+
+        Only available if the model supports it (supports_gradient). The gradient may lack
+        entries for parameters it does not depend on analytically (e.g. livetime).
+
+        Keyword Args:
+            kwargs: keyword arguments for the parameters
+
+        """
+        parameters = self.parameters(**kwargs)
+        return self._ll_and_grad(**parameters)
+
+    def supports_gradient(self) -> bool:
+        """Whether ll_and_grad is available for this model."""
+        return False
+
+    def _ll_and_grad(self, **kwargs) -> Tuple[float, dict]:
+        """Log-likelihood and its gradient; implement in subclasses supporting gradients."""
+        raise NotImplementedError("This model does not provide likelihood gradients.")
+
     def generate_data(self, **kwargs) -> Union[dict, list]:
         """Generate data for the given parameters.
 
@@ -337,6 +360,57 @@ class StatisticalModel:
 
         return cost
 
+    def make_objective_and_gradient(self, fixed_parameters: Optional[List[str]] = None):
+        """Make the cost function (-ll) and its gradient for Minuit, from ll_and_grad.
+
+        Minuit asks for many values without gradient (line searches, numerical second
+        derivatives), so cost uses the cheaper ll unless the gradient at that point is already
+        known; grad evaluates ll_and_grad and caches the value for the last point. Free
+        parameters without an analytic gradient entry get a central finite difference of ll.
+
+        Args:
+            fixed_parameters (list, optional): parameters fixed in the fit (no gradient needed)
+
+        Returns:
+            Callable, Callable: cost(args) and grad(args), args ordered as self.parameters.names
+
+        """
+        names = self.parameters.names
+        fixed = set(fixed_parameters or []) | set(self.parameters.not_fittable)
+        cache = {"args": None, "value": None, "grad": None}
+
+        def evaluate(args):
+            args = tuple(float(a) for a in args)
+            if cache["args"] != args:
+                call_kwargs = dict(zip(names, args))
+                ll, grad = self.ll_and_grad(**call_kwargs)
+                gradient = np.zeros(len(names))
+                for i, k in enumerate(names):
+                    if k in fixed:
+                        continue
+                    if k in grad:
+                        gradient[i] = -grad[k]
+                    elif np.isfinite(ll):
+                        # no analytic entry: central finite difference of ll
+                        h = 1e-6 * max(1.0, abs(args[i]))
+                        up, down = dict(call_kwargs), dict(call_kwargs)
+                        up[k] += h
+                        down[k] -= h
+                        gradient[i] = -(self.ll(**up) - self.ll(**down)) / (2 * h)
+                cache.update(args=args, value=-ll, grad=gradient)
+            return cache["value"], cache["grad"]
+
+        def cost(args):
+            if cache["args"] == tuple(float(a) for a in args):
+                return cache["value"]
+            # for optimization, we want to minimize the negative log-likelihood
+            return -self.ll(**dict(zip(names, args)))
+
+        def grad(args):
+            return evaluate(args)[1]
+
+        return cost, grad
+
     @_needs_data
     def fit(
         self,
@@ -365,6 +439,12 @@ class StatisticalModel:
                 - disable_index_fitting (bool): if True, disable the index fitting
                     even if the model has index parameters.
                 - max_index_fitting_iter (int): maximum number of iterations for index fitting
+                - use_gradient (bool): if True and the model supports it (supports_gradient),
+                    give Minuit the analytic gradient of the likelihood instead of letting it
+                    compute numerical derivatives.
+                - minuit_tol (float or None): Minuit tolerance (Minuit.tol); None keeps the
+                    Minuit default (0.1). With use_gradient, minuit_strategy=0 and a smaller
+                    tolerance (e.g. 1e-3) is both faster and more precise than the default.
                 - warm_start_profile (bool): if True, confidence_interval starts each
                     profile fit from the nuisance values of the nearest hypothesis already fitted
                     instead of from the fit guesses, reuses the global fit, caches the
@@ -400,14 +480,24 @@ class StatisticalModel:
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
-        cost = self.make_objective()
-
-        # Make the Minuit object
-        m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
-        m.errordef = Minuit.LIKELIHOOD
-        m.strategy = fit_strategy["minuit_strategy"]
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
+
+        # Make the Minuit object
+        if fit_strategy["use_gradient"] and self.supports_gradient():
+            cost, grad = self.make_objective_and_gradient(fixed_params)
+            m = Minuit(
+                MinuitWrap(cost, parameters=self.parameters),
+                grad=MinuitWrap(grad, parameters=self.parameters),
+                **defaults,
+            )
+        else:
+            cost = self.make_objective()
+            m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
+        m.errordef = Minuit.LIKELIHOOD
+        m.strategy = fit_strategy["minuit_strategy"]
+        if fit_strategy["minuit_tol"] is not None:
+            m.tol = fit_strategy["minuit_tol"]
         for par in fixed_params:
             m.fixed[par] = True
         if initial_errors is not None:

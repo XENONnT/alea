@@ -444,6 +444,17 @@ class BlueiceExtendedModel(StatisticalModel):
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
         return self._likelihood(livetime_days=livetime_days, **generate_values)
 
+    def supports_gradient(self) -> bool:
+        """Whether all likelihood terms provide analytic gradients."""
+        supports = getattr(self._likelihood, "supports_gradient", None)
+        return bool(supports is not None and supports())
+
+    def _ll_and_grad(self, **generate_values):
+        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
+        return self._likelihood.loglikelihood_and_gradient(
+            livetime_days=livetime_days, **generate_values
+        )
+
     def _generate_data(self, **generate_values) -> dict:
         """Generate data for all likelihood terms and ancillary likelihood.
 
@@ -727,6 +738,36 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         for name, term in self._other_constraint_terms.items():
             result += term(evaluate_at[name])
         return result
+
+    def supports_gradient(self) -> bool:
+        return True
+
+    def loglikelihood_and_gradient(self, livetime_days=None, **kwargs):
+        """Return ancillary_sum and its gradient (dict by parameter name).
+
+        Gaussian terms are differentiated analytically, other terms by finite differences of
+        their logpdf. Missing parameters take their base value, as in __call__.
+
+        """
+        evaluate_at = {name: self.pdf_base_config[name] for name in self.shape_parameters}
+        evaluate_at.update(kwargs)
+        value = self.ancillary_sum(evaluate_at)
+        gradient = {name: 0.0 for name in self.shape_parameters}
+        if self._gauss_names:
+            x = np.array([evaluate_at[name] for name in self._gauss_names], dtype=float)
+            dx = -(x - self._gauss_locs) / self._gauss_scales**2
+            gradient.update(zip(self._gauss_names, dx))
+        for name, term in self._other_constraint_terms.items():
+            x = evaluate_at[name]
+            h = 1e-6 * max(1.0, abs(x))
+            up, down = term(x + h), term(x - h)
+            if np.isfinite(up) and np.isfinite(down):
+                gradient[name] = (up - down) / (2 * h)
+            else:
+                # e.g. at the edge of the support: one-sided
+                center = term(x)
+                gradient[name] = (up - center) / h if np.isfinite(up) else (center - down) / h
+        return value, gradient
 
     def _get_constraint_functions(self, **generate_values) -> dict:
         """Get callable constraint functions for all ancillary parameters.

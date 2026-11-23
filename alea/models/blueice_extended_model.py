@@ -445,7 +445,17 @@ class BlueiceExtendedModel(StatisticalModel):
         return self._likelihood(livetime_days=livetime_days, **generate_values)
 
     def supports_gradient(self) -> bool:
-        """Whether all likelihood terms provide analytic gradients."""
+        """Whether all likelihood terms provide analytic gradients.
+
+        False if a subclass overrides ll or _ll, or ll was replaced on the instance without
+        ll_and_grad, since the analytic gradient would then not match the likelihood.
+
+        """
+        cls = type(self)
+        if cls.ll is not StatisticalModel.ll or cls._ll is not BlueiceExtendedModel._ll:
+            return False
+        if "ll" in vars(self) and "ll_and_grad" not in vars(self):
+            return False
         supports = getattr(self._likelihood, "supports_gradient", None)
         return bool(supports is not None and supports())
 
@@ -674,6 +684,7 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
 
         """
         self._constraint_functions = constraint_functions
+        self._constraint_signature = self._get_constraint_signature()
         gauss_names, locs, scales = [], [], []
         self._other_constraint_terms = {}
         for name, func in constraint_functions.items():
@@ -692,6 +703,10 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self._gauss_lognorm = -np.sum(np.log(self._gauss_scales)) - 0.5 * len(
             gauss_names
         ) * np.log(2 * np.pi)
+
+    def _get_constraint_signature(self) -> tuple:
+        """Identity of the current constraint distributions, to detect in-place changes."""
+        return tuple((name, id(func)) for name, func in self._constraint_functions.items())
 
     @property
     def constraint_terms(self) -> dict:
@@ -730,6 +745,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             float: Sum of all constraint terms.
 
         """
+        if self._get_constraint_signature() != self._constraint_signature:
+            # constraint_functions was modified in place: rebuild the cached Gaussian terms
+            self.constraint_functions = self._constraint_functions
         result = 0.0
         if self._gauss_names:
             x = np.array([evaluate_at[name] for name in self._gauss_names], dtype=float)
@@ -740,7 +758,11 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         return result
 
     def supports_gradient(self) -> bool:
-        return True
+        # the gradient reproduces ancillary_sum; not valid if a subclass changes it
+        return (
+            type(self).ancillary_sum is CustomAncillaryLikelihood.ancillary_sum
+            and type(self).__call__ is LogAncillaryLikelihood.__call__
+        )
 
     def loglikelihood_and_gradient(self, livetime_days=None, **kwargs):
         """Return ancillary_sum and its gradient (dict by parameter name).
@@ -749,6 +771,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         their logpdf. Missing parameters take their base value, as in __call__.
 
         """
+        if self._get_constraint_signature() != self._constraint_signature:
+            self.constraint_functions = self._constraint_functions
         evaluate_at = {name: self.pdf_base_config[name] for name in self.shape_parameters}
         evaluate_at.update(kwargs)
         value = self.ancillary_sum(evaluate_at)

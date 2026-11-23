@@ -3,6 +3,7 @@
 from unittest import TestCase
 
 import numpy as np
+from scipy import stats
 import pytest
 
 from alea.models import BlueiceExtendedModel
@@ -123,3 +124,38 @@ class TestFitStartValuesAndWarmStart(TestCase):
         BlueiceExtendedModel(**config, fit_strategy={"minuit_strategy": 2})
         other = BlueiceExtendedModel(**config)
         self.assertEqual(other._fit_strategy["minuit_strategy"], 1)
+
+
+@pytest.mark.usefixtures("rm_cache")
+class TestGradientCompatibility(TestCase):
+    """The analytic gradient must not be used where it would not match the likelihood."""
+
+    def test_subclass_overriding_ll(self):
+        class ModifiedModel(BlueiceExtendedModel):
+            def _ll(self, **generate_values):
+                return super()._ll(**generate_values) - 0.5 * generate_values["efficiency_constant"]
+
+        model = ModifiedModel.from_config("binned_ces.yaml")
+        self.assertFalse(model.supports_gradient())
+        np.random.seed(0)
+        model.data = model.generate_data()
+        model.fit()
+        self.assertEqual(model.minuit_object.ngrad, 0)
+
+    def test_instance_patched_ll(self):
+        model = BlueiceExtendedModel.from_config("binned_ces.yaml")
+        self.assertTrue(model.supports_gradient())
+        original_ll = model.ll
+        model.ll = lambda **kwargs: original_ll(**kwargs)
+        self.assertFalse(model.supports_gradient())
+
+    def test_constraint_functions_modified_in_place(self):
+        model = BlueiceExtendedModel.from_config("binned_ces.yaml")
+        ancillary = model._likelihood.likelihood_list[-1]
+        name = ancillary._gauss_names[0]
+        values = model.parameters()
+        ancillary.constraint_functions[name] = stats.norm(values[name] + 1.0, 2.0)
+        expected = sum(t(values[n]) for n, t in ancillary.constraint_terms.items())
+        self.assertAlmostEqual(ancillary.ancillary_sum(values), expected, places=10)
+        _, grad = ancillary.loglikelihood_and_gradient(**values)
+        self.assertAlmostEqual(grad[name], 1.0 / 4.0, places=10)

@@ -30,8 +30,6 @@ class TestGradient(TestCase):
 
     def test_supports_gradient(self):
         self.assertTrue(self.model.supports_gradient())
-        unbinned = BlueiceExtendedModel.from_config("unbinned_wimp_statistical_model_simple.yaml")
-        self.assertFalse(unbinned.supports_gradient())
 
     def test_ll_and_grad(self):
         values = self.model.parameters()
@@ -60,6 +58,31 @@ class TestGradient(TestCase):
             self.assertAlmostEqual(
                 fits[True][0][name] / scale, fits[False][0][name] / scale, delta=1e-2
             )
+
+
+@pytest.mark.usefixtures("rm_cache")
+class TestUnbinnedGradient(TestCase):
+    """Analytic gradient of an unbinned model and its use in fits."""
+
+    def test_unbinned_gradient_and_fit(self):
+        model = BlueiceExtendedModel.from_config("unbinned_wimp_statistical_model_simple.yaml")
+        self.assertTrue(model.supports_gradient())
+        np.random.seed(5)
+        model.data = model.generate_data(wimp_rate_multiplier=1.0)
+        values = model.parameters()
+        values.update(wimp_rate_multiplier=1.1, er_rate_multiplier=1.1)
+        values["er_band_shift"] = 0.37  # between anchors (linear interpolation: kinks at anchors)
+        ll, grad = model.ll_and_grad(**values)
+        self.assertAlmostEqual(ll, model.ll(**values), places=8)
+        for name in model.parameters.fittable:
+            # larger step: rounding noise of this likelihood dominates for steps below ~1e-5
+            numeric = numeric_gradient(model, values, name, h=1e-3)
+            self.assertAlmostEqual(grad[name], numeric, delta=1e-4 * max(1.0, abs(numeric)))
+        fits = {}
+        for use_gradient in (False, True):
+            fits[use_gradient] = model.fit(fit_strategy={"use_gradient": use_gradient})[1]
+            self.assertTrue(model.minuit_object.valid)
+        self.assertAlmostEqual(fits[True], fits[False], delta=1e-3)
 
 
 class TestAncillaryGradient(TestCase):

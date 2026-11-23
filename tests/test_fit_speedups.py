@@ -159,3 +159,59 @@ class TestGradientCompatibility(TestCase):
         self.assertAlmostEqual(ancillary.ancillary_sum(values), expected, places=10)
         _, grad = ancillary.loglikelihood_and_gradient(**values)
         self.assertAlmostEqual(grad[name], 1.0 / 4.0, places=10)
+
+
+@pytest.mark.usefixtures("rm_cache")
+class TestSourceWiseBinnedInterpolation(TestCase):
+    """Source-wise shape interpolation of binned likelihoods, linear and C1 (cubic Hermite)."""
+
+    @staticmethod
+    def build(source_wise, morpher=None):
+        config = load_yaml("binned_ces.yaml")
+        term = config["likelihood_config"]["likelihood_terms"][0]
+        term["source_wise_interpolation"] = source_wise
+        if morpher is not None:
+            term["likelihood_config"] = {"morpher": morpher}
+        model = BlueiceExtendedModel(**config)
+        np.random.seed(0)
+        model.data = model.generate_data()
+        return model
+
+    @staticmethod
+    def random_values(model, rng):
+        """Shape parameters anywhere within their anchors, other fittable parameters within 20%."""
+        blueice_ll = model._likelihood.likelihood_list[0]
+        values = model.parameters()
+        for name in model.parameters.fittable:
+            if name in blueice_ll.shape_parameters:
+                values[name] = rng.uniform(*blueice_ll.get_bounds(name))
+            else:
+                values[name] *= rng.uniform(0.8, 1.2)
+        return values
+
+    def test_source_wise_linear_matches_joint_grid(self):
+        joint = self.build(source_wise=False)
+        source_wise = self.build(source_wise=True)
+        self.assertTrue(source_wise.supports_gradient())
+        source_wise.data = joint.data
+        rng = np.random.default_rng(3)
+        for _ in range(5):
+            values = self.random_values(joint, rng)
+            self.assertAlmostEqual(source_wise.ll(**values), joint.ll(**values), places=7)
+
+    def test_cubic_hermite_gradient_and_fit(self):
+        model = self.build(source_wise=True, morpher="CubicHermiteInterpolator")
+        self.assertTrue(model.supports_gradient())
+        rng = np.random.default_rng(4)
+        for _ in range(3):
+            values = self.random_values(model, rng)
+            ll, grad = model.ll_and_grad(**values)
+            self.assertAlmostEqual(ll, model.ll(**values), places=8)
+            for name in model.parameters.fittable:
+                numeric = numeric_gradient(model, values, name)
+                self.assertAlmostEqual(grad[name], numeric, delta=1e-4 * max(1.0, abs(numeric)))
+        fits = {}
+        for use_gradient in (False, True):
+            fits[use_gradient] = model.fit(fit_strategy={"use_gradient": use_gradient})[1]
+            self.assertTrue(model.minuit_object.valid)
+        self.assertAlmostEqual(fits[True], fits[False], delta=1e-3)

@@ -347,14 +347,12 @@ class BlueiceExtendedModel(StatisticalModel):
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
 
-            # Auto set source_wise_interpolation to False for binned likelihoods
+            # Binned likelihoods interpolate source-wise only if asked for explicitly (default
+            # False, the original behaviour); blueice versions without support raise an error
             if likelihood_class is BinnedLogLikelihood:
-                if config.get("source_wise_interpolation", False):
-                    raise NotImplementedError(
-                        "Source-wise interpolation not implemented for binned likelihoods"
-                    )
-                else:
-                    blueice_config["source_wise_interpolation"] = False
+                blueice_config["source_wise_interpolation"] = config.get(
+                    "source_wise_interpolation", False
+                )
 
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")

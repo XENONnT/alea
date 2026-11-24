@@ -7,6 +7,7 @@ from scipy import stats
 import pytest
 
 from alea.models import BlueiceExtendedModel
+from alea.model import StatisticalModel
 from alea.utils import load_yaml
 
 
@@ -238,3 +239,45 @@ class TestSourceWiseBinnedInterpolation(TestCase):
             fits[use_gradient] = model.fit(fit_strategy={"use_gradient": use_gradient})[1]
             self.assertTrue(model.minuit_object.valid)
         self.assertAlmostEqual(fits[True], fits[False], delta=1e-3)
+
+
+class TestFitWithExtraStarts(TestCase):
+    """A model with two minima: the default start finds the worse one, the extra start the better."""
+
+    class TwoWells(StatisticalModel):
+        def __init__(self, **kwargs):
+            parameter_definition = {
+                "x": {"nominal_value": -1.0, "fittable": True, "fit_limits": [-3, 3], "fit_guess": -1.0}
+            }
+            super().__init__(parameter_definition=parameter_definition, **kwargs)
+
+        def _ll(self, x):
+            # maximum -1 at x=-1, a higher maximum at x=+1.5 (a deeper well)
+            return -min((x + 1.0) ** 2 + 1.0, 3.0 * (x - 1.5) ** 2)
+
+        def _generate_data(self, x):
+            return {}
+
+        def get_expectation_values(self, **kwargs):
+            return {}
+
+    def setUp(self):
+        self.model = self.TwoWells(fit_strategy={"use_gradient": False})
+        self.model.data = {}
+
+    def test_default_start_misses_better_minimum(self):
+        best_fit, ll = self.model.fit()
+        self.assertAlmostEqual(best_fit["x"], -1.0, places=3)
+
+    def test_extra_start_finds_better_minimum(self):
+        best_fit, ll = self.model.fit_with_extra_starts([{"x": 1.4}])
+        self.assertAlmostEqual(best_fit["x"], 1.5, delta=0.02)
+        self.assertGreater(ll, -1.0 + 1e-6)
+        self.assertAlmostEqual(self.model.minuit_object.values["x"], best_fit["x"])
+
+    def test_extra_start_is_clipped_to_fit_limits(self):
+        best_fit, ll = self.model.fit_with_extra_starts([{"x": 10.0}])
+        self.assertLessEqual(best_fit["x"], 3.0)
+
+    def test_no_extra_starts_equals_fit(self):
+        self.assertEqual(self.model.fit_with_extra_starts([])[1], self.model.fit()[1])

@@ -29,6 +29,7 @@ _DEFAULT_FIT_STRATEGY = {
     "warm_start_profile": True,
     "use_gradient": True,
     "minuit_tol": None,
+    "start_free_fit_from_conditional": False,
 }
 
 
@@ -439,6 +440,10 @@ class StatisticalModel:
                 - disable_index_fitting (bool): if True, disable the index fitting
                     even if the model has index parameters.
                 - max_index_fitting_iter (int): maximum number of iterations for index fitting
+                - start_free_fit_from_conditional (bool): only used by the Runner. If True, the
+                    hypotheses with fixed parameters are fitted first, and the free hypothesis is
+                    then also fitted from each of their solutions (see fit_with_extra_starts), so
+                    that its likelihood can never be lower than that of a conditional fit.
                 - use_gradient (bool): if True and the model supports it (supports_gradient),
                     give Minuit the analytic gradient of the likelihood instead of letting it
                     compute numerical derivatives.
@@ -529,6 +534,51 @@ class StatisticalModel:
             print(m)
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
+
+    def fit_with_extra_starts(
+        self,
+        extra_starts: List[dict],
+        verbose: Optional[bool] = False,
+        fit_strategy: Optional[dict] = None,
+        **kwargs,
+    ) -> Tuple[dict, float]:
+        """Fit from the default start and from each of the extra starts, and keep the best fit.
+
+        The likelihood can have several local minima (e.g. in shape parameters), and a fit
+        that is valid may still end in a worse one than another start would reach.
+
+        Args:
+            extra_starts (list of dict): start values (as initial_values in fit) of the extra
+                fits. Values are clipped to the fit limits; entries for fixed or non-fittable
+                parameters are ignored.
+            verbose, fit_strategy, kwargs: as in fit
+
+        Returns:
+            dict, float: best-fit values and likelihood of the best fit, i.e. the one with the
+            highest likelihood; fits that Minuit reports as valid are preferred. self.minuit_object
+            is the Minuit object of that fit.
+
+        """
+        best = None
+        for start in [None] + list(extra_starts):
+            if start is not None:
+                start = self._clip_to_fit_limits(start)
+            result = self.fit(verbose=verbose, fit_strategy=fit_strategy, initial_values=start, **kwargs)
+            rank = (bool(self.minuit_object.valid), result[1])
+            if best is None or rank > best[0]:
+                best = (rank, result, self.minuit_object)
+        self.minuit_object = best[2]
+        return best[1]
+
+    def _clip_to_fit_limits(self, values: dict) -> dict:
+        """Values of the parameters with fit limits, moved inside their limits."""
+        clipped = {}
+        for name, value in values.items():
+            limits = self.parameters[name].fit_limits if name in self.parameters.names else None
+            if limits is not None:
+                value = min(max(value, limits[0]), limits[1])
+            clipped[name] = value
+        return clipped
 
     def _minuit_errors(self) -> dict:
         """Parameter errors of the last fit (self.minuit_object), by parameter name."""

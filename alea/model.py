@@ -30,6 +30,7 @@ _DEFAULT_FIT_STRATEGY = {
     "use_gradient": True,
     "minuit_tol": None,
     "start_free_fit_from_conditional": False,
+    "prescan_shape_parameters": False,
 }
 
 
@@ -440,6 +441,12 @@ class StatisticalModel:
                 - disable_index_fitting (bool): if True, disable the index fitting
                     even if the model has index parameters.
                 - max_index_fitting_iter (int): maximum number of iterations for index fitting
+                - prescan_shape_parameters (bool): if True, before the fit each fittable shape
+                    parameter that has anchors (and no start value from initial_values or kwargs)
+                    is moved to the anchor with the highest likelihood, one parameter at a time
+                    with the others at their start values. This costs one likelihood evaluation
+                    per anchor, and helps if the likelihood has several local maxima in a shape
+                    parameter and the fit would otherwise stop at the nearest one.
                 - start_free_fit_from_conditional (bool): only used by the Runner. If True, the
                     hypotheses with fixed parameters are fitted first, and the free hypothesis is
                     then also fitted from each of their solutions (see fit_with_extra_starts), so
@@ -481,6 +488,10 @@ class StatisticalModel:
                 }
             )
         guesses.update(kwargs)
+        if fit_strategy["prescan_shape_parameters"]:
+            guesses = self._prescan_shape_parameters(
+                guesses, skip=set(fixed_parameters) | set(initial_values or {})
+            )
         if not self.parameters.values_in_fit_limits(**guesses):
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
@@ -569,6 +580,33 @@ class StatisticalModel:
                 best = (rank, result, self.minuit_object)
         self.minuit_object = best[2]
         return best[1]
+
+    def _prescan_shape_parameters(self, guesses: dict, skip: set) -> dict:
+        """Start values with each shape parameter moved to its best anchor.
+
+        The shape parameters are scanned one after the other, each over its anchors (and its
+        current start value) with all other parameters at their current start values; later
+        parameters thus see the result for the earlier ones. Parameters in skip are not scanned.
+        The likelihood is evaluated at the anchors only, so a fit still follows to refine them.
+
+        """
+        guesses = dict(guesses)
+        fittable = set(self.parameters.fittable)
+        for parameter in self.parameters:
+            name = parameter.name
+            anchors = getattr(parameter, "blueice_anchors", None)
+            if parameter.ptype != "shape" or name in skip or name not in fittable or anchors is None:
+                continue
+            start = guesses.get(name, parameter.nominal_value)
+            best_value, best_ll = start, -np.inf
+            for value in [start] + list(anchors):
+                if not self.parameters.values_in_fit_limits(**{name: value}):
+                    continue
+                ll = self.ll(**self.parameters(**{**guesses, name: value}))
+                if np.isfinite(ll) and ll > best_ll:
+                    best_value, best_ll = value, ll
+            guesses[name] = best_value
+        return guesses
 
     def _clip_to_fit_limits(self, values: dict) -> dict:
         """Values of the parameters with fit limits, moved inside their limits."""

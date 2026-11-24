@@ -9,6 +9,7 @@ from copy import deepcopy
 from pydoc import locate
 import logging
 from hashlib import sha256
+from functools import lru_cache
 from base64 import b32encode
 from collections.abc import Mapping
 from importlib.resources import files as _files
@@ -717,10 +718,23 @@ def deterministic_hash(thing, length=10):
 
 
 def compute_file_hash(file_path: str) -> str:
-    """Compute the SHA-256 hash of a file."""
+    """Compute the SHA-256 hash of a file.
+
+    Every source built from a template hashes its file, so the same large file is hashed many
+    times while a model is built. The hash is therefore cached per file, and recomputed if the
+    file's modification time or size changes.
+
+    """
+    stat = os.stat(file_path)
+    return _compute_file_hash(file_path, stat.st_mtime_ns, stat.st_size)
+
+
+@lru_cache(maxsize=None)
+def _compute_file_hash(file_path: str, mtime_ns: int, size: int) -> str:
+    """SHA-256 of a file; mtime_ns and size are only part of the cache key."""
     hash_sha256 = sha256()
     with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
+        for chunk in iter(lambda: f.read(1 << 20), b""):
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
 

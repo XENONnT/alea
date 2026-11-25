@@ -574,7 +574,9 @@ class StatisticalModel:
         for start in [None] + list(extra_starts):
             if start is not None:
                 start = self._clip_to_fit_limits(start)
-            result = self.fit(verbose=verbose, fit_strategy=fit_strategy, initial_values=start, **kwargs)
+            result = self.fit(
+                verbose=verbose, fit_strategy=fit_strategy, initial_values=start, **kwargs
+            )
             rank = (bool(self.minuit_object.valid), result[1])
             if best is None or rank > best[0]:
                 best = (rank, result, self.minuit_object)
@@ -584,10 +586,10 @@ class StatisticalModel:
     def _prescan_shape_parameters(self, guesses: dict, skip: set) -> dict:
         """Start values with each shape parameter moved to its best anchor.
 
-        The shape parameters are scanned one after the other, each over its anchors (and its
-        current start value) with all other parameters at their current start values; later
-        parameters thus see the result for the earlier ones. Parameters in skip are not scanned.
-        The likelihood is evaluated at the anchors only, so a fit still follows to refine them.
+        The shape parameters are scanned one after the other, each over its anchors (and its current
+        start value) with all other parameters at their current start values; later parameters thus
+        see the result for the earlier ones. Parameters in skip are not scanned. The likelihood is
+        evaluated at the anchors only, so a fit still follows to refine them.
 
         """
         guesses = dict(guesses)
@@ -595,7 +597,12 @@ class StatisticalModel:
         for parameter in self.parameters:
             name = parameter.name
             anchors = getattr(parameter, "blueice_anchors", None)
-            if parameter.ptype != "shape" or name in skip or name not in fittable or anchors is None:
+            if (
+                parameter.ptype != "shape"
+                or name in skip
+                or name not in fittable
+                or anchors is None
+            ):
                 continue
             start = guesses.get(name, parameter.nominal_value)
             best_value, best_ll = start, -np.inf

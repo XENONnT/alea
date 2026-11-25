@@ -130,7 +130,9 @@ class TestFitStartValuesAndWarmStart(TestCase):
         best_fit_warm, ll_warm = self.model.fit(initial_values=start, initial_errors=errors)
         self.assertLess(self.model.minuit_object.nfcn, n_cold)
         self.assertAlmostEqual(ll_warm, ll, delta=1e-4)
-        self.assertEqual(best_fit_warm["wimp_mass"], self.model.parameters["wimp_mass"].nominal_value)
+        self.assertEqual(
+            best_fit_warm["wimp_mass"], self.model.parameters["wimp_mass"].nominal_value
+        )
 
     def test_warm_start_profile(self):
         intervals = {}
@@ -242,12 +244,18 @@ class TestSourceWiseBinnedInterpolation(TestCase):
 
 
 class TestFitWithExtraStarts(TestCase):
-    """A model with two minima: the default start finds the worse one, the extra start the better."""
+    """A model with two minima: the default start finds the worse one, the extra start the
+    better."""
 
     class TwoWells(StatisticalModel):
         def __init__(self, **kwargs):
             parameter_definition = {
-                "x": {"nominal_value": -1.0, "fittable": True, "fit_limits": [-3, 3], "fit_guess": -1.0}
+                "x": {
+                    "nominal_value": -1.0,
+                    "fittable": True,
+                    "fit_limits": [-3, 3],
+                    "fit_guess": -1.0,
+                }
             }
             super().__init__(parameter_definition=parameter_definition, **kwargs)
 

@@ -720,9 +720,9 @@ def deterministic_hash(thing, length=10):
 def compute_file_hash(file_path: str) -> str:
     """Compute the SHA-256 hash of a file.
 
-    Every source built from a template hashes its file, so the same large file is hashed many
-    times while a model is built. The hash is therefore cached per file, and recomputed if the
-    file's modification time or size changes.
+    Every source built from a template hashes its file, so the same large file is hashed many times
+    while a model is built. The hash is therefore cached per file, and recomputed if the file's
+    modification time or size changes.
 
     """
     stat = os.stat(file_path)

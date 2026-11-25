@@ -676,9 +676,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     def constraint_functions(self, constraint_functions: dict):
         """Set the constraint distributions and cache the Gaussian ones as arrays.
 
-        Gaussian terms (frozen ``scipy.stats.norm``) are evaluated in closed form, vectorized,
-        in ``ancillary_sum``; evaluating a frozen distribution's logpdf costs ~100 us per call,
-        which dominated the likelihood evaluation time. All other terms keep their logpdf.
+        Gaussian terms (frozen ``scipy.stats.norm``) are evaluated in closed form, vectorized, in
+        ``ancillary_sum``; evaluating a frozen distribution's logpdf costs ~100 us per call, which
+        dominated the likelihood evaluation time. All other terms keep their logpdf.
 
         """
         self._constraint_functions = constraint_functions
@@ -698,9 +698,9 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self._gauss_locs = np.asarray(locs, dtype=float)
         self._gauss_scales = np.asarray(scales, dtype=float)
         # normalisation: sum of -log(sigma * sqrt(2 pi)), same convention as norm.logpdf
-        self._gauss_lognorm = -np.sum(np.log(self._gauss_scales)) - 0.5 * len(
-            gauss_names
-        ) * np.log(2 * np.pi)
+        self._gauss_lognorm = -np.sum(np.log(self._gauss_scales)) - 0.5 * len(gauss_names) * np.log(
+            2 * np.pi
+        )
 
     def _get_constraint_signature(self) -> tuple:
         """Identity of the current constraint distributions, to detect in-place changes."""
@@ -765,8 +765,8 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
     def loglikelihood_and_gradient(self, livetime_days=None, **kwargs):
         """Return ancillary_sum and its gradient (dict by parameter name).
 
-        Gaussian terms are differentiated analytically, other terms by finite differences of
-        their logpdf. Missing parameters take their base value, as in __call__.
+        Gaussian terms are differentiated analytically, other terms by finite differences of their
+        logpdf. Missing parameters take their base value, as in __call__.
 
         """
         if self._get_constraint_signature() != self._constraint_signature:

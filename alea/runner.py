@@ -497,7 +497,9 @@ class Runner:
                 if start_free_from_conditional and i_hypo == 0:
                     fittable = self.model.parameters.fittable
                     starts = [{k: r[k] for k in fittable if k in r} for r in fit_results[1:]]
-                    fit_result, max_llh = self.model.fit_with_extra_starts(starts, **hypothesis_values)
+                    fit_result, max_llh = self.model.fit_with_extra_starts(
+                        starts, **hypothesis_values
+                    )
                 else:
                     fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result["ll"] = max_llh

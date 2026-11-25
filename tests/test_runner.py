@@ -82,6 +82,19 @@ class TestRunner(TestCase):
                     raise ValueError("Confidence interval computation failed!")
             remove(self.output_filename)
 
+    def test_start_free_fit_from_conditional(self):
+        """The free fit is also started from the conditional fits: it is never below them."""
+        self.set_gaussian_runner()
+        self.runner.model._fit_strategy["start_free_fit_from_conditional"] = True
+        free, zero, true = self.runner.simulate_and_fit()
+        self.assertEqual(len(free), self.n_mc)
+        self.assertTrue(np.all(free["ll"] >= zero["ll"] - 1e-6))
+        self.assertTrue(np.all(free["ll"] >= true["ll"] - 1e-6))
+        # the conditional hypotheses keep their fixed values, and results are in the usual order
+        self.assertTrue(np.all(zero["mu"] == 0.0))
+        self.assertTrue(np.all(true["mu"] == 1.0))
+        self.assertFalse(np.any(np.isnan(free["dl"])))
+
     def test_init_signatures(self):
         """Test the signatures of the Runner.__init__"""
         (

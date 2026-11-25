@@ -26,6 +26,11 @@ _DEFAULT_FIT_STRATEGY = {
     "minimizer_routine": "migrad",
     "minuit_strategy": 1,
     "refit_invalid": True,
+    "warm_start_profile": True,
+    "use_gradient": True,
+    "minuit_tol": None,
+    "start_free_fit_from_conditional": False,
+    "prescan_shape_parameters": False,
 }
 
 
@@ -120,7 +125,8 @@ class StatisticalModel:
             raise ValueError("confidence_interval_root_find must be one of brentq and extremal")
         self._confidence_interval_root_find = confidence_interval_root_find
         self.asymptotic_dof = asymptotic_dof
-        self._fit_strategy = _DEFAULT_FIT_STRATEGY
+        # copy, so that overrides of one model do not change the module-level defaults
+        self._fit_strategy = dict(_DEFAULT_FIT_STRATEGY)
         if fit_strategy is not None:
             self._fit_strategy.update(fit_strategy)
         nominal_values = kwargs.get("nominal_values", None)
@@ -183,6 +189,27 @@ class StatisticalModel:
         """
         parameters = self.parameters(**kwargs)
         return self._ll(**parameters)
+
+    def ll_and_grad(self, **kwargs) -> Tuple[float, dict]:
+        """Return the log-likelihood and its gradient (dict by parameter name).
+
+        Only available if the model supports it (supports_gradient). The gradient may lack
+        entries for parameters it does not depend on analytically (e.g. livetime).
+
+        Keyword Args:
+            kwargs: keyword arguments for the parameters
+
+        """
+        parameters = self.parameters(**kwargs)
+        return self._ll_and_grad(**parameters)
+
+    def supports_gradient(self) -> bool:
+        """Whether ll_and_grad is available for this model."""
+        return False
+
+    def _ll_and_grad(self, **kwargs) -> Tuple[float, dict]:
+        """Log-likelihood and its gradient; implement in subclasses supporting gradients."""
+        raise NotImplementedError("This model does not provide likelihood gradients.")
 
     def generate_data(self, **kwargs) -> Union[dict, list]:
         """Generate data for the given parameters.
@@ -335,9 +362,65 @@ class StatisticalModel:
 
         return cost
 
+    def make_objective_and_gradient(self, fixed_parameters: Optional[List[str]] = None):
+        """Make the cost function (-ll) and its gradient for Minuit, from ll_and_grad.
+
+        Minuit asks for many values without gradient (line searches, numerical second
+        derivatives), so cost uses the cheaper ll unless the gradient at that point is already
+        known; grad evaluates ll_and_grad and caches the value for the last point. Free
+        parameters without an analytic gradient entry get a central finite difference of ll.
+
+        Args:
+            fixed_parameters (list, optional): parameters fixed in the fit (no gradient needed)
+
+        Returns:
+            Callable, Callable: cost(args) and grad(args), args ordered as self.parameters.names
+
+        """
+        names = self.parameters.names
+        fixed = set(fixed_parameters or []) | set(self.parameters.not_fittable)
+        cache = {"args": None, "value": None, "grad": None}
+
+        def evaluate(args):
+            args = tuple(float(a) for a in args)
+            if cache["args"] != args:
+                call_kwargs = dict(zip(names, args))
+                ll, grad = self.ll_and_grad(**call_kwargs)
+                gradient = np.zeros(len(names))
+                for i, k in enumerate(names):
+                    if k in fixed:
+                        continue
+                    if k in grad:
+                        gradient[i] = -grad[k]
+                    elif np.isfinite(ll):
+                        # no analytic entry: central finite difference of ll
+                        h = 1e-6 * max(1.0, abs(args[i]))
+                        up, down = dict(call_kwargs), dict(call_kwargs)
+                        up[k] += h
+                        down[k] -= h
+                        gradient[i] = -(self.ll(**up) - self.ll(**down)) / (2 * h)
+                cache.update(args=args, value=-ll, grad=gradient)
+            return cache["value"], cache["grad"]
+
+        def cost(args):
+            if cache["args"] == tuple(float(a) for a in args):
+                return cache["value"]
+            # for optimization, we want to minimize the negative log-likelihood
+            return -self.ll(**dict(zip(names, args)))
+
+        def grad(args):
+            return evaluate(args)[1]
+
+        return cost, grad
+
     @_needs_data
     def fit(
-        self, verbose: Optional[bool] = False, fit_strategy: Optional[dict] = None, **kwargs
+        self,
+        verbose: Optional[bool] = False,
+        fit_strategy: Optional[dict] = None,
+        initial_values: Optional[dict] = None,
+        initial_errors: Optional[dict] = None,
+        **kwargs,
     ) -> Tuple[dict, float]:
         """Fit the model to the data by maximizing the likelihood.
 
@@ -358,6 +441,34 @@ class StatisticalModel:
                 - disable_index_fitting (bool): if True, disable the index fitting
                     even if the model has index parameters.
                 - max_index_fitting_iter (int): maximum number of iterations for index fitting
+                - prescan_shape_parameters (bool): if True, before the fit each fittable shape
+                    parameter that has anchors (and no start value from initial_values or kwargs)
+                    is moved to the anchor with the highest likelihood, one parameter at a time
+                    with the others at their start values. This costs one likelihood evaluation
+                    per anchor, and helps if the likelihood has several local maxima in a shape
+                    parameter and the fit would otherwise stop at the nearest one.
+                - start_free_fit_from_conditional (bool): only used by the Runner. If True, the
+                    hypotheses with fixed parameters are fitted first, and the free hypothesis is
+                    then also fitted from each of their solutions (see fit_with_extra_starts), so
+                    that its likelihood can never be lower than that of a conditional fit.
+                - use_gradient (bool): if True and the model supports it (supports_gradient),
+                    give Minuit the analytic gradient of the likelihood instead of letting it
+                    compute numerical derivatives.
+                - minuit_tol (float or None): Minuit tolerance (Minuit.tol); None keeps the
+                    Minuit default (0.1). With use_gradient, minuit_strategy=0 and a smaller
+                    tolerance (e.g. 1e-3) is both faster and more precise than the default.
+                - warm_start_profile (bool): if True, confidence_interval starts each
+                    profile fit from the nuisance values of the nearest hypothesis already fitted
+                    instead of from the fit guesses, reuses the global fit, caches the
+                    profile per hypothesis value and runs brentq with rtol=1e-6.
+                    If False, confidence_interval behaves as before.
+            initial_values (dict, optional (default=None)): starting values for the fitted
+                parameters, overriding their fit_guess. Entries for fixed (passed as kwargs) or
+                non-fittable parameters are ignored.
+            initial_errors (dict, optional (default=None)): initial step sizes (Minuit errors)
+                for the fitted parameters, e.g. the errors of a previous fit. Minuit's default is
+                1% of the start value, which is a poor (or zero) step for values near 0.
+                Entries for fixed parameters and non-positive or non-finite values are ignored.
 
         Returns:
             dict, float: best-fit values of each parameter,
@@ -367,21 +478,48 @@ class StatisticalModel:
         fit_strategy = self._get_fit_strategy(fit_strategy)
         fixed_parameters = list(kwargs.keys())
         guesses = self.parameters.fit_guesses
+        if initial_values is not None:
+            fittable = set(self.parameters.fittable)
+            guesses.update(
+                {
+                    k: v
+                    for k, v in initial_values.items()
+                    if k in fittable and k not in fixed_parameters
+                }
+            )
         guesses.update(kwargs)
+        if fit_strategy["prescan_shape_parameters"]:
+            guesses = self._prescan_shape_parameters(
+                guesses, skip=set(fixed_parameters) | set(initial_values or {})
+            )
         if not self.parameters.values_in_fit_limits(**guesses):
             raise ValueError("Initial guesses are not within fit limits")
         defaults = self.parameters(**guesses)
 
-        cost = self.make_objective()
-
-        # Make the Minuit object
-        m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
-        m.errordef = Minuit.LIKELIHOOD
-        m.strategy = fit_strategy["minuit_strategy"]
         fixed_params = [] if fixed_parameters is None else fixed_parameters
         fixed_params += self.parameters.not_fittable
+
+        # Make the Minuit object
+        if fit_strategy["use_gradient"] and self.supports_gradient():
+            cost, grad = self.make_objective_and_gradient(fixed_params)
+            m = Minuit(
+                MinuitWrap(cost, parameters=self.parameters),
+                grad=MinuitWrap(grad, parameters=self.parameters),
+                **defaults,
+            )
+        else:
+            cost = self.make_objective()
+            m = Minuit(MinuitWrap(cost, parameters=self.parameters), **defaults)
+        m.errordef = Minuit.LIKELIHOOD
+        m.strategy = fit_strategy["minuit_strategy"]
+        if fit_strategy["minuit_tol"] is not None:
+            m.tol = fit_strategy["minuit_tol"]
         for par in fixed_params:
             m.fixed[par] = True
+        if initial_errors is not None:
+            for par, error in initial_errors.items():
+                if par in m.parameters and not m.fixed[par] and np.isfinite(error) and error > 0:
+                    m.errors[par] = error
 
         # Get the index parameters, which could have problem if simply using migrad
         index_parameters = [
@@ -407,6 +545,90 @@ class StatisticalModel:
             print(m)
         # alert! This gives the _maximum_ likelihood
         return m.values.to_dict(), -1 * m.fval
+
+    def fit_with_extra_starts(
+        self,
+        extra_starts: List[dict],
+        verbose: Optional[bool] = False,
+        fit_strategy: Optional[dict] = None,
+        **kwargs,
+    ) -> Tuple[dict, float]:
+        """Fit from the default start and from each of the extra starts, and keep the best fit.
+
+        The likelihood can have several local minima (e.g. in shape parameters), and a fit
+        that is valid may still end in a worse one than another start would reach.
+
+        Args:
+            extra_starts (list of dict): start values (as initial_values in fit) of the extra
+                fits. Values are clipped to the fit limits; entries for fixed or non-fittable
+                parameters are ignored.
+            verbose, fit_strategy, kwargs: as in fit
+
+        Returns:
+            dict, float: best-fit values and likelihood of the best fit, i.e. the one with the
+            highest likelihood; fits that Minuit reports as valid are preferred. self.minuit_object
+            is the Minuit object of that fit.
+
+        """
+        best = None
+        for start in [None] + list(extra_starts):
+            if start is not None:
+                start = self._clip_to_fit_limits(start)
+            result = self.fit(
+                verbose=verbose, fit_strategy=fit_strategy, initial_values=start, **kwargs
+            )
+            rank = (bool(self.minuit_object.valid), result[1])
+            if best is None or rank > best[0]:
+                best = (rank, result, self.minuit_object)
+        self.minuit_object = best[2]
+        return best[1]
+
+    def _prescan_shape_parameters(self, guesses: dict, skip: set) -> dict:
+        """Start values with each shape parameter moved to its best anchor.
+
+        The shape parameters are scanned one after the other, each over its anchors (and its current
+        start value) with all other parameters at their current start values; later parameters thus
+        see the result for the earlier ones. Parameters in skip are not scanned. The likelihood is
+        evaluated at the anchors only, so a fit still follows to refine them.
+
+        """
+        guesses = dict(guesses)
+        fittable = set(self.parameters.fittable)
+        for parameter in self.parameters:
+            name = parameter.name
+            anchors = getattr(parameter, "blueice_anchors", None)
+            if (
+                parameter.ptype != "shape"
+                or name in skip
+                or name not in fittable
+                or anchors is None
+            ):
+                continue
+            start = guesses.get(name, parameter.nominal_value)
+            best_value, best_ll = start, -np.inf
+            for value in [start] + list(anchors):
+                if not self.parameters.values_in_fit_limits(**{name: value}):
+                    continue
+                ll = self.ll(**self.parameters(**{**guesses, name: value}))
+                if np.isfinite(ll) and ll > best_ll:
+                    best_value, best_ll = value, ll
+            guesses[name] = best_value
+        return guesses
+
+    def _clip_to_fit_limits(self, values: dict) -> dict:
+        """Values of the parameters with fit limits, moved inside their limits."""
+        clipped = {}
+        for name, value in values.items():
+            limits = self.parameters[name].fit_limits if name in self.parameters.names else None
+            if limits is not None:
+                value = min(max(value, limits[0]), limits[1])
+            clipped[name] = value
+        return clipped
+
+    def _minuit_errors(self) -> dict:
+        """Parameter errors of the last fit (self.minuit_object), by parameter name."""
+        m = self.minuit_object
+        return dict(zip(m.parameters, m.errors))
 
     def _get_fit_strategy(self, fit_strategy) -> dict:
         # override the default fit strategy
@@ -651,11 +873,18 @@ class StatisticalModel:
             parameter_interval_bounds,
         ) = ci_objects
 
+        warm_start = self._get_fit_strategy(fit_strategy)["warm_start_profile"]
         # best_fit_args only provides the best-fit likelihood
-        _, best_ll = self.fit(**best_fit_args, fit_strategy=fit_strategy)
+        best_fit_result, best_ll = self.fit(**best_fit_args, fit_strategy=fit_strategy)
+        best_fit_errors = self._minuit_errors()
         # the optimization of profile-likelihood under
         # confidence_interval_args provides the best_parameter
-        best_result, _ = self.fit(**confidence_interval_args, fit_strategy=fit_strategy)
+        if warm_start and best_fit_args == confidence_interval_args:
+            # identical fit, no need to repeat it
+            best_result, best_errors = best_fit_result, best_fit_errors
+        else:
+            best_result, _ = self.fit(**confidence_interval_args, fit_strategy=fit_strategy)
+            best_errors = self._minuit_errors()
         best_parameter = best_result[poi_name]
         mask = within_limits(best_parameter, parameter_interval_bounds)
         if not mask:
@@ -664,18 +893,45 @@ class StatisticalModel:
                 f"search limits in parameter_interval_bounds {parameter_interval_bounds}."
             )
 
+        # profile fits done so far, as (hypothesis_value, best-fit values, errors); with
+        # warm_start, each new profile fit starts from the nuisance values (and uses the errors
+        # as step sizes) of the nearest hypothesis
+        fitted_profiles = [(best_parameter, best_result, best_errors)]
+        # with warm_start, t is cached per hypothesis value: the root finders evaluate the
+        # bracket ends again, and a re-fit from a different start would add noise
+        t_cache = {}
+        if warm_start and best_fit_args == confidence_interval_args:
+            # the profile fit at the best-fit POI is the global fit itself: 2 * (best_ll - ll) = 0
+            t_cache[best_parameter] = -confidence_interval_threshold(best_parameter)
+        # brentq's default tolerance (2e-12) is far below the precision of the profile fits;
+        # with warm starts t(hypothesis) is only smooth to about the fit tolerance
+        brentq_kwargs = {"rtol": 1e-6} if warm_start else {}
+
         # define intersection between likelihood ratio curve and the critical curve:
         def t(hypothesis_value):
             # define the intersection
             # between the profile-log-likelihood curve and the rejection threshold
+            if warm_start and hypothesis_value in t_cache:
+                return t_cache[hypothesis_value]
             _confidence_interval_args = deepcopy(confidence_interval_args)
             _confidence_interval_args[poi_name] = hypothesis_value
-            _, ll = self.fit(
-                **_confidence_interval_args, fit_strategy=fit_strategy
+            initial_values, initial_errors = None, None
+            if warm_start:
+                nearest = min(fitted_profiles, key=lambda p: abs(p[0] - hypothesis_value))
+                _, initial_values, initial_errors = nearest
+            result, ll = self.fit(
+                **_confidence_interval_args,
+                initial_values=initial_values,
+                initial_errors=initial_errors,
+                fit_strategy=fit_strategy,
             )  # ll is + log-likelihood here
+            fitted_profiles.append((hypothesis_value, result, self._minuit_errors()))
             ret = 2.0 * (best_ll - ll)  # likelihood curve "right way up" (smiling)
             # if positive, hypothesis is excluded
-            return ret - confidence_interval_threshold(hypothesis_value)
+            ret = ret - confidence_interval_threshold(hypothesis_value)
+            if warm_start:
+                t_cache[hypothesis_value] = ret
+            return ret
 
         t_best_parameter = t(best_parameter)
 
@@ -687,7 +943,7 @@ class StatisticalModel:
         if confidence_interval_kind in {"upper", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[1]) > 0:
                 if confidence_interval_root_find == "brentq":
-                    ul = brentq(t, best_parameter, parameter_interval_bounds[1])
+                    ul = brentq(t, best_parameter, parameter_interval_bounds[1], **brentq_kwargs)
                 elif confidence_interval_root_find == "extremal":
                     ul = extremal_root(
                         t, best_parameter, parameter_interval_bounds[1], which="left"
@@ -700,7 +956,7 @@ class StatisticalModel:
         if confidence_interval_kind in {"lower", "central"} and t_best_parameter < 0:
             if t(parameter_interval_bounds[0]) > 0:
                 if confidence_interval_root_find == "brentq":
-                    dl = brentq(t, parameter_interval_bounds[0], best_parameter)
+                    dl = brentq(t, parameter_interval_bounds[0], best_parameter, **brentq_kwargs)
                 elif confidence_interval_root_find == "extremal":
                     dl = extremal_root(
                         t, parameter_interval_bounds[0], best_parameter, which="right"

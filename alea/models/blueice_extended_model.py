@@ -347,14 +347,12 @@ class BlueiceExtendedModel(StatisticalModel):
 
             likelihood_class = cast(Callable, locate(config["likelihood_type"]))
 
-            # Auto set source_wise_interpolation to False for binned likelihoods
+            # Binned likelihoods interpolate source-wise only if asked for explicitly (default
+            # False, the original behaviour); blueice versions without support raise an error
             if likelihood_class is BinnedLogLikelihood:
-                if config.get("source_wise_interpolation", False):
-                    raise NotImplementedError(
-                        "Source-wise interpolation not implemented for binned likelihoods"
-                    )
-                else:
-                    blueice_config["source_wise_interpolation"] = False
+                blueice_config["source_wise_interpolation"] = config.get(
+                    "source_wise_interpolation", False
+                )
 
             if likelihood_class is None:
                 raise ValueError(f"Could not find {config['likelihood_type']}!")
@@ -443,6 +441,27 @@ class BlueiceExtendedModel(StatisticalModel):
     def _ll(self, **generate_values) -> float:
         livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
         return self._likelihood(livetime_days=livetime_days, **generate_values)
+
+    def supports_gradient(self) -> bool:
+        """Whether all likelihood terms provide analytic gradients.
+
+        False if a subclass overrides ll or _ll, or ll was replaced on the instance without
+        ll_and_grad, since the analytic gradient would then not match the likelihood.
+
+        """
+        cls = type(self)
+        if cls.ll is not StatisticalModel.ll or cls._ll is not BlueiceExtendedModel._ll:
+            return False
+        if "ll" in vars(self) and "ll_and_grad" not in vars(self):
+            return False
+        supports = getattr(self._likelihood, "supports_gradient", None)
+        return bool(supports is not None and supports())
+
+    def _ll_and_grad(self, **generate_values):
+        livetime_days = [generate_values.get(ln, None) for ln in self.livetime_parameter_names]
+        return self._likelihood.loglikelihood_and_gradient(
+            livetime_days=livetime_days, **generate_values
+        )
 
     def _generate_data(self, **generate_values) -> dict:
         """Generate data for all likelihood terms and ancillary likelihood.
@@ -649,6 +668,45 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
         self.pdf_base_config["name"] = "ancillary"
 
     @property
+    def constraint_functions(self) -> dict:
+        """Dict of (frozen scipy.stats) constraint distributions for all ancillary parameters."""
+        return self._constraint_functions
+
+    @constraint_functions.setter
+    def constraint_functions(self, constraint_functions: dict):
+        """Set the constraint distributions and cache the Gaussian ones as arrays.
+
+        Gaussian terms (frozen ``scipy.stats.norm``) are evaluated in closed form, vectorized, in
+        ``ancillary_sum``; evaluating a frozen distribution's logpdf costs ~100 us per call, which
+        dominated the likelihood evaluation time. All other terms keep their logpdf.
+
+        """
+        self._constraint_functions = constraint_functions
+        self._constraint_signature = self._get_constraint_signature()
+        gauss_names, locs, scales = [], [], []
+        self._other_constraint_terms = {}
+        for name, func in constraint_functions.items():
+            dist = getattr(func, "dist", None)
+            if getattr(dist, "name", None) == "norm":
+                loc, scale = float(func.mean()), float(func.std())
+                gauss_names.append(name)
+                locs.append(loc)
+                scales.append(scale)
+            else:
+                self._other_constraint_terms[name] = func.logpdf
+        self._gauss_names = gauss_names
+        self._gauss_locs = np.asarray(locs, dtype=float)
+        self._gauss_scales = np.asarray(scales, dtype=float)
+        # normalisation: sum of -log(sigma * sqrt(2 pi)), same convention as norm.logpdf
+        self._gauss_lognorm = -np.sum(np.log(self._gauss_scales)) - 0.5 * len(gauss_names) * np.log(
+            2 * np.pi
+        )
+
+    def _get_constraint_signature(self) -> tuple:
+        """Identity of the current constraint distributions, to detect in-place changes."""
+        return tuple((name, id(func)) for name, func in self._constraint_functions.items())
+
+    @property
     def constraint_terms(self) -> dict:
         """Return a dict of all constraint terms (logpdf callables) of the ancillary likelihood.
 
@@ -685,10 +743,53 @@ class CustomAncillaryLikelihood(LogAncillaryLikelihood):
             float: Sum of all constraint terms.
 
         """
-        evaluated_constraint_terms = [
-            term(evaluate_at[name]) for name, term in self.constraint_terms.items()
-        ]
-        return np.sum(evaluated_constraint_terms)
+        if self._get_constraint_signature() != self._constraint_signature:
+            # constraint_functions was modified in place: rebuild the cached Gaussian terms
+            self.constraint_functions = self._constraint_functions
+        result = 0.0
+        if self._gauss_names:
+            x = np.array([evaluate_at[name] for name in self._gauss_names], dtype=float)
+            z = (x - self._gauss_locs) / self._gauss_scales
+            result += self._gauss_lognorm - 0.5 * np.dot(z, z)
+        for name, term in self._other_constraint_terms.items():
+            result += term(evaluate_at[name])
+        return result
+
+    def supports_gradient(self) -> bool:
+        # the gradient reproduces ancillary_sum; not valid if a subclass changes it
+        return (
+            type(self).ancillary_sum is CustomAncillaryLikelihood.ancillary_sum
+            and type(self).__call__ is LogAncillaryLikelihood.__call__
+        )
+
+    def loglikelihood_and_gradient(self, livetime_days=None, **kwargs):
+        """Return ancillary_sum and its gradient (dict by parameter name).
+
+        Gaussian terms are differentiated analytically, other terms by finite differences of their
+        logpdf. Missing parameters take their base value, as in __call__.
+
+        """
+        if self._get_constraint_signature() != self._constraint_signature:
+            self.constraint_functions = self._constraint_functions
+        evaluate_at = {name: self.pdf_base_config[name] for name in self.shape_parameters}
+        evaluate_at.update(kwargs)
+        value = self.ancillary_sum(evaluate_at)
+        gradient = {name: 0.0 for name in self.shape_parameters}
+        if self._gauss_names:
+            x = np.array([evaluate_at[name] for name in self._gauss_names], dtype=float)
+            dx = -(x - self._gauss_locs) / self._gauss_scales**2
+            gradient.update(zip(self._gauss_names, dx))
+        for name, term in self._other_constraint_terms.items():
+            x = evaluate_at[name]
+            h = 1e-6 * max(1.0, abs(x))
+            up, down = term(x + h), term(x - h)
+            if np.isfinite(up) and np.isfinite(down):
+                gradient[name] = (up - down) / (2 * h)
+            else:
+                # e.g. at the edge of the support: one-sided
+                center = term(x)
+                gradient[name] = (up - center) / h if np.isfinite(up) else (center - down) / h
+        return value, gradient
 
     def _get_constraint_functions(self, **generate_values) -> dict:
         """Get callable constraint functions for all ancillary parameters.

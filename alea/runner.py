@@ -478,11 +478,30 @@ class Runner:
 
         """
         results = [np.zeros(self._n_mc, dtype=self._result_dtype) for _ in self._hypotheses_values]
+        # With a free hypothesis (first, no fixed parameters) and start_free_fit_from_conditional,
+        # the other hypotheses are fitted first and their solutions are extra starts of the free fit
+        start_free_from_conditional = (
+            self.model._fit_strategy["start_free_fit_from_conditional"]
+            and len(self._hypotheses_values) > 1
+            and self._hypotheses_values[0] == {}
+        )
+        n_hypo = len(self._hypotheses_values)
+        fit_order = list(range(n_hypo))
+        if start_free_from_conditional:
+            fit_order = fit_order[1:] + [0]
         for i_mc, data in tqdm(enumerate(self.data_generator()), total=self._n_mc):
             self.model.data = data
-            fit_results = []
-            for i_hypo, hypothesis_values in enumerate(self._hypotheses_values):
-                fit_result, max_llh = self.model.fit(**hypothesis_values)
+            fit_results = [None] * n_hypo
+            for i_hypo in fit_order:
+                hypothesis_values = self._hypotheses_values[i_hypo]
+                if start_free_from_conditional and i_hypo == 0:
+                    fittable = self.model.parameters.fittable
+                    starts = [{k: r[k] for k in fittable if k in r} for r in fit_results[1:]]
+                    fit_result, max_llh = self.model.fit_with_extra_starts(
+                        starts, **hypothesis_values
+                    )
+                else:
+                    fit_result, max_llh = self.model.fit(**hypothesis_values)
                 fit_result["ll"] = max_llh
                 fit_result["valid_fit"] = self.model.minuit_object.valid
 
@@ -510,7 +529,7 @@ class Runner:
                 fit_result["dl"] = dl
                 fit_result["ul"] = ul
 
-                fit_results.append(fit_result)
+                fit_results[i_hypo] = fit_result
             # assign fitting results
             for fit_result, result_array in zip(fit_results, results):
                 result_array[i_mc] = tuple(fit_result[pn] for pn in self._result_names)
